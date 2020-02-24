@@ -1,6 +1,7 @@
 /* 
  * hci_hwpe_interconnect.sv
  * Francesco Conti <f.conti@unibo.it>
+ * Tobias Riedener <tobiasri@student.ethz.ch>
  *
  * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
