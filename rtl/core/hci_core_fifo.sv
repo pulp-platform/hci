@@ -40,8 +40,8 @@ module hci_core_fifo #(
 
   logic incoming_fifo_not_full;
 
-  logic        tcdm_master_r_valid_d, tcdm_master_r_valid_q;
-  logic [31:0] tcdm_master_r_data_d, tcdm_master_r_data_q;
+  logic          tcdm_master_r_valid_d, tcdm_master_r_valid_q;
+  logic [DW-1:0] tcdm_master_r_data_d, tcdm_master_r_data_q;
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( AW+DW+DW/BW+1 )
