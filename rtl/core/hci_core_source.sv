@@ -264,11 +264,11 @@ module hci_core_source
         kill_req <= '0;
         kill_cnt <= '0;
       end
-      else if(flags_o.addressgen_flags.realign_flags.enable==1'b1 && (tcdm_int_req & tcdm_int_gnt) && request_cnt_q == ctrl_i.addressgen_ctrl.trans_size) begin
+      else if(flags_o.addressgen_flags.realign_flags.enable == 1'b1 && (tcdm_int_req & tcdm_int_gnt) && request_cnt_q == ctrl_i.addressgen_ctrl.trans_size) begin
         kill_req <= '1;
       end
-      else if(flags_o.addressgen_flags.realign_flags.enable==1'b0 && (tcdm_int_req & tcdm_int_gnt) && ctrl_i.addressgen_ctrl.trans_size-1 == '0) begin
-        if(kill_cnt==1'b1) begin
+      else if(flags_o.addressgen_flags.realign_flags.enable == 1'b0 && (tcdm_int_req & tcdm_int_gnt) && ctrl_i.addressgen_ctrl.trans_size-1 == '0) begin
+        if(kill_cnt == 1'b1) begin
           kill_req <= '1;
         end
         else begin
@@ -276,7 +276,7 @@ module hci_core_source
           kill_cnt <= ~kill_cnt;
         end
       end
-      else if(flags_o.addressgen_flags.realign_flags.enable==1'b0 && (tcdm_int_req & tcdm_int_gnt) && request_cnt_q == ctrl_i.addressgen_ctrl.trans_size-1) begin
+      else if(flags_o.addressgen_flags.realign_flags.enable == 1'b0 && (tcdm_int_req & tcdm_int_gnt) && request_cnt_q == ctrl_i.addressgen_ctrl.trans_size-1) begin
         kill_req <= '1;
       end
     end
@@ -304,7 +304,7 @@ module hci_core_source
       STREAM_WORKING: begin
         if(stream.ready) begin
           tcdm_int_req = 1'b1;
-          if(tcdm_int_gnt & ctrl_i.addressgen_ctrl.trans_size-1!='0)
+          if(tcdm_int_gnt & ctrl_i.addressgen_ctrl.trans_size-1 != '0)
             address_gen_en = 1'b1;
           else
             address_gen_en = 1'b0;
@@ -314,7 +314,7 @@ module hci_core_source
           address_gen_en = 1'b0;
         end
         if(tcdm_int_req & tcdm_int_gnt) begin
-          if(flags_o.addressgen_flags.in_progress == 1'b1 & ctrl_i.addressgen_ctrl.trans_size-1!='0) begin
+          if(flags_o.addressgen_flags.in_progress == 1'b1 & ctrl_i.addressgen_ctrl.trans_size-1 != '0) begin
             ns = STREAM_WORKING;
           end
           else if(!(stream.valid & stream.ready) || overall_cnt_q != '0) begin
