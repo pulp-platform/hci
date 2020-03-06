@@ -126,9 +126,8 @@ module hci_core_source
   logic tcdm_int_gnt;
 
   logic [TRANS_CNT-1:0] overall_cnt_q, overall_cnt_d;
-  logic overall_none;
 
-  logic kill_req;
+  logic kill_req, kill_cnt;
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( DATA_WIDTH )
@@ -228,7 +227,7 @@ module hci_core_source
     else if(clear_i)
       stream_data_q <= '0;
     else if(tcdm.r_valid)
-        stream_data_q <= tcdm.r_data;
+      stream_data_q <= tcdm.r_data;
   end
 
   // finite-state machine
@@ -244,16 +243,7 @@ module hci_core_source
       cs <= ns;
     end
   end
-
-  always_ff @(posedge clk_i or negedge rst_ni)
-  begin : done_source_ff
-    if(~rst_ni)
-      flags_o.done <= 1'b0;
-    else if(clear_i)
-      flags_o.done <= 1'b0;
-    else
-      flags_o.done <= done;
-  end
+  assign flags_o.done = done;
 
   logic [TRANS_CNT-1:0] request_cnt_q, request_cnt_d;
 
@@ -263,15 +253,28 @@ module hci_core_source
   begin
     if(~rst_ni) begin
       kill_req <= '0;
+      kill_cnt <= '0;
     end
     else if (clear_i) begin
       kill_req <= '0;
+      kill_cnt <= '0;
     end
     else begin
-      if(cs == STREAM_IDLE)
+      if(cs == STREAM_IDLE | cs == STREAM_DONE) begin
         kill_req <= '0;
+        kill_cnt <= '0;
+      end
       else if(flags_o.addressgen_flags.realign_flags.enable==1'b1 && (tcdm_int_req & tcdm_int_gnt) && request_cnt_q == ctrl_i.addressgen_ctrl.trans_size) begin
         kill_req <= '1;
+      end
+      else if(flags_o.addressgen_flags.realign_flags.enable==1'b0 && (tcdm_int_req & tcdm_int_gnt) && ctrl_i.addressgen_ctrl.trans_size-1 == '0) begin
+        if(kill_cnt==1'b1) begin
+          kill_req <= '1;
+        end
+        else begin
+          kill_req <= '0;
+          kill_cnt <= ~kill_cnt;
+        end
       end
       else if(flags_o.addressgen_flags.realign_flags.enable==1'b0 && (tcdm_int_req & tcdm_int_gnt) && request_cnt_q == ctrl_i.addressgen_ctrl.trans_size-1) begin
         kill_req <= '1;
@@ -301,7 +304,7 @@ module hci_core_source
       STREAM_WORKING: begin
         if(stream.ready) begin
           tcdm_int_req = 1'b1;
-          if(tcdm_int_gnt)
+          if(tcdm_int_gnt & ctrl_i.addressgen_ctrl.trans_size-1!='0)
             address_gen_en = 1'b1;
           else
             address_gen_en = 1'b0;
@@ -311,11 +314,12 @@ module hci_core_source
           address_gen_en = 1'b0;
         end
         if(tcdm_int_req & tcdm_int_gnt) begin
-          if(flags_o.addressgen_flags.in_progress == 1'b1) begin
+          if(flags_o.addressgen_flags.in_progress == 1'b1 & ctrl_i.addressgen_ctrl.trans_size-1!='0) begin
             ns = STREAM_WORKING;
           end
-          else if(overall_none == 1'b1 || overall_cnt_q != '0) begin
+          else if(!(stream.valid & stream.ready) || overall_cnt_q != '0) begin
             ns = STREAM_DONE;
+            address_gen_clr = 1'b1;
             address_gen_en = 1'b0;
           end
         end
@@ -325,10 +329,13 @@ module hci_core_source
       end
       STREAM_DONE: begin
         ns = STREAM_DONE;
-        if(overall_none == 1'b0 && overall_cnt_q == '0) begin
+        if((stream.valid & stream.ready) == 1'b1 && overall_cnt_q == '0) begin
           ns = STREAM_IDLE;
           done = 1'b1;
-          address_gen_clr = 1'b1;
+          flags_o.ready_start = 1'b1;
+          if(ctrl_i.req_start) begin
+            ns = STREAM_WORKING;
+          end
         end
         address_gen_en = 1'b0;
       end
@@ -342,7 +349,7 @@ module hci_core_source
   always_comb
   begin
     overall_cnt_d = overall_cnt_q;
-    if(cs == STREAM_IDLE)
+    if(cs == STREAM_IDLE | cs == STREAM_DONE)
       overall_cnt_d = '0;
     else if(stream.valid & stream.ready) begin
       overall_cnt_d = overall_cnt_q + 1;
@@ -365,26 +372,10 @@ module hci_core_source
     end
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni)
-  begin
-    if(~rst_ni) begin
-      overall_none <= 1'b1;
-    end
-    else if(clear_i) begin
-      overall_none <= 1'b1;
-    end
-    else if(cs == STREAM_IDLE) begin
-      overall_none <= 1'b1;
-    end
-    else if(stream.valid & stream.ready) begin
-      overall_none <= 1'b0;
-    end
-  end
-
   always_comb
   begin
     request_cnt_d = request_cnt_q;
-    if(cs == STREAM_IDLE)
+    if(cs == STREAM_IDLE | cs == STREAM_DONE)
       request_cnt_d = '0;
     else if(tcdm_int_req & tcdm_int_gnt) begin
       request_cnt_d = request_cnt_q + 1;
