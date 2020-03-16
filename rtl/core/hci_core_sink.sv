@@ -251,19 +251,19 @@ module hci_core_sink
         end
       end
       STREAM_WORKING : begin
-        if(stream.valid & stream.ready) begin
+        if(stream.valid & stream.ready & ctrl_i.addressgen_ctrl.trans_size-1 != '0) begin
           ns = STREAM_WORKING;
           address_gen_en = 1'b1;
         end
-        else if(flags_o.addressgen_flags.realign_flags.enable & flags_o.addressgen_flags.realign_flags.last) begin
+        else if(flags_o.addressgen_flags.realign_flags.enable & flags_o.addressgen_flags.realign_flags.last & ctrl_i.addressgen_ctrl.trans_size-1 != '0) begin
           ns = STREAM_WORKING;
           address_gen_en = 1'b1;
         end
-        else if(~flags_o.addressgen_flags.in_progress & tcdm_inflight) begin // if transactions in flight, let them end
+        else if(~flags_o.addressgen_flags.in_progress & tcdm_inflight & ctrl_i.addressgen_ctrl.trans_size-1 != '0) begin // if transactions in flight, let them end
           ns = STREAM_WORKING;
           address_gen_en  = 1'b0;
         end
-        else if(~flags_o.addressgen_flags.in_progress) begin
+        else if(~flags_o.addressgen_flags.in_progress  | ctrl_i.addressgen_ctrl.trans_size-1 == '0) begin
           ns = STREAM_IDLE;
           done = 1'b1;
           address_gen_en  = 1'b0;
