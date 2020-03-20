@@ -27,10 +27,18 @@ package hci_package;
   } hci_interconnect_ctrl_t;
 
   typedef struct packed {
-    logic [31:0] base_addr;
-    logic [31:0] trans_size;
-    logic [15:0] line_length;
-    logic [7:0]  line_length_remainder; // in bytes
-  } hci_core_addressgen_ctrl_t;
+    logic                                     req_start;
+    hwpe_stream_package::ctrl_addressgen_v2_t addressgen_ctrl;
+  } hci_streamer_ctrl_t;
+
+  typedef struct packed {
+    logic                                      ready_start;
+    logic                                      done;
+    hwpe_stream_package::flags_addressgen_v2_t addressgen_flags;
+  } hci_streamer_flags_t;
+
+  typedef enum {
+    STREAMER_IDLE, STREAMER_WORKING, STREAMER_DONE
+  } hci_streamer_state_t;
 
 endpackage // hci_package
