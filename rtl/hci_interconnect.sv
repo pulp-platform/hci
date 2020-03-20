@@ -72,7 +72,7 @@ module hci_interconnect #(
         .N_MEM  ( N_MEM               ),
         .IW     ( IW                  ),
         .AWC    ( AWC                 ),
-        .AWM    ( AWM                 ),
+        .AWM    ( AWM-2               ),
         .DW     ( DW_LIC              ),
         .TS_BIT ( TS_BIT              )
       ) i_log_interconnect (
