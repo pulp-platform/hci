@@ -39,9 +39,6 @@ module hci_core_sink
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
 
-  logic [31:0]             gen_addr;
-  logic [DATA_WIDTH/8-1:0] gen_strb;
-
   logic address_gen_en;
   logic address_gen_clr;
   logic done;
@@ -72,6 +69,7 @@ module hci_core_sink
     .test_mode_i ( test_mode_i              ),
     .enable_i    ( address_gen_en           ),
     .clear_i     ( address_gen_clr          ),
+    .presample_i ( ctrl_i.req_start         ),
     .addr_o      ( addr                     ),
     .ctrl_i      ( ctrl_i.addressgen_ctrl   ),
     .flags_o     ( flags_o.addressgen_flags )
