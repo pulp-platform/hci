@@ -96,7 +96,7 @@ module hci_core_source
   assign stream.strb  = '1;
   assign stream.data  = tcdm.r_valid ? tcdm.r_data : stream_data_q;  // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
   assign stream.valid = tcdm.r_valid               | stream_valid_q; // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
-  assign addr_fifo.ready = stream.ready;
+  assign addr_fifo.ready = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready & tcdm.gnt : 1'b0;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
@@ -142,6 +142,7 @@ module hci_core_source
     ns                  = cs;
     done                = 1'b0;
     flags_o.ready_start = 1'b0;
+    flags_o.done        = 1'b0;
     address_gen_en      = 1'b0;
     address_gen_clr     = clear_i;
     case(cs)
@@ -162,6 +163,7 @@ module hci_core_source
         address_gen_en = 1'b1;
         if(addr_fifo_flags.empty) begin
           ns = STREAMER_IDLE;
+          flags_o.done = 1'b1;
           done = 1'b1;
           address_gen_en  = 1'b0;
           address_gen_clr = 1'b1;
