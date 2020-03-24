@@ -96,7 +96,7 @@ module hci_core_sink
   assign tcdm_prefifo.boffs = '0;
   assign tcdm_prefifo.lrdy  = '1;
   assign stream.ready    = ~stream.valid | tcdm_prefifo.gnt;
-  assign addr_fifo.ready =  stream.valid;
+  assign addr_fifo.ready =  stream.valid & stream.ready;
 
   generate
 
