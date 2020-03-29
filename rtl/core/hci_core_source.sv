@@ -86,6 +86,9 @@ module hci_core_source
   logic                  stream_valid_q;
   logic [DATA_WIDTH-1:0] stream_data_q;
 
+  logic stream_cnt_en, stream_cnt_clr;
+  logic [TRANS_CNT-1:0] stream_cnt_d, stream_cnt_q;
+
   assign tcdm.lrdy  = stream.ready;
   assign tcdm.req   = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready : '0;
   assign tcdm.add   = (cs != STREAMER_IDLE) ? {addr_fifo.data[30:0],2'b0}    : '0;
@@ -145,6 +148,7 @@ module hci_core_source
     flags_o.done        = 1'b0;
     address_gen_en      = 1'b0;
     address_gen_clr     = clear_i;
+    stream_cnt_clr      = 1'b0;
     case(cs)
       STREAMER_IDLE : begin
         flags_o.ready_start = 1'b1;
@@ -161,19 +165,29 @@ module hci_core_source
       end
       STREAMER_DONE : begin
         address_gen_en = 1'b1;
-        if(addr_fifo_flags.empty) begin
+        if((addr_fifo_flags.empty==1'b1) && (stream_cnt_q==ctrl_i.addressgen_ctrl.word_length)) begin
           ns = STREAMER_IDLE;
           flags_o.done = 1'b1;
           done = 1'b1;
           address_gen_en  = 1'b0;
           address_gen_clr = 1'b1;
+          stream_cnt_clr = 1'b1;
         end
-      end
-      default : begin
-        ns = STREAMER_IDLE;
-        address_gen_en = 1'b0;
       end
     endcase
   end
+
+  assign stream_cnt_en = stream.valid & stream.ready;
+
+  always_ff @(posedge clk_i or negedge rst_ni)
+  begin
+    if(~rst_ni)
+      stream_cnt_q <= '0;
+    else if(clear_i | stream_cnt_clr)
+      stream_cnt_q <= '0;
+    else if(stream_cnt_en)
+      stream_cnt_q <= stream_cnt_d;
+  end
+  assign stream_cnt_d = stream_cnt_q + 1;
 
 endmodule // hci_core_source

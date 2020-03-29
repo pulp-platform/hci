@@ -159,6 +159,7 @@ module hci_core_fifo #(
   assign { >> { tcdm_master_add, tcdm_master_data, tcdm_master_be, tcdm_master_wen }} = stream_outgoing_pop_data;
   assign tcdm_master.boffs = '0; // FIXME
   assign tcdm_master.req = stream_outgoing_pop.valid & incoming_fifo_not_full;
+  assign tcdm_master.lrdy = incoming_fifo_not_full;
   assign stream_outgoing_pop.ready = tcdm_master.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0
 
   hwpe_stream_fifo #(

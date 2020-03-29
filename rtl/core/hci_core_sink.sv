@@ -20,7 +20,8 @@ module hci_core_sink
 #(
   // Stream interface params
   parameter int unsigned DATA_WIDTH      = 32,
-  parameter int unsigned TCDM_FIFO_DEPTH = 0
+  parameter int unsigned TCDM_FIFO_DEPTH = 0,
+  parameter int unsigned TRANS_CNT = 16
 )
 (
   input logic clk_i,
@@ -87,6 +88,9 @@ module hci_core_sink
     .pop_o   ( addr_fifo       )
   );
 
+  logic address_cnt_en, address_cnt_clr;
+  logic [TRANS_CNT-1:0] address_cnt_d, address_cnt_q;
+
   // hci port binding
   assign tcdm_prefifo.req   = (cs != STREAMER_IDLE) ? stream.valid & addr_fifo.valid : '0;
   assign tcdm_prefifo.add   = (cs != STREAMER_IDLE) ? {addr_fifo.data[30:0],2'b0}    : '0;
@@ -95,7 +99,7 @@ module hci_core_sink
   assign tcdm_prefifo.data  = (cs != STREAMER_IDLE) ? stream.data                    : '0;
   assign tcdm_prefifo.boffs = '0;
   assign tcdm_prefifo.lrdy  = '1;
-  assign stream.ready    = ~stream.valid | tcdm_prefifo.gnt;
+  assign stream.ready    = ~stream.valid | (tcdm_prefifo.gnt & addr_fifo.valid);
   assign addr_fifo.ready =  stream.valid & stream.ready;
 
   generate
@@ -157,6 +161,7 @@ module hci_core_sink
     flags_o.ready_start = 1'b0;
     address_gen_en      = 1'b0;
     address_gen_clr     = clear_i;
+    address_cnt_clr = 1'b0;
     case(cs)
       STREAMER_IDLE : begin
         flags_o.ready_start = 1'b1;
@@ -173,18 +178,28 @@ module hci_core_sink
       end
       STREAMER_DONE : begin
         address_gen_en = 1'b1;
-        if(addr_fifo_flags.empty) begin
+        if(address_cnt_q==ctrl_i.addressgen_ctrl.word_length) begin
           ns = STREAMER_IDLE;
           done = 1'b1;
           address_gen_en  = 1'b0;
           address_gen_clr = 1'b1;
+          address_cnt_clr = 1'b1;
         end
-      end
-      default : begin
-        ns = STREAMER_IDLE;
-        address_gen_en = 1'b0;
       end
     endcase
   end
+
+  assign address_cnt_en = addr_fifo.valid & addr_fifo.ready;
+
+  always_ff @(posedge clk_i or negedge rst_ni)
+  begin
+    if(~rst_ni)
+      address_cnt_q <= '0;
+    else if(clear_i | address_cnt_clr)
+      address_cnt_q <= '0;
+    else if(address_cnt_en)
+      address_cnt_q <= address_cnt_d;
+  end
+  assign address_cnt_d = address_cnt_q + 1;
 
 endmodule // hci_core_sink
