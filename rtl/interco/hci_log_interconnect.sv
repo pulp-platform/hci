@@ -93,7 +93,7 @@ module hci_log_interconnect #(
         end
         else begin
           mems_ts_set_q[i] <= mems_ts_set_d[i];
-          mems_r_valid[i] <= ( mems_req[i] & ~mems_ts_set_d[i]  & ~mems_ts_set_q[i] ) | (mems_req[i] & ~mems_ts_set_d[i]  & mems_ts_set_q[i] );
+          mems_r_valid[i] <= ( mems_req[i] & mems_gnt[i] & ~mems_ts_set_d[i]  & ~mems_ts_set_q[i] ) | (mems_req[i] & mems_gnt[i] & ~mems_ts_set_d[i]  & mems_ts_set_q[i] );
           if(mems_req[i])
             mems_r_ID[i] <= mems_ID[i];
         end
