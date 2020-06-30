@@ -20,8 +20,6 @@ module hci_core_source
 #(
   // Stream interface params
   parameter int unsigned DATA_WIDTH = 32,
-  // parameter int unsigned NB_TCDM_PORTS = DATA_WIDTH/32,
-  // parameter int unsigned DECOUPLED = 0,
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16
 )
@@ -59,7 +57,7 @@ module hci_core_source
   );
 
   // generate addresses
-  hwpe_stream_addressgen_v2 i_addressgen (
+  hwpe_stream_addressgen_v3 i_addressgen (
     .clk_i       ( clk_i                    ),
     .rst_ni      ( rst_ni                   ),
     .test_mode_i ( test_mode_i              ),
@@ -165,7 +163,7 @@ module hci_core_source
       end
       STREAMER_DONE : begin
         address_gen_en = 1'b1;
-        if((addr_fifo_flags.empty==1'b1) && (stream_cnt_q==ctrl_i.addressgen_ctrl.word_length)) begin
+        if((addr_fifo_flags.empty==1'b1) && (stream_cnt_q==ctrl_i.addressgen_ctrl.tot_len)) begin
           ns = STREAMER_IDLE;
           flags_o.done = 1'b1;
           done = 1'b1;

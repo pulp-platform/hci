@@ -28,13 +28,13 @@ package hci_package;
 
   typedef struct packed {
     logic                                     req_start;
-    hwpe_stream_package::ctrl_addressgen_v2_t addressgen_ctrl;
+    hwpe_stream_package::ctrl_addressgen_v3_t addressgen_ctrl;
   } hci_streamer_ctrl_t;
 
   typedef struct packed {
     logic                                      ready_start;
     logic                                      done;
-    hwpe_stream_package::flags_addressgen_v2_t addressgen_flags;
+    hwpe_stream_package::flags_addressgen_v3_t addressgen_flags;
   } hci_streamer_flags_t;
 
   typedef enum {

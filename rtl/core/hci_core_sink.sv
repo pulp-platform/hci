@@ -29,12 +29,12 @@ module hci_core_sink
   input logic test_mode_i,
   input logic clear_i,
 
-  hci_core_intf.master         tcdm,
-  hwpe_stream_intf_stream.sink stream,
+  hci_core_intf.master           tcdm,
+  hwpe_stream_intf_stream.sink   stream,
 
   // control plane
-  input  hci_streamer_ctrl_t   ctrl_i,
-  output hci_streamer_flags_t  flags_o
+  input  hci_streamer_ctrl_t  ctrl_i,
+  output hci_streamer_flags_t flags_o
 );
 
   hci_streamer_state_t cs, ns;
@@ -64,7 +64,7 @@ module hci_core_sink
     .clk ( clk_i )
   );
 
-  hwpe_stream_addressgen_v2 i_addressgen (
+  hwpe_stream_addressgen_v3 i_addressgen (
     .clk_i       ( clk_i                    ),
     .rst_ni      ( rst_ni                   ),
     .test_mode_i ( test_mode_i              ),
@@ -178,7 +178,7 @@ module hci_core_sink
       end
       STREAMER_DONE : begin
         address_gen_en = 1'b1;
-        if(address_cnt_q==ctrl_i.addressgen_ctrl.word_length) begin
+        if(address_cnt_q==ctrl_i.addressgen_ctrl.tot_len) begin
           ns = STREAMER_IDLE;
           done = 1'b1;
           address_gen_en  = 1'b0;
