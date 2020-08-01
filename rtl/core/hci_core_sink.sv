@@ -28,6 +28,7 @@ module hci_core_sink
   input logic rst_ni,
   input logic test_mode_i,
   input logic clear_i,
+  input logic enable_i,
 
   hci_core_intf.master           tcdm,
   hwpe_stream_intf_stream.sink   stream,
@@ -137,7 +138,7 @@ module hci_core_sink
       flags_o.done <= 1'b0;
     else if(clear_i)
       flags_o.done <= 1'b0;
-    else
+    else if(enable_i)
       flags_o.done <= done;
   end
 
@@ -149,7 +150,7 @@ module hci_core_sink
     else if(clear_i == 1'b1) begin
       cs <= STREAMER_IDLE;
     end
-    else begin
+    else if(enable_i) begin
       cs <= ns;
     end
   end
@@ -197,7 +198,7 @@ module hci_core_sink
       address_cnt_q <= '0;
     else if(clear_i | address_cnt_clr)
       address_cnt_q <= '0;
-    else if(address_cnt_en)
+    else if(enable_i & address_cnt_en)
       address_cnt_q <= address_cnt_d;
   end
   assign address_cnt_d = address_cnt_q + 1;

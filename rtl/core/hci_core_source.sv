@@ -29,6 +29,7 @@ module hci_core_source
   input logic rst_ni,
   input logic test_mode_i,
   input logic clear_i,
+  input logic enable_i,
 
   hci_core_intf.master           tcdm,
   hwpe_stream_intf_stream.source stream,
@@ -122,7 +123,7 @@ module hci_core_source
   assign tcdm.boffs = '0;
   assign stream.strb  = '1;
   assign stream.data  = stream_data_aligned;
-  assign stream.valid = tcdm.r_valid | stream_valid_q; // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
+  assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
   assign addr_fifo.ready = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready & tcdm.gnt : 1'b0;
   
   hwpe_stream_intf_stream #(
@@ -137,8 +138,8 @@ module hci_core_source
   );
   assign addr_misaligned_push.data  = {6'b0, addr_fifo.data[1:0]};
   assign addr_misaligned_push.strb  = '1;
-  assign addr_misaligned_push.valid = tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
-  assign addr_misaligned_pop.ready = tcdm.r_valid | stream_valid_q;
+  assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
+  assign addr_misaligned_pop.ready  = tcdm.r_valid | stream_valid_q;
   assign addr_misaligned_q = addr_misaligned_pop.data[1:0];
 
   hwpe_stream_fifo #(
@@ -159,7 +160,7 @@ module hci_core_source
       stream_valid_q <= 1'b0;
     else if(clear_i)
       stream_valid_q <= 1'b0;
-    else begin
+    else if(enable_i) begin
       if(tcdm.r_valid & stream.ready)
         stream_valid_q <= 1'b0;
       else if(tcdm.r_valid)
@@ -175,7 +176,7 @@ module hci_core_source
       stream_data_q <= '0;
     else if(clear_i)
       stream_data_q <= '0;
-    else if(tcdm.r_valid)
+    else if(enable_i & tcdm.r_valid)
       stream_data_q <= tcdm.r_data;
   end
 
@@ -187,7 +188,7 @@ module hci_core_source
     else if(clear_i == 1'b1) begin
       cs <= STREAMER_IDLE;
     end
-    else begin
+    else if(enable_i) begin
       cs <= ns;
     end
   end
@@ -237,7 +238,7 @@ module hci_core_source
       stream_cnt_q <= '0;
     else if(clear_i | stream_cnt_clr)
       stream_cnt_q <= '0;
-    else if(stream_cnt_en)
+    else if(enable_i & stream_cnt_en)
       stream_cnt_q <= stream_cnt_d;
   end
   assign stream_cnt_d = stream_cnt_q + 1;

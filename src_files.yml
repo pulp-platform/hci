@@ -20,3 +20,4 @@ hci_interconnect:
     - rtl/core/hci_core_sink.sv
     - rtl/core/hci_core_source.sv
     - rtl/core/hci_core_mux_static.sv
+    - rtl/core/hci_core_r_valid_filter.sv
