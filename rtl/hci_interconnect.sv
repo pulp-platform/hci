@@ -40,6 +40,7 @@ module hci_interconnect #(
 ) (
   input  logic                   clk_i,
   input  logic                   rst_ni,
+  input  logic                   clear_i,
   input  hci_interconnect_ctrl_t ctrl_i,
   input  logic                   clear_i,
   hci_core_intf.slave            cores   [N_CORE-1:0],
