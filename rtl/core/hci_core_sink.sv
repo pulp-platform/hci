@@ -92,12 +92,44 @@ module hci_core_sink
   logic address_cnt_en, address_cnt_clr;
   logic [TRANS_CNT-1:0] address_cnt_d, address_cnt_q;
 
+  logic [DATA_WIDTH-1:0]   stream_data_misaligned;
+  logic [DATA_WIDTH/8-1:0] stream_strb_misaligned;
+  logic [DATA_WIDTH-1:0]   stream_data_aligned;
+  logic [DATA_WIDTH/8-1:0] stream_strb_aligned;
+
+  assign stream_data_misaligned = stream.data;
+  assign stream_strb_misaligned = stream.strb;
+
+  always_comb
+  begin
+    stream_data_aligned = '0;
+    stream_strb_aligned = '0;
+    case(addr_fifo.data[1:0])
+      2'b00: begin
+        stream_data_aligned[DATA_WIDTH-32-1:0]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
+        stream_strb_aligned[(DATA_WIDTH-32)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
+      end
+      2'b01: begin
+        stream_data_aligned[DATA_WIDTH-24-1:8]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
+        stream_strb_aligned[(DATA_WIDTH-24)/8-1:1] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
+      end
+      2'b10: begin
+        stream_data_aligned[DATA_WIDTH-16-1:16]    = stream_data_misaligned[DATA_WIDTH-32-1:0];
+        stream_strb_aligned[(DATA_WIDTH-16)/8-1:2] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
+      end
+      2'b11: begin
+        stream_data_aligned[DATA_WIDTH-8-1:24]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
+        stream_strb_aligned[(DATA_WIDTH-8)/8-1:3]  = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
+      end
+    endcase
+  end
+
   // hci port binding
   assign tcdm_prefifo.req   = (cs != STREAMER_IDLE) ? stream.valid & addr_fifo.valid : '0;
   assign tcdm_prefifo.add   = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
   assign tcdm_prefifo.wen   = '0;
-  assign tcdm_prefifo.be    = (cs != STREAMER_IDLE) ? stream.strb                    : '0;
-  assign tcdm_prefifo.data  = (cs != STREAMER_IDLE) ? stream.data                    : '0;
+  assign tcdm_prefifo.be    = (cs != STREAMER_IDLE) ? stream_strb_aligned            : '0;
+  assign tcdm_prefifo.data  = (cs != STREAMER_IDLE) ? stream_data_aligned            : '0;
   assign tcdm_prefifo.boffs = '0;
   assign tcdm_prefifo.lrdy  = '1;
   assign stream.ready    = ~stream.valid | (tcdm_prefifo.gnt & addr_fifo.valid);
