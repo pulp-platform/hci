@@ -88,7 +88,7 @@ module hci_log_interconnect_l2 #(
           mems_r_valid[i] <= 1'b0;
         end
         else begin
-          mems_r_valid[i] <= mems_req[i];
+          mems_r_valid[i] <= mems_req[i] & mems_gnt[i];
         end
       end
 
