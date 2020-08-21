@@ -1,4 +1,4 @@
-hci_interconnect:
+hci:
   vlog_opts: [
     +nowarnSVCHK,
     -suppress 2275,
