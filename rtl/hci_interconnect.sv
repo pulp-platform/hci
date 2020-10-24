@@ -65,7 +65,7 @@ module hci_interconnect #(
     .clk ( clk_i )
   );
 
-  generate;
+  generate
     if(SEL_LIC==0) begin : l1_interconnect_gen
       hci_log_interconnect #(
         .N_CH0  ( N_CORE              ),
