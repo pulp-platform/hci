@@ -103,34 +103,52 @@ module hci_interconnect #(
     end
   endgenerate
 
-  hci_hwpe_interconnect #(
-    .FIFO_DEPTH  ( EXPFIFO ),
-    .NB_OUT_CHAN ( N_MEM   ),
-    .AWM         ( AWM     ),
-    .DWH         ( DWH     ),
-    .AWH         ( AWH     ),
-    .BWH         ( BWH     ),
-    .WWH         ( WWH     ),
-    .OWH         ( OWH     )
-  ) i_hwpe_interconnect (
-    .clk_i   ( clk_i    ),
-    .rst_ni  ( rst_ni   ),
-    .clear_i ( clear_i  ),
-    .in      ( hwpe     ),
-    .out     ( hwpe_mem )
-  );
+  generate
+    if(N_HWPE > 0) begin: hwpe_interconnect_gen
 
-  hci_shallow_interconnect #(
-    .NB_CHAN ( N_MEM )
-  ) i_shallow_interconnect (
-    .clk_i   ( clk_i               ),
-    .rst_ni  ( rst_ni              ),
-    .clear_i ( clear_i             ),
-    .ctrl_i  ( ctrl_i              ),
-    .in_high ( all_except_hwpe_mem ),
-    .in_low  ( hwpe_mem            ),
-    .out     ( mems                )
-  );
+      hci_hwpe_interconnect #(
+        .FIFO_DEPTH  ( EXPFIFO ),
+        .NB_OUT_CHAN ( N_MEM   ),
+        .AWM         ( AWM     ),
+        .DWH         ( DWH     ),
+        .AWH         ( AWH     ),
+        .BWH         ( BWH     ),
+        .WWH         ( WWH     ),
+        .OWH         ( OWH     )
+      ) i_hwpe_interconnect (
+        .clk_i   ( clk_i    ),
+        .rst_ni  ( rst_ni   ),
+        .clear_i ( clear_i  ),
+        .in      ( hwpe     ),
+        .out     ( hwpe_mem )
+      );
+
+      hci_shallow_interconnect #(
+        .NB_CHAN ( N_MEM )
+      ) i_shallow_interconnect (
+        .clk_i   ( clk_i               ),
+        .rst_ni  ( rst_ni              ),
+        .clear_i ( clear_i             ),
+        .ctrl_i  ( ctrl_i              ),
+        .in_high ( all_except_hwpe_mem ),
+        .in_low  ( hwpe_mem            ),
+        .out     ( mems                )
+      );
+
+    end
+    else begin: no_hwpe_interconnect_gen
+
+      for(genvar ii=0; ii<N_MEM; ii++) begin: no_hwpe_mem_binding
+        hci_mem_assign #(
+          .IW ( IW )
+        ) i_mem_assign (
+          .tcdm_slave  ( all_except_hwpe_mem [ii] ),
+          .tcdm_master ( mems                [ii] )
+        );
+      end
+
+    end
+  endgenerate
 
   generate
     for(genvar ii=0; ii<N_CORE; ii++) begin: cores_binding
