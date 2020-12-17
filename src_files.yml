@@ -1,22 +1,28 @@
-hci_interconnect:
+hci:
   vlog_opts: [
     +nowarnSVCHK,
     -suppress 2275,
     -L hwpe_stream_lib
   ]
+  jg_inclibs: [
+    hwpe-stream,
+  ]
   files:
-    - rtl/common/hci_package.sv
-    - rtl/common/hci_interfaces.sv
-    - rtl/interco/hci_log_interconnect.sv
-    - rtl/interco/hci_log_interconnect_l2.sv
-    - rtl/hci_interconnect.sv
-    - rtl/interco/hci_hwpe_interconnect.sv
-    - rtl/interco/hci_shallow_interconnect.sv
-    - rtl/core/hci_core_fifo.sv
-    - rtl/core/hci_core_assign.sv
-    - rtl/core/hci_core_memmap_filter.sv
-    - rtl/core/hci_core_memmap_demux_interl.sv
-    - rtl/core/hci_core_sink.sv
-    - rtl/core/hci_core_source.sv
-    - rtl/core/hci_core_mux_static.sv
-    - rtl/mem/hci_mem_assign.sv
+     rtl/common/hci_package.sv,
+     rtl/common/hci_interfaces.sv,
+     rtl/interco/hci_log_interconnect.sv,
+     rtl/interco/hci_log_interconnect_l2.sv,
+     rtl/interco/hci_new_log_interconnect.sv,
+     rtl/hci_interconnect.sv,
+     rtl/interco/hci_hwpe_interconnect.sv,
+     rtl/interco/hci_shallow_interconnect.sv,
+     rtl/core/hci_core_fifo.sv,
+     rtl/core/hci_core_assign.sv,
+     rtl/core/hci_core_memmap_filter.sv,
+     rtl/core/hci_core_memmap_demux_interl.sv,
+     rtl/core/hci_core_sink.sv,
+     rtl/core/hci_core_source.sv,
+     rtl/core/hci_core_mux_static.sv,
+     rtl/core/hci_core_r_valid_filter.sv,
+     rtl/core/hci_core_cmd_queue.sv,
+  ]

@@ -36,7 +36,7 @@ module hci_interconnect #(
   parameter int unsigned BWH = hci_package::DEFAULT_BW,
   parameter int unsigned WWH = hci_package::DEFAULT_WW,
   parameter int unsigned OWH = AWH,
-  parameter int unsigned L2  = 0
+  parameter int unsigned SEL_LIC = 0
 ) (
   input  logic                   clk_i,
   input  logic                   rst_ni,
@@ -66,7 +66,7 @@ module hci_interconnect #(
   );
 
   generate
-    if(L2 == 0) begin : l1_interconnect_gen
+    if(SEL_LIC==0) begin : l1_interconnect_gen
       hci_log_interconnect #(
         .N_CH0  ( N_CORE              ),
         .N_CH1  ( N_DMA + N_EXT       ),
@@ -84,7 +84,7 @@ module hci_interconnect #(
         .mems   ( all_except_hwpe_mem )
       );
     end
-    else begin : l2_interconnect_gen
+    else if(SEL_LIC==1) begin : l2_interconnect_gen
       hci_log_interconnect_l2 #(
         .N_CH0  ( N_CORE              ),
         .N_CH1  ( N_DMA + N_EXT       ),
@@ -97,6 +97,24 @@ module hci_interconnect #(
         .clk_i  ( clk_i               ),
         .rst_ni ( rst_ni              ),
         .ctrl_i ( '0                  ),
+        .cores  ( all_except_hwpe     ),
+        .mems   ( all_except_hwpe_mem )
+      );
+    end
+    else begin : new_l1_interconnect_gen
+      hci_new_log_interconnect #(
+        .N_CH0  ( N_CORE              ),
+        .N_CH1  ( N_DMA + N_EXT       ),
+        .N_MEM  ( N_MEM               ),
+        .IW     ( IW                  ),
+        .AWC    ( AWC                 ),
+        .AWM    ( AWM-2               ),
+        .DW     ( DW_LIC              ),
+        .TS_BIT ( TS_BIT              )
+      ) i_log_interconnect (
+        .clk_i  ( clk_i               ),
+        .rst_ni ( rst_ni              ),
+        .ctrl_i ( ctrl_i              ),
         .cores  ( all_except_hwpe     ),
         .mems   ( all_except_hwpe_mem )
       );

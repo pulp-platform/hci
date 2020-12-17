@@ -1,5 +1,5 @@
 /*
- * hci_log_interconnect_l2.sv
+ * hci_new_log_interconnect.sv
  * Francesco Conti <f.conti@unibo.it>
  *
  * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
@@ -17,7 +17,7 @@
 
 import hci_package::*;
 
-module hci_log_interconnect_l2 #(
+module hci_new_log_interconnect #(
   parameter int unsigned N_CH0  = 16,
   parameter int unsigned N_CH1  = 4,
   parameter int unsigned N_MEM  = 32,
@@ -38,7 +38,7 @@ module hci_log_interconnect_l2 #(
 
   // master side
   logic [N_CH0+N_CH1-1:0]             cores_req;
-  logic [N_CH0+N_CH1-1:0] [AWC-3:0]   cores_add;
+  logic [N_CH0+N_CH1-1:0] [AWC-1:0]   cores_add;
   logic [N_CH0+N_CH1-1:0]             cores_wen;
   logic [N_CH0+N_CH1-1:0] [DW-1:0]    cores_wdata;
   logic [N_CH0+N_CH1-1:0] [DW/BW-1:0] cores_be;
@@ -47,7 +47,7 @@ module hci_log_interconnect_l2 #(
   logic [N_CH0+N_CH1-1:0] [DW-1:0]    cores_r_rdata;
   // slave side
   logic [N_MEM-1:0]             mems_req;
-  logic [N_MEM-1:0] [AWM-3:0]   mems_add;
+  logic [N_MEM-1:0] [AWM-1:0]   mems_add;
   logic [N_MEM-1:0]             mems_wen;
   logic [N_MEM-1:0] [DW-1:0]    mems_wdata;
   logic [N_MEM-1:0] [DW/BW-1:0] mems_be;
@@ -56,12 +56,14 @@ module hci_log_interconnect_l2 #(
   logic [N_MEM-1:0] [DW-1:0]    mems_r_rdata;
   logic [N_MEM-1:0]             mems_r_valid;
   logic [N_MEM-1:0] [IW-1:0]    mems_r_ID;
+  logic [N_MEM-1:0]             mems_ts_set_d;
+  logic [N_MEM-1:0]             mems_ts_set_q;
 
   // interface unrolling
   generate
     for(genvar i=0; i<N_CH0+N_CH1; i++) begin : cores_unrolling
       assign cores_req   [i] = cores[i].req;
-      assign cores_add   [i] = cores[i].add [AWC-1:2];
+      assign cores_add   [i] = cores[i].add;
       assign cores_wen   [i] = cores[i].wen;
       assign cores_wdata [i] = cores[i].data;
       assign cores_be    [i] = cores[i].be;
@@ -71,24 +73,29 @@ module hci_log_interconnect_l2 #(
       assign cores[i].r_opc   = '0;
     end // cores_unrolling
     for(genvar i=0; i<N_MEM; i++) begin : mems_unrolling
-      assign mems[i].req  = mems_req    [i];
-      assign mems[i].add [AWC-3:2] = mems_add [i];
-      assign mems[i].add [1:0]     = '0;
-      assign mems[i].wen  = mems_wen    [i];
-      assign mems[i].data = mems_wdata  [i];
-      assign mems[i].be   = mems_be     [i];
-      assign mems[i].id   = mems_ID     [i];
+      assign mems[i].req               = mems_req   [i];
+      assign mems[i].add [AWC-3:2]     = mems_add   [i];
+      assign mems[i].add [1:0]         = '0;
+      assign mems[i].add [AWC-1:AWC-2] = '0;
+      assign mems[i].wen               = mems_wen   [i];
+      assign mems[i].data              = mems_wdata [i];
+      assign mems[i].be                = mems_be    [i];
+      assign mems[i].id                = mems_ID    [i];
       assign mems_gnt     [i] = mems[i].gnt;
       assign mems_r_rdata [i] = mems[i].r_data;
-      assign mems_r_ID    [i] = mems[i].r_id;
 
       always_ff @(posedge clk_i or negedge rst_ni)
       begin : resp_test_set
         if(~rst_ni) begin
+          mems_r_ID[i]    <= '0;
           mems_r_valid[i] <= 1'b0;
+          mems_ts_set_q[i] <= '0;
         end
         else begin
-          mems_r_valid[i] <= mems_req[i] & mems_gnt[i];
+          mems_ts_set_q[i] <= mems_ts_set_d[i];
+          mems_r_valid[i] <= ( mems_req[i] & mems_gnt[i] & ~mems_ts_set_d[i]  & ~mems_ts_set_q[i] ) | (mems_req[i] & mems_gnt[i] & ~mems_ts_set_d[i]  & mems_ts_set_q[i] );
+          if(mems_req[i])
+            mems_r_ID[i] <= mems_ID[i];
         end
       end
 
@@ -96,19 +103,21 @@ module hci_log_interconnect_l2 #(
   endgenerate
 
   // uses XBAR_TCDM from cluster_interconnect
-  XBAR_L2 #(
+  new_XBAR_TCDM #(
     .N_CH0          ( N_CH0  ),
     .N_CH1          ( N_CH1  ),
     .N_SLAVE        ( N_MEM  ),
     .ID_WIDTH       ( IW     ),
-    .ADDR_IN_WIDTH  ( AWC-2  ),
+    .ADDR_WIDTH     ( AWC    ),
     .DATA_WIDTH     ( DW     ),
     .BE_WIDTH       ( DW/BW  ),
-    .ADDR_MEM_WIDTH ( AWM-2  )
+    .ADDR_MEM_WIDTH ( AWM    ),
+    .TEST_SET_BIT   ( TS_BIT )
   ) i_xbar_tcdm (
     .clk               ( clk_i             ),
     .rst_n             ( rst_ni            ),
-    // .TCDM_arb_policy_i ( ctrl_i.arb_policy ),
+    .test_mode_i       (  1'b0             ),
+    .TCDM_arb_policy_i ( ctrl_i.arb_policy ),
     .data_req_i        ( cores_req         ),
     .data_add_i        ( cores_add         ),
     .data_wen_i        ( cores_wen         ),
@@ -118,15 +127,16 @@ module hci_log_interconnect_l2 #(
     .data_r_valid_o    ( cores_r_valid     ),
     .data_r_rdata_o    ( cores_r_rdata     ),
     .data_req_o        ( mems_req          ),
+    .data_ts_set_o     ( mems_ts_set_d     ),
     .data_add_o        ( mems_add          ),
     .data_wen_o        ( mems_wen          ),
     .data_wdata_o      ( mems_wdata        ),
     .data_be_o         ( mems_be           ),
     .data_ID_o         ( mems_ID           ),
-    // .data_gnt_i        ( mems_gnt          ),
+    .data_gnt_i        ( mems_gnt          ),
     .data_r_rdata_i    ( mems_r_rdata      ),
     .data_r_valid_i    ( mems_r_valid      ),
     .data_r_ID_i       ( mems_r_ID         )
   );
 
-endmodule // hci_log_interconnect_l2
+endmodule // hci_new_log_interconnect
