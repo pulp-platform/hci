@@ -7,7 +7,7 @@ hci:
   jg_inclibs: [
     hwpe-stream,
   ]
-  files:
+  files: [
      rtl/common/hci_package.sv,
      rtl/common/hci_interfaces.sv,
      rtl/interco/hci_log_interconnect.sv,
