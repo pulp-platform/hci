@@ -157,9 +157,7 @@ module hci_interconnect #(
     else begin: no_hwpe_interconnect_gen
 
       for(genvar ii=0; ii<N_MEM; ii++) begin: no_hwpe_mem_binding
-        hci_mem_assign #(
-          .IW ( IW )
-        ) i_mem_assign (
+        hci_mem_assign i_mem_assign (
           .tcdm_slave  ( all_except_hwpe_mem [ii] ),
           .tcdm_master ( mems                [ii] )
         );

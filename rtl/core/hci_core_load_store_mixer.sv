@@ -1,5 +1,5 @@
 /*
- * hci_core_mux_dynamic.sv
+ * hci_core_load_store_mixer.sv
  * Francesco Conti <f.conti@unibo.it>
  *
  * Copyright (C) 2014-2020 ETH Zurich, University of Bologna
@@ -13,44 +13,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-/**
- * The **TCDM multiplexer** can be used to funnel more input "virtual"
- * TCDM channels `in` into a smaller set of master ports `out`.
- * It uses a round robin counter to avoid starvation, and differs
- * from the modules used within the logarithmic interconnect in
- * that arbitration is performed depending on the round robin
- * counter and not on the slave port; in other words, its task is
- * to fill all out ports with requests from the in port, and not
- * to route in requests to a specific out port.
- *
- * Notice that the multiplexer is not "optimal" in the sense
- * that there is no reorder buffer, so transactions cannot be swapped
- * in-flight to optimally fill the downstream available bandwidth.
- * However, in real accelerators many systematic issues with bandwidth
- * sharing can be solved by upstream TCDM FIFOs and by clever reordering
- * of channels, since the dataflow schedule is known.
- *
- * .. tabularcolumns:: |l|l|J|
- * .. _hci_core_mux_params:
- * .. table:: **hci_core_mux** design-time parameters.
- *
- *   +---------------+-------------+-------------------------------------+
- *   | **Name**      | **Default** | **Description**                     |
- *   +---------------+-------------+-------------------------------------+
- *   | *NB_IN_CHAN*  | 2           | Number of input HWPE-Mem channels.  |
- *   +---------------+-------------+-------------------------------------+
- *   | *NB_OUT_CHAN* | 1           | Number of output HWPE-Mem channels. |
- *   +---------------+-------------+-------------------------------------+
- *
- */
-
 import hwpe_stream_package::*;
 import hci_package::*;
 
-module hci_core_mux_dynamic
+module hci_core_load_store_mixer
 #(
-  parameter int unsigned NB_IN_CHAN  = 2,
-  parameter int unsigned NB_OUT_CHAN = 1,
   parameter int unsigned DW = 32,
   parameter int unsigned AW = 32,
   parameter int unsigned BW = 8,
@@ -62,9 +29,19 @@ module hci_core_mux_dynamic
   input  logic         rst_ni,
   input  logic         clear_i,
 
-  hci_core_intf.slave  in  [NB_IN_CHAN-1:0],
-  hci_core_intf.master out [NB_OUT_CHAN-1:0]
+  hci_core_intf.slave  in_load,
+  hci_core_intf.slave  in_store,
+  hci_core_intf.master out
 );
+
+  // this is a variant of the dynamic mux, supporting only two channels:
+  //  LOAD  channel
+  //  STORE channel
+
+  localparam LOAD  = 0;
+  localparam STORE = 1;
+  localparam int unsigned NB_IN_CHAN  = 2;
+  localparam int unsigned NB_OUT_CHAN = 1;
 
   // based on MUX2Req.sv from LIC
   logic [NB_IN_CHAN-1:0]                     in_req;
@@ -113,35 +90,43 @@ module hci_core_mux_dynamic
   genvar i,j;
   generate
 
-    for(j=0; j<NB_IN_CHAN; j++) begin : in_chan_binding
+    assign in_req   [LOAD] = in_load.req;
+    assign in_add   [LOAD] = in_load.add;
+    assign in_wen   [LOAD] = in_load.wen;
+    assign in_be    [LOAD] = in_load.be;
+    assign in_data  [LOAD] = in_load.data;
+    assign in_lrdy  [LOAD] = in_load.lrdy;
+    assign in_boffs [LOAD] = in_load.boffs;
+    assign in_load.gnt     = in_gnt     [LOAD];
+    assign in_load.r_data  = in_r_data  [LOAD];
+    assign in_load.r_valid = in_r_valid [LOAD];
+    assign in_load.r_opc   = in_r_opc   [LOAD];
 
-      assign in_req   [j] = in[j].req;
-      assign in_add   [j] = in[j].add;
-      assign in_wen   [j] = in[j].wen;
-      assign in_be    [j] = in[j].be;
-      assign in_data  [j] = in[j].data;
-      assign in_lrdy  [j] = in[j].lrdy;
-      assign in_boffs [j] = in[j].boffs;
-      assign in[j].gnt     = in_gnt     [j];
-      assign in[j].r_data  = in_r_data  [j];
-      assign in[j].r_valid = in_r_valid [j];
-      assign in[j].r_opc   = in_r_opc   [j];
+    assign in_req   [STORE] = in_store.req;
+    assign in_add   [STORE] = in_store.add;
+    assign in_wen   [STORE] = in_store.wen;
+    assign in_be    [STORE] = in_store.be;
+    assign in_data  [STORE] = in_store.data;
+    assign in_lrdy  [STORE] = in_store.lrdy;
+    assign in_boffs [STORE] = in_store.boffs;
+    assign in_store.gnt     = in_gnt     [STORE];
+    assign in_store.r_data  = in_r_data  [STORE];
+    assign in_store.r_valid = in_r_valid [STORE];
+    assign in_store.r_opc   = in_r_opc   [STORE];
 
-    end // in_chan_binding
+    assign out.req   = out_req   [0];
+    assign out.add   = out_add   [0];
+    assign out.wen   = out_wen   [0];
+    assign out.be    = out_be    [0];
+    assign out.data  = out_data  [0];
+    assign out.lrdy  = out_lrdy  [0];
+    assign out.boffs = out_boffs [0];
+    assign out_gnt     [0] = out.gnt;
+    assign out_r_data  [0] = out.r_data;
+    assign out_r_valid [0] = out.r_valid;
+    assign out_r_opc   [0] = out.r_opc;
 
     for(i=0; i<NB_OUT_CHAN; i++) begin : out_chan_binding
-
-      assign out[i].req   = out_req  [i];
-      assign out[i].add   = out_add  [i];
-      assign out[i].wen   = out_wen  [i];
-      assign out[i].be    = out_be   [i];
-      assign out[i].data  = out_data [i];
-      assign out[i].lrdy  = out_lrdy [i];
-      assign out[i].boffs = out_boffs [i];
-      assign out_gnt     [i] = out[i].gnt;
-      assign out_r_data  [i] = out[i].r_data;
-      assign out_r_valid [i] = out[i].r_valid;
-      assign out_r_opc   [i] = out[i].r_opc;
 
       always_comb
       begin : rotating_priority_encoder_i
@@ -193,22 +178,38 @@ module hci_core_mux_dynamic
 
     end // out_chan_binding
 
+    // differently from the dynamic mux, the response in the load/store mixer is propagated by looking at the nature of the request
+    always_comb
+    begin : mux_gnt_comb
+      for(int i=0; i<NB_OUT_CHAN; i++) begin
+        for (int j=0; j<NB_IN_CHAN/NB_OUT_CHAN; j++) begin
+          in_gnt     [j*NB_OUT_CHAN+i] = 1'b0;
+        end
+        in_gnt     [winner_d[i]*NB_OUT_CHAN+i] = out_gnt[i];
+      end
+    end
+    
     always_comb
     begin : mux_resp_comb
       for(int i=0; i<NB_OUT_CHAN; i++) begin
         for (int j=0; j<NB_IN_CHAN/NB_OUT_CHAN; j++) begin
           in_r_data  [j*NB_OUT_CHAN+i] = '0;
           in_r_valid [j*NB_OUT_CHAN+i] = 1'b0;
-          in_gnt     [j*NB_OUT_CHAN+i] = 1'b0;
           in_r_opc   [j*NB_OUT_CHAN+i] = 1'b0;
         end
-        in_r_data  [winner_q[i]*NB_OUT_CHAN+i] = out_r_data[i];
-        in_r_valid [winner_q[i]*NB_OUT_CHAN+i] = out_r_valid[i] & out_req_q[i];
-        in_gnt     [winner_d[i]*NB_OUT_CHAN+i] = out_gnt[i];
-        in_r_opc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_opc[i];
+        if (out_r_valid[i]) begin
+          in_r_data  [LOAD] = out_r_data[i];
+          in_r_valid [LOAD] = out_r_valid[i];
+          in_r_opc   [LOAD] = out_r_opc[i];
+        end
+        else begin
+          in_r_data  [STORE] = out_r_data[i];
+          in_r_valid [STORE] = out_r_valid[i];
+          in_r_opc   [STORE] = out_r_opc[i];
+        end
       end
     end
 
   endgenerate
 
-endmodule // hci_core_mux
+endmodule // hci_core_load_store_mixer
