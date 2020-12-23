@@ -1,0 +1,33 @@
+package:
+  name: hci
+  authors: 
+    - "Francesco Conti <f.conti@unibo.it>"
+    - "Gianna Paulin <pauling@iis.ee.ethz.ch"
+    - "Tobias Riedener <tobiasri@student.ethz.ch>"
+
+dependencies:
+  hwpe-stream:          { git: "git@github.com:pulp-platform/hwpe-stream.git", version: ">=1.6" }
+
+sources:
+  - include_dirs:
+      - rtl
+    files:
+      - rtl/common/hci_package.sv
+      - rtl/common/hci_interfaces.sv
+      - rtl/interco/hci_log_interconnect.sv
+      - rtl/interco/hci_log_interconnect_l2.sv
+      - rtl/interco/hci_new_log_interconnect.sv
+      - rtl/interco/hci_hwpe_interconnect.sv
+      - rtl/interco/hci_shallow_interconnect.sv
+      - rtl/hci_interconnect.sv
+      - rtl/core/hci_core_fifo.sv
+      - rtl/core/hci_core_assign.sv
+      - rtl/core/hci_core_memmap_filter.sv
+      - rtl/core/hci_core_memmap_demux_interl.sv
+      - rtl/core/hci_core_sink.sv
+      - rtl/core/hci_core_source.sv
+      - rtl/core/hci_core_mux_static.sv
+      - rtl/core/hci_core_mux_dynamic.sv
+      - rtl/core/hci_core_r_valid_filter.sv
+      - rtl/core/hci_core_cmd_queue.sv
+    
