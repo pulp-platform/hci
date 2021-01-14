@@ -29,18 +29,6 @@ module hci_core_split #(
   localparam DW_OUT = DW/NB_OUT_CHAN;
   localparam BW_OUT = DW_OUT/8;
 
-  assign tcdm_master.req    = tcdm_slave.req;
-  assign tcdm_slave.gnt     = tcdm_master.gnt;
-  assign tcdm_master.add    = tcdm_slave.add;
-  assign tcdm_master.wen    = tcdm_slave.wen;
-  assign tcdm_master.data   = tcdm_slave.data;
-  assign tcdm_master.be     = tcdm_slave.be;
-  assign tcdm_master.boffs  = tcdm_slave.boffs;
-  assign tcdm_master.lrdy   = tcdm_slave.lrdy;
-  assign tcdm_slave.r_data  = tcdm_master.r_data;
-  assign tcdm_slave.r_valid = tcdm_master.r_valid;
-  assign tcdm_slave.r_opc   = tcdm_master.r_opc;
-
   logic [NB_OUT_CHAN-1:0]             tcdm_master_gnt;
   logic [NB_OUT_CHAN-1:0]             tcdm_master_r_valid_d, tcdm_master_r_valid_q;
   logic [NB_OUT_CHAN-1:0]             tcdm_slave_req_masked_d, tcdm_slave_req_masked_q;
