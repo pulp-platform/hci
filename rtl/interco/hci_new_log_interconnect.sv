@@ -46,7 +46,7 @@ module hci_new_log_interconnect #(
   logic [N_CH0+N_CH1-1:0] [DW-1:0]    cores_r_rdata;
   // slave side
   logic [N_MEM-1:0]             mems_req;
-  logic [N_MEM-1:0] [AWM-1:0]   mems_add;
+  logic [N_MEM-1:0] [AWM-3:0]   mems_add;
   logic [N_MEM-1:0]             mems_wen;
   logic [N_MEM-1:0] [DW-1:0]    mems_wdata;
   logic [N_MEM-1:0] [DW/BW-1:0] mems_be;
@@ -73,9 +73,8 @@ module hci_new_log_interconnect #(
     end // cores_unrolling
     for(genvar i=0; i<N_MEM; i++) begin : mems_unrolling
       assign mems[i].req               = mems_req   [i];
-      assign mems[i].add [AWC-3:2]     = mems_add   [i];
+      assign mems[i].add [AWM-1:2]     = mems_add   [i];
       assign mems[i].add [1:0]         = '0;
-      assign mems[i].add [AWC-1:AWC-2] = '0;
       assign mems[i].wen               = mems_wen   [i];
       assign mems[i].data              = mems_wdata [i];
       assign mems[i].be                = mems_be    [i];
@@ -110,7 +109,7 @@ module hci_new_log_interconnect #(
     .ADDR_WIDTH     ( AWC    ),
     .DATA_WIDTH     ( DW     ),
     .BE_WIDTH       ( DW/BW  ),
-    .ADDR_MEM_WIDTH ( AWM    ),
+    .ADDR_MEM_WIDTH ( AWM-2  ),
     .TEST_SET_BIT   ( TS_BIT )
   ) i_xbar_tcdm (
     .clk               ( clk_i             ),

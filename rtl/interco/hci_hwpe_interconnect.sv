@@ -49,7 +49,7 @@ module hci_hwpe_interconnect
 
   //There is only one input port, but with variable data width.
   //NB_IN_CHAN states, to how many standard (32-bit) ports the input port is equivalent
-  localparam NB_IN_CHAN  = DWH / 32;
+  localparam NB_IN_CHAN  = DWH / WWH;
   //Word-interleaved scheme:
   // - First bits of requested address are shared
   // - Lowest 2 bits are byte offset within a DWORD -> ignored

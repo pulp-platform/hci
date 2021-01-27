@@ -91,7 +91,7 @@ interface hci_mem_intf (
 );
 
   parameter int unsigned AW = hci_package::DEFAULT_AW; /// Address Width
-  parameter int unsigned DW = hci_package::DEFAULT_DW; /// Data Width
+  parameter int unsigned DW = hci_package::DEFAULT_DW; /// Data Width (WW=DW for mem_intf)
   parameter int unsigned BW = hci_package::DEFAULT_BW; /// Width of a "byte" in bits (default 8)
   parameter int unsigned IW = 8; /// width of ID
 
