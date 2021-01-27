@@ -19,10 +19,10 @@ interface hci_core_intf (
   input logic clk
 );
 
-  parameter int unsigned DW = hci_package::DEFAULT_DW; /// data width
-  parameter int unsigned AW = hci_package::DEFAULT_AW; /// addr width
-  parameter int unsigned BW = hci_package::DEFAULT_BW; /// width of a "byte" in bits (default 8 of course)
-  parameter int unsigned WW = hci_package::DEFAULT_WW; /// width of a "word" in bits (default 32)
+  parameter int unsigned DW = hci_package::DEFAULT_DW; /// Data Width
+  parameter int unsigned AW = hci_package::DEFAULT_AW; /// Address Width
+  parameter int unsigned BW = hci_package::DEFAULT_BW; /// Width of a "byte" in bits (default 8)
+  parameter int unsigned WW = hci_package::DEFAULT_WW; /// Width of a "word" in bits (default 32)
   parameter int unsigned OW = AW; /// intra-bank offset width, defaults to addr width
 
   // handshake signals
@@ -90,10 +90,10 @@ interface hci_mem_intf (
   input logic clk
 );
 
-  parameter int unsigned AW = 32; /// addr width
-  parameter int unsigned DW = 32; /// data width
-  parameter int unsigned BW = 8;  /// width of a "byte" in bits (default 8 of course)
-  parameter int unsigned IW = 8;  /// width of ID
+  parameter int unsigned AW = hci_package::DEFAULT_AW; /// Address Width
+  parameter int unsigned DW = hci_package::DEFAULT_DW; /// Data Width
+  parameter int unsigned BW = hci_package::DEFAULT_BW; /// Width of a "byte" in bits (default 8)
+  parameter int unsigned IW = 8; /// width of ID
 
   // handshake signals
   logic req;

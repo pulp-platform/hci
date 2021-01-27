@@ -21,9 +21,10 @@ module hci_new_log_interconnect #(
   parameter int unsigned N_CH0  = 16,
   parameter int unsigned N_CH1  = 4,
   parameter int unsigned N_MEM  = 32,
-  parameter int unsigned AWC    = 32,
-  parameter int unsigned AWM    = 32,
-  parameter int unsigned DW     = 32,
+  parameter int unsigned AWC    = hci_package::DEFAULT_AW,
+  parameter int unsigned AWM    = hci_package::DEFAULT_AW,
+  parameter int unsigned DW     = hci_package::DEFAULT_DW,
+  parameter int unsigned BW     = hci_package::DEFAULT_BW,
   parameter int unsigned TS_BIT = 21,
   parameter int unsigned IW     = N_CH0+N_CH1
 ) (
@@ -33,8 +34,6 @@ module hci_new_log_interconnect #(
   hci_core_intf.slave            cores [N_CH0+N_CH1-1:0],
   hci_mem_intf.master            mems  [N_MEM-1:0]
 );
-
-  localparam BW = 8;
 
   // master side
   logic [N_CH0+N_CH1-1:0]             cores_req;

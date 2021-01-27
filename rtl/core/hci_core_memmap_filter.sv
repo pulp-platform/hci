@@ -19,7 +19,7 @@ import hwpe_stream_package::*;
 module hci_core_memmap_filter #(
   parameter int unsigned NB_REGION = 2,
   parameter int unsigned NB_INTERLEAVED_REGION = 1,
-  parameter int unsigned AW = 32 /// addr width
+  parameter int unsigned AW = hci_package::DEFAULT_AW /// addr width
 )
 (
   input  logic         clk_i,
@@ -145,7 +145,7 @@ module hci_core_memmap_filter #(
         end
         ERROR: begin
           slave.r_valid = 1'b1;
-          slave.r_data  = 32'hbadacce5;
+          slave.r_data  = 32'hbadacce5; // May need modification for DW != 32
           slave.r_opc   = 1;
         end
         default: begin

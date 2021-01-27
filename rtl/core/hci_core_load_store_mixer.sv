@@ -18,10 +18,10 @@ import hci_package::*;
 
 module hci_core_load_store_mixer
 #(
-  parameter int unsigned DW = 32,
-  parameter int unsigned AW = 32,
-  parameter int unsigned BW = 8,
-  parameter int unsigned WW = 32,
+  parameter int unsigned DW = hci_package::DEFAULT_DW,
+  parameter int unsigned AW = hci_package::DEFAULT_AW,
+  parameter int unsigned BW = hci_package::DEFAULT_BW,
+  parameter int unsigned WW = hci_package::DEFAULT_WW,
   parameter int unsigned OW = 1
 )
 (

@@ -18,8 +18,9 @@ import hwpe_stream_package::*;
 
 module hci_core_memmap_demux_interl #(
   parameter int unsigned NB_REGION = 2,
-  parameter int unsigned AW  = 32, /// addr width
-  parameter int unsigned AWC = 32  /// addr width core (useful part!)
+  parameter int unsigned AW  = hci_package::DEFAULT_AW, /// addr width
+  parameter int unsigned AWC = hci_package::DEFAULT_AW, /// addr width core (useful part!)
+  parameter int unsigned DW  = hci_package::DEFAULT_DW
 )
 (
   input  logic         clk_i,
@@ -38,10 +39,10 @@ module hci_core_memmap_demux_interl #(
     logic [$clog2(NB_REGION)-1:0] region_d, region_q;
     logic region_sample;
 
-    logic [NB_REGION-1:0]       master_req_aux, master_gnt_aux;
-    logic [NB_REGION-1:0]       master_r_valid_aux;
-    logic [NB_REGION-1:0][31:0] master_r_data_aux;
-    logic [NB_REGION-1:0]       master_r_opc_aux;
+    logic [NB_REGION-1:0]         master_req_aux, master_gnt_aux;
+    logic [NB_REGION-1:0]         master_r_valid_aux;
+    logic [NB_REGION-1:0][DW-1:0] master_r_data_aux;
+    logic [NB_REGION-1:0]         master_r_opc_aux;
 
     logic [NB_REGION-1:0] destination_map;
     logic                 destination_valid;

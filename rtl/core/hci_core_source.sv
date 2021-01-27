@@ -19,7 +19,7 @@ import hci_package::*;
 module hci_core_source
 #(
   // Stream interface params
-  parameter int unsigned DATA_WIDTH = 32,
+  parameter int unsigned DATA_WIDTH = hci_package::DEFAULT_DW,
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16,
   parameter int unsigned ADDR_MIS_DEPTH = 8 // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!

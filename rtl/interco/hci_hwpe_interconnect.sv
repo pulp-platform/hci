@@ -94,27 +94,27 @@ module hci_hwpe_interconnect
 
     // FIFOs for HWPE ports
     if(FIFO_DEPTH == 0) begin: no_fifo_gen
-    hci_core_assign i_no_fifo (
-      .tcdm_slave  ( in            ),
-      .tcdm_master ( postfifo      )
-    );
+      hci_core_assign i_no_fifo (
+        .tcdm_slave  ( in            ),
+        .tcdm_master ( postfifo      )
+      );
     end // no_fifo_gen
     else begin: fifo_gen
-    hci_core_fifo #(
-      .FIFO_DEPTH ( FIFO_DEPTH ),
-      .DW         ( DWH        ),
-      .BW         ( AWH        ),
-      .AW         ( BWH        ),
-      .WW         ( WWH        ),
-      .OW         ( OWH        )
-    ) i_fifo (
-      .clk_i       ( clk_i         ),
-      .rst_ni      ( rst_ni        ),
-      .clear_i     ( clear_i       ),
-      .flags_o     (               ),
-      .tcdm_slave  ( in            ),
-      .tcdm_master ( postfifo      )
-    );
+      hci_core_fifo #(
+        .FIFO_DEPTH ( FIFO_DEPTH ),
+        .DW         ( DWH        ),
+        .BW         ( AWH        ),
+        .AW         ( BWH        ),
+        .WW         ( WWH        ),
+        .OW         ( OWH        )
+      ) i_fifo (
+        .clk_i       ( clk_i         ),
+        .rst_ni      ( rst_ni        ),
+        .clear_i     ( clear_i       ),
+        .flags_o     (               ),
+        .tcdm_slave  ( in            ),
+        .tcdm_master ( postfifo      )
+      );
     end // fifo_gen
     
     assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:2];
