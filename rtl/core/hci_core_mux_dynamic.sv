@@ -55,7 +55,8 @@ module hci_core_mux_dynamic
   parameter int unsigned AW = hci_package::DEFAULT_AW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,
   parameter int unsigned WW = hci_package::DEFAULT_WW,
-  parameter int unsigned OW = 1
+  parameter int unsigned OW = 1,
+  parameter int unsigned UW = hci_package::DEFAULT_UW
 )
 (
   input  logic         clk_i,
@@ -75,9 +76,11 @@ module hci_core_mux_dynamic
   logic [NB_IN_CHAN-1:0][DW/BW-1:0]          in_be;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_data;
   logic [NB_IN_CHAN-1:0][DW/WW-1:0][OW-1:0]  in_boffs;
+  logic [NB_IN_CHAN-1:0][UW-1:0]             in_user;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_r_data;
   logic [NB_IN_CHAN-1:0]                     in_r_valid;
   logic [NB_IN_CHAN-1:0]                     in_r_opc;
+  logic [NB_IN_CHAN-1:0][UW-1:0]             in_r_user;
 
   logic [NB_OUT_CHAN-1:0]                    out_req;
   logic [NB_OUT_CHAN-1:0]                    out_gnt;
@@ -87,9 +90,11 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0][DW/BW-1:0]         out_be;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_data;
   logic [NB_OUT_CHAN-1:0][DW/WW-1:0][OW-1:0] out_boffs;
+  logic [NB_OUT_CHAN-1:0][UW-1:0]            out_user;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_r_data;
   logic [NB_OUT_CHAN-1:0]                    out_r_valid;
   logic [NB_OUT_CHAN-1:0]                    out_r_opc;
+  logic [NB_OUT_CHAN-1:0][UW-1:0]            out_r_user;
 
   logic [$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                                              rr_counter;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN/NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0] rr_priority;
@@ -122,10 +127,12 @@ module hci_core_mux_dynamic
       assign in_data  [j] = in[j].data;
       assign in_lrdy  [j] = in[j].lrdy;
       assign in_boffs [j] = in[j].boffs;
+      assign in_user  [j] = in[j].user;
       assign in[j].gnt     = in_gnt     [j];
       assign in[j].r_data  = in_r_data  [j];
       assign in[j].r_valid = in_r_valid [j];
       assign in[j].r_opc   = in_r_opc   [j];
+      assign in[j].r_user  = in_r_user  [j];
 
     end // in_chan_binding
 
@@ -138,10 +145,12 @@ module hci_core_mux_dynamic
       assign out[i].data  = out_data [i];
       assign out[i].lrdy  = out_lrdy [i];
       assign out[i].boffs = out_boffs [i];
+      assign out[i].user  = out_user [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
       assign out_r_valid [i] = out[i].r_valid;
       assign out_r_opc   [i] = out[i].r_opc;
+      assign out_r_user  [i] = out[i].r_user;
 
       always_comb
       begin : rotating_priority_encoder_i
@@ -173,6 +182,7 @@ module hci_core_mux_dynamic
         out_be   [i] = in_be   [winner_d[i]*NB_OUT_CHAN+i];
         out_boffs[i] = in_boffs[winner_d[i]*NB_OUT_CHAN+i];
         out_lrdy [i] = in_lrdy [winner_d[i]*NB_OUT_CHAN+i];
+        out_user [i] = in_user [winner_d[i]*NB_OUT_CHAN+i];
       end
 
       always_ff @(posedge clk_i or negedge rst_ni)
@@ -201,11 +211,13 @@ module hci_core_mux_dynamic
           in_r_valid [j*NB_OUT_CHAN+i] = 1'b0;
           in_gnt     [j*NB_OUT_CHAN+i] = 1'b0;
           in_r_opc   [j*NB_OUT_CHAN+i] = 1'b0;
+          in_r_user  [j*NB_OUT_CHAN+i] = '0;
         end
         in_r_data  [winner_q[i]*NB_OUT_CHAN+i] = out_r_data[i];
         in_r_valid [winner_q[i]*NB_OUT_CHAN+i] = out_r_valid[i] & out_req_q[i];
         in_gnt     [winner_d[i]*NB_OUT_CHAN+i] = out_gnt[i];
         in_r_opc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_opc[i];
+        in_r_user  [winner_d[i]*NB_OUT_CHAN+i] = out_r_user[i];
       end
     end
 

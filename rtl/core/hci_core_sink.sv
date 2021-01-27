@@ -135,6 +135,9 @@ module hci_core_sink
   assign stream.ready    = ~stream.valid | (tcdm_prefifo.gnt & addr_fifo.valid);
   assign addr_fifo.ready =  stream.valid & stream.ready;
 
+  // unimplemented user bits = 0
+  assign tcdm_prefifo.user = '0;
+
   generate
 
     if(TCDM_FIFO_DEPTH != 0) begin: tcdm_fifos_gen

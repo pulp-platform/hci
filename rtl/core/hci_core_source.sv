@@ -20,6 +20,7 @@ module hci_core_source
 #(
   // Stream interface params
   parameter int unsigned DATA_WIDTH = hci_package::DEFAULT_DW,
+  // parameter int unsigned USER_WIDTH = hci_package::DEFAULT_UW, // User signals not implemented
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16,
   parameter int unsigned ADDR_MIS_DEPTH = 8 // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
@@ -121,6 +122,7 @@ module hci_core_source
   assign tcdm.be    = 4'h0;
   assign tcdm.data  = '0;
   assign tcdm.boffs = '0;
+  assign tcdm.user  = '0;
   assign stream.strb  = '1;
   assign stream.data  = stream_data_aligned;
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?

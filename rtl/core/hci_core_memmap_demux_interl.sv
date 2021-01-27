@@ -20,7 +20,8 @@ module hci_core_memmap_demux_interl #(
   parameter int unsigned NB_REGION = 2,
   parameter int unsigned AW  = hci_package::DEFAULT_AW, /// addr width
   parameter int unsigned AWC = hci_package::DEFAULT_AW, /// addr width core (useful part!)
-  parameter int unsigned DW  = hci_package::DEFAULT_DW
+  parameter int unsigned DW  = hci_package::DEFAULT_DW,
+  parameter int unsigned UW  = hci_package::DEFAULT_UW
 )
 (
   input  logic         clk_i,
@@ -43,6 +44,7 @@ module hci_core_memmap_demux_interl #(
     logic [NB_REGION-1:0]         master_r_valid_aux;
     logic [NB_REGION-1:0][DW-1:0] master_r_data_aux;
     logic [NB_REGION-1:0]         master_r_opc_aux;
+    logic [NB_REGION-1:0][UW-1:0] master_r_user_aux;
 
     logic [NB_REGION-1:0] destination_map;
     logic                 destination_valid;
@@ -116,16 +118,19 @@ module hci_core_memmap_demux_interl #(
           slave.r_valid = '0;
           slave.r_data  = '0;
           slave.r_opc   = '0;
+          slave.r_user  = '0;
         end
         RESPONSE: begin
           slave.r_valid = master_r_valid_aux [region_q];
           slave.r_data  = master_r_data_aux  [region_q];
           slave.r_opc   = master_r_opc_aux   [region_q];
+          slave.r_user  = master_r_user_aux  [region_q];
         end
         default: begin
           slave.r_valid = '0;
           slave.r_data  = '0;
           slave.r_opc   = '0;
+          slave.r_user  = '0;
         end
       endcase
       master_req_aux[region_d] = slave.req;
@@ -146,6 +151,7 @@ module hci_core_memmap_demux_interl #(
         assign master_r_valid_aux [ii] = master[ii].r_valid;
         assign master_r_data_aux  [ii] = master[ii].r_data;
         assign master_r_opc_aux   [ii] = master[ii].r_opc;
+        assign master_r_user_aux  [ii] = master[ii].r_user;
       end
     endgenerate
 

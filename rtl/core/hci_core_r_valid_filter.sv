@@ -35,9 +35,11 @@ module hci_core_r_valid_filter
   assign tcdm_master.boffs = tcdm_slave.boffs;
   assign tcdm_master.req   = tcdm_slave.req;
   assign tcdm_master.lrdy  = tcdm_slave.lrdy;
+  assign tcdm_master.user  = tcdm_slave.user;
   assign tcdm_slave.gnt     = tcdm_master.gnt;
   assign tcdm_slave.r_data  = tcdm_master.r_data;
   assign tcdm_slave.r_opc   = tcdm_master.r_opc;
+  assign tcdm_slave.r_user  = tcdm_master.r_user;
   assign tcdm_slave.r_valid = enable_i ? tcdm_master.r_valid & wen_q : tcdm_master.r_valid;
 
   always_ff @(posedge clk_i or negedge rst_ni)

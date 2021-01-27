@@ -119,6 +119,7 @@ module hci_core_memmap_filter #(
       interl_master.be    = slave.be;
       interl_master.boffs = slave.boffs;
       interl_master.lrdy  = slave.lrdy;
+      interl_master.user  = slave.user;
       // per_master request
       per_master.add   = slave.add;
       per_master.wen   = slave.wen;
@@ -126,32 +127,38 @@ module hci_core_memmap_filter #(
       per_master.be    = slave.be;
       per_master.boffs = slave.boffs;
       per_master.lrdy  = slave.lrdy;
+      per_master.user  = slave.user;
       // slave response
       case(state_q)
         IDLE: begin
           slave.r_valid = '0;
           slave.r_data  = '0;
           slave.r_opc   = '0;
+          slave.r_user  = '0;
         end
         ON_TCDM: begin
           slave.r_valid = interl_master.r_valid;
           slave.r_data  = interl_master.r_data;
           slave.r_opc   = interl_master.r_opc;
+          slave.r_user  = interl_master.r_user;
         end
         ON_PER: begin
           slave.r_valid = per_master.r_valid;
           slave.r_data  = per_master.r_data;
           slave.r_opc   = per_master.r_opc;
+          slave.r_user  = per_master.r_user;
         end
         ERROR: begin
           slave.r_valid = 1'b1;
           slave.r_data  = 32'hbadacce5; // May need modification for DW != 32
           slave.r_opc   = 1;
+          slave.r_user  = '0;
         end
         default: begin
           slave.r_valid = '0;
           slave.r_data  = '0;
           slave.r_opc   = '0;
+          slave.r_user  = '0;
         end
       endcase
     end

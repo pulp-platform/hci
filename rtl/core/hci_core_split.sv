@@ -16,7 +16,7 @@
 import hwpe_stream_package::*;
 
 module hci_core_split #(
-  parameter int unsigned DW = 64,
+  parameter int unsigned DW = 64, // DW_IN
   parameter int unsigned NB_OUT_CHAN = 2
 ) (
   input logic clk_i,
@@ -33,6 +33,12 @@ module hci_core_split #(
   logic [NB_OUT_CHAN-1:0]             tcdm_master_r_valid_d, tcdm_master_r_valid_q;
   logic [NB_OUT_CHAN-1:0]             tcdm_slave_req_masked_d, tcdm_slave_req_masked_q;
   logic [NB_OUT_CHAN-1:0][DW_OUT-1:0] tcdm_master_r_data_d, tcdm_master_r_data_q;
+
+  // User bits not implemented in split
+  for (genvar i=0; i<NB_OUT_CHAN; i++) begin
+    assign tcdm_master[i].user = '0;
+  end
+  assign tcdm_slave.r_user = '0;
 
   for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : gnt_r_valid_gen
     assign tcdm_master_gnt     [ii] = tcdm_master[ii].gnt;
