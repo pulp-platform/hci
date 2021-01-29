@@ -22,7 +22,8 @@ module hci_core_source
   parameter int unsigned DATA_WIDTH = 32,
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16,
-  parameter int unsigned ADDR_MIS_DEPTH = 8 // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
+  parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
+  parameter int unsigned MISSAGLINED_ACCESSES = 1
 )
 (
   input logic clk_i,
@@ -95,23 +96,29 @@ module hci_core_source
 
   // this is simply exploiting the fact that we can make a wider data access than strictly necessary!
   assign stream_data_misaligned = tcdm.r_valid ? tcdm.r_data : stream_data_q; // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
-  always_comb
-  begin
-    stream_data_aligned = '0;
-    case(addr_misaligned_q)
-      2'b00: begin
-        stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-32-1:0];
-      end
-      2'b01: begin
-        stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-24-1:8];
-      end
-      2'b10: begin
-        stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-16-1:16];
-      end
-      2'b11: begin
-        stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-8-1:24];
-      end
-    endcase
+
+  if (MISSAGLINED_ACCESSES==1 ) begin : missaligned_access_gen
+    always_comb
+    begin
+      stream_data_aligned = '0;
+      case(addr_misaligned_q)
+        2'b00: begin
+          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-32-1:0];
+        end
+        2'b01: begin
+          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-24-1:8];
+        end
+        2'b10: begin
+          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-16-1:16];
+        end
+        2'b11: begin
+          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-8-1:24];
+        end
+      endcase
+    end
+  end
+  else begin
+    assign stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
   end
 
   assign tcdm.lrdy  = stream.ready;
