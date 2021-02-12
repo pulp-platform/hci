@@ -23,7 +23,7 @@ module hci_core_source
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16,
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
-  parameter int unsigned MISSAGLINED_ACCESSES = 1
+  parameter int unsigned MISALIGNED_ACCESSES = 1
 )
 (
   input logic clk_i,
@@ -97,7 +97,7 @@ module hci_core_source
   // this is simply exploiting the fact that we can make a wider data access than strictly necessary!
   assign stream_data_misaligned = tcdm.r_valid ? tcdm.r_data : stream_data_q; // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
 
-  if (MISSAGLINED_ACCESSES==1 ) begin : missaligned_access_gen
+  if (MISALIGNED_ACCESSES==1 ) begin : missaligned_access_gen
     always_comb
     begin
       stream_data_aligned = '0;
