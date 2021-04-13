@@ -36,6 +36,7 @@ module hci_hwpe_interconnect
   parameter int unsigned BWH = hci_package::DEFAULT_BW,
   parameter int unsigned WWH = hci_package::DEFAULT_WW,
   parameter int unsigned OWH = AWH,
+  parameter int unsigned UWH = hci_package::DEFAULT_UW, // User Width not yet implemented
   parameter int unsigned AWM = 12
 )
 (
@@ -73,7 +74,8 @@ module hci_hwpe_interconnect
     .AW ( AWH ),
     .BW ( BWH ),
     .WW ( WWH ),
-    .OW ( OWH ) 
+    .OW ( OWH ),
+    .UW ( UWH )
   ) postfifo (
     .clk ( clk_i )
   );
@@ -94,28 +96,32 @@ module hci_hwpe_interconnect
 
     // FIFOs for HWPE ports
     if(FIFO_DEPTH == 0) begin: no_fifo_gen
-    hci_core_assign i_no_fifo (
-      .tcdm_slave  ( in            ),
-      .tcdm_master ( postfifo      )
-    );
+      hci_core_assign i_no_fifo (
+        .tcdm_slave  ( in            ),
+        .tcdm_master ( postfifo      )
+      );
     end // no_fifo_gen
     else begin: fifo_gen
-    hci_core_fifo #(
-      .FIFO_DEPTH ( FIFO_DEPTH ),
-      .DW         ( DWH        ),
-      .BW         ( AWH        ),
-      .AW         ( BWH        ),
-      .WW         ( WWH        ),
-      .OW         ( OWH        )
-    ) i_fifo (
-      .clk_i       ( clk_i         ),
-      .rst_ni      ( rst_ni        ),
-      .clear_i     ( clear_i       ),
-      .flags_o     (               ),
-      .tcdm_slave  ( in            ),
-      .tcdm_master ( postfifo      )
-    );
+      hci_core_fifo #(
+        .FIFO_DEPTH ( FIFO_DEPTH ),
+        .DW         ( DWH        ),
+        .BW         ( AWH        ),
+        .AW         ( BWH        ),
+        .WW         ( WWH        ),
+        .OW         ( OWH        ),
+        .UW         ( UWH        )
+      ) i_fifo (
+        .clk_i       ( clk_i         ),
+        .rst_ni      ( rst_ni        ),
+        .clear_i     ( clear_i       ),
+        .flags_o     (               ),
+        .tcdm_slave  ( in            ),
+        .tcdm_master ( postfifo      )
+      );
     end // fifo_gen
+
+    // unimplemented user bits = 0
+    assign postfifo.r_user = '0;
     
     assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:2];
     assign reorder_offset_s = NB_OUT_CHAN - bank_offset_s;
@@ -163,6 +169,9 @@ module hci_hwpe_interconnect
       assign virt_out[ii].gnt     = out[ii].gnt;
       assign virt_out[ii].r_valid = out_r_valid[ii];
       assign virt_out[ii].r_data  = out[ii].r_data;
+
+      // unimplemented user bits = 0
+      assign out[ii].user = '0;
 
       // generate out_r_valid
       always_ff @(posedge clk_i or negedge rst_ni)

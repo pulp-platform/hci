@@ -6,31 +6,40 @@ package:
     - "Tobias Riedener <tobiasri@student.ethz.ch>"
 
 dependencies:
-  hwpe-stream:          { git: "git@github.com:pulp-platform/hwpe-stream.git", version: ">=1.6" }
-  cluster_interconnect:   { git: "https://github.com/pulp-platform/cluster_interconnect.git", version: 1.1.0 }
+  hwpe-stream:            { git: "https://github.com/pulp-platform/hwpe-stream.git", version: 1.6 }
+  cluster_interconnect:   { git: "https://github.com/pulp-platform/cluster_interconnect.git", version: 1.1.1 }
+  L2_tcdm_hybrid_interco: { git: "https://github.com/pulp-platform/L2_tcdm_hybrid_interco.git", version: 1.0.0 }
 
 sources:
   - include_dirs:
       - rtl
     files:
+      # Source files grouped in levels. Files in level 0 have no dependencies on files in this
+      # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
+      # levels 1 and 0, etc. Files within a level are ordered alphabetically.
+      # Level 0
       - rtl/common/hci_package.sv
+      # Level 1
       - rtl/common/hci_interfaces.sv
+      # Level 2
+      - rtl/core/hci_core_assign.sv
+      - rtl/core/hci_core_cmd_queue.sv
+      - rtl/core/hci_core_fifo.sv
+      # - rtl/core/hci_load_store_mixer.sv
+      - rtl/core/hci_core_memmap_demux_interl.sv
+      - rtl/core/hci_core_memmap_filter.sv
+      - rtl/core/hci_core_mux_dynamic.sv
+      - rtl/core/hci_core_mux_static.sv
+      - rtl/core/hci_core_r_valid_filter.sv
+      - rtl/core/hci_core_source.sv
+      - rtl/core/hci_core_split.sv
       - rtl/interco/hci_log_interconnect.sv
       - rtl/interco/hci_log_interconnect_l2.sv
-      - rtl/interco/hci_new_log_interconnect.sv
-      - rtl/interco/hci_hwpe_interconnect.sv
+      - rtl/interco/hci_new_log_interconnect.sv # `new_XBAR_TCDM` dep. is a private repo
       - rtl/interco/hci_shallow_interconnect.sv
-      - rtl/hci_interconnect.sv
-      - rtl/core/hci_core_fifo.sv
-      - rtl/core/hci_core_assign.sv
-      - rtl/core/hci_core_memmap_filter.sv
-      - rtl/core/hci_core_memmap_demux_interl.sv
-      - rtl/core/hci_core_sink.sv
-      - rtl/core/hci_core_source.sv
-      - rtl/core/hci_core_mux_static.sv
-      - rtl/core/hci_core_mux_dynamic.sv
-      - rtl/core/hci_core_r_valid_filter.sv
-      - rtl/core/hci_core_cmd_queue.sv
-      - rtl/core/hci_core_split.sv
       - rtl/mem/hci_mem_assign.sv
-    
+      # Level 3
+      - rtl/core/hci_core_sink.sv
+      - rtl/interco/hci_hwpe_interconnect.sv
+      # Level 4
+      - rtl/hci_interconnect.sv

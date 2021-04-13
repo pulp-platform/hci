@@ -19,9 +19,9 @@ import hci_package::*;
 module hci_core_sink
 #(
   // Stream interface params
-  parameter int unsigned DATA_WIDTH      = 32,
+  parameter int unsigned DATA_WIDTH      = hci_package::DEFAULT_DW,
   parameter int unsigned TCDM_FIFO_DEPTH = 0,
-  parameter int unsigned TRANS_CNT = 16
+  parameter int unsigned TRANS_CNT       = 16
 )
 (
   input logic clk_i,
@@ -134,6 +134,9 @@ module hci_core_sink
   assign tcdm_prefifo.lrdy  = '1;
   assign stream.ready    = ~stream.valid | (tcdm_prefifo.gnt & addr_fifo.valid);
   assign addr_fifo.ready =  stream.valid & stream.ready;
+
+  // unimplemented user bits = 0
+  assign tcdm_prefifo.user = '0;
 
   generate
 

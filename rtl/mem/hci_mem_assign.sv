@@ -28,7 +28,9 @@ module hci_mem_assign
   assign tcdm_master.data   = tcdm_slave.data;
   assign tcdm_master.be     = tcdm_slave.be;
   assign tcdm_master.id     = tcdm_slave.id;
+  assign tcdm_master.user   = tcdm_slave.user;
   assign tcdm_slave.r_data  = tcdm_master.r_data;
   assign tcdm_slave.r_id    = tcdm_master.r_id;
+  assign tcdm_slave.r_user  = tcdm_master.r_user;
 
 endmodule // hci_mem_assign
