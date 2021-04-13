@@ -82,7 +82,7 @@ module hci_log_interconnect
       assign mems[i].wen               = mems_wen   [i];
       assign mems[i].data              = mems_wdata [i];
       assign mems[i].be                = mems_be    [i];
-      assign mems[i].id                = '0;
+      assign mems[i].id                = '0;             // not used inside tcdm_interconnect
       assign mems_gnt     [i] = mems[i].gnt;
       assign mems_r_rdata [i] = mems[i].r_data;
 
