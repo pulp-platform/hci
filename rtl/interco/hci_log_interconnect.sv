@@ -88,7 +88,6 @@ module hci_log_interconnect
       assign mems[i].wen               = mems_wen   [i];
       assign mems[i].be                = mems_be    [i];
       assign mems[i].id                = '0;             // not used inside tcdm_interconnect
-      assign mems[i].id                = mems_ID    [i];
       if (UW > 0) begin
         assign {mems[i].user, mems[i].data} = mems_wdata [i];
         assign mems_r_rdata [i] = {mems[i].r_user, mems[i].r_data};
@@ -112,6 +111,7 @@ module hci_log_interconnect
     .AddrMemWidth ( AWM                         ),
     .WriteRespOn  ( 1                           ),
     .RespLat      ( 1                           ),
+    .BeWidth      ( DW/BW                       ),
     .Topology     ( tcdm_interconnect_pkg::LIC  )
   ) i_tcdm_interconnect (
     .clk_i,
