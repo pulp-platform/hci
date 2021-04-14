@@ -2,7 +2,8 @@ hci:
   vlog_opts: [
     +nowarnSVCHK,
     -suppress 2275,
-    -L hwpe_stream_lib
+    -L hwpe_stream_lib,
+    -L cluster_interconnect_lib,
   ]
   jg_inclibs: [
     hwpe-stream,

@@ -17,7 +17,9 @@
 
 import hci_package::*;
 
-module hci_log_interconnect #(
+module hci_log_interconnect
+ import tcdm_interconnect_pkg::topo_e;
+ #(
   parameter int unsigned N_CH0  = 16,
   parameter int unsigned N_CH1  = 4,
   parameter int unsigned N_MEM  = 32,
@@ -85,7 +87,7 @@ module hci_log_interconnect #(
       assign mems[i].add [AWC-1:AWC-2] = '0;
       assign mems[i].wen               = mems_wen   [i];
       assign mems[i].be                = mems_be    [i];
-      assign mems[i].id                = mems_ID    [i];
+      assign mems[i].id                = '0;             // not used inside tcdm_interconnect
       if (UW > 0) begin
         assign {mems[i].user, mems[i].data} = mems_wdata [i];
         assign mems_r_rdata [i] = {mems[i].r_user, mems[i].r_data};
@@ -96,58 +98,41 @@ module hci_log_interconnect #(
       end
       assign mems_gnt       [i] = mems[i].gnt;
 
-      always_ff @(posedge clk_i or negedge rst_ni)
-      begin : resp_test_set
-        if(~rst_ni) begin
-          mems_r_ID[i]    <= '0;
-          mems_r_valid[i] <= 1'b0;
-          mems_ts_set_q[i] <= '0;
-        end
-        else begin
-          mems_ts_set_q[i] <= mems_ts_set_d[i];
-          mems_r_valid[i] <= ( mems_req[i] & mems_gnt[i] & ~mems_ts_set_d[i]  & ~mems_ts_set_q[i] ) | (mems_req[i] & mems_gnt[i] & ~mems_ts_set_d[i]  & mems_ts_set_q[i] );
-          if(mems_req[i])
-            mems_r_ID[i] <= mems_ID[i];
-        end
-      end
-
     end // mems_unrolling
   endgenerate
 
   // uses XBAR_TCDM from cluster_interconnect
-  XBAR_TCDM #(
-    .N_CH0          ( N_CH0  ),
-    .N_CH1          ( N_CH1  ),
-    .N_SLAVE        ( N_MEM  ),
-    .ID_WIDTH       ( IW     ),
-    .ADDR_WIDTH     ( AWC    ),
-    .DATA_WIDTH     ( UW+DW  ),
-    .BE_WIDTH       ( DW/BW  ),
-    .ADDR_MEM_WIDTH ( AWM    ),
-    .TEST_SET_BIT   ( TS_BIT )
-  ) i_xbar_tcdm (
-    .clk               ( clk_i             ),
-    .rst_n             ( rst_ni            ),
-    .TCDM_arb_policy_i ( ctrl_i.arb_policy ),
-    .data_req_i        ( cores_req         ),
-    .data_add_i        ( cores_add         ),
-    .data_wen_i        ( cores_wen         ),
-    .data_wdata_i      ( cores_wdata       ),
-    .data_be_i         ( cores_be          ),
-    .data_gnt_o        ( cores_gnt         ),
-    .data_r_valid_o    ( cores_r_valid     ),
-    .data_r_rdata_o    ( cores_r_rdata     ),
-    .data_req_o        ( mems_req          ),
-    .data_ts_set_o     ( mems_ts_set_d     ),
-    .data_add_o        ( mems_add          ),
-    .data_wen_o        ( mems_wen          ),
-    .data_wdata_o      ( mems_wdata        ),
-    .data_be_o         ( mems_be           ),
-    .data_ID_o         ( mems_ID           ),
-    .data_gnt_i        ( mems_gnt          ),
-    .data_r_rdata_i    ( mems_r_rdata      ),
-    .data_r_valid_i    ( mems_r_valid      ),
-    .data_r_ID_i       ( mems_r_ID         )
+   tcdm_interconnect #(
+    .NumIn        ( N_CH0 + N_CH1               ),
+    .NumOut       ( N_MEM                       ),
+    .AddrWidth    ( AWC                         ),
+    .DataWidth    ( DW+UW                       ),
+    .ByteOffWidth ( $clog2(DW-1)-3              ), // determine byte offset from real data width
+    .AddrMemWidth ( AWM                         ),
+    .WriteRespOn  ( 1                           ),
+    .RespLat      ( 1                           ),
+    .BeWidth      ( DW/BW                       ),
+    .Topology     ( tcdm_interconnect_pkg::LIC  )
+  ) i_tcdm_interconnect (
+    .clk_i,
+    .rst_ni,
+
+    .req_i    ( cores_req      ),
+    .add_i    ( cores_add      ),
+    .wen_i    ( cores_wen      ),
+    .wdata_i  ( cores_wdata    ),
+    .be_i     ( cores_be       ),
+    .gnt_o    ( cores_gnt      ),
+    .vld_o    ( cores_r_valid  ),
+    .rdata_o  ( cores_r_rdata  ),
+                         
+    .req_o    ( mems_req                         ),
+    .gnt_i    ( mems_gnt                         ),
+    .add_o    ( mems_add                         ),
+    .wen_o    ( mems_wen                         ),
+    .wdata_o  ( mems_wdata                       ),
+    .be_o     ( mems_be                          ),
+    .rdata_i  ( mems_r_rdata                     )
   );
 
 endmodule // hci_log_interconnect
