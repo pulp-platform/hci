@@ -13,9 +13,10 @@
  * specific language governing permissions and limitations under the License.
  */
 
-import hwpe_stream_package::*;
 
-module hci_core_split #(
+module hci_core_split
+  import hwpe_stream_package::*;
+#(
   parameter int unsigned DW = 64, // DW_IN
   parameter int unsigned NB_OUT_CHAN = 2
 ) (

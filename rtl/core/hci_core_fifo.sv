@@ -13,10 +13,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
 
-module hci_core_fifo #(
+module hci_core_fifo
+  import hwpe_stream_package::*;
+  import hci_package::*;
+ #(
   parameter int unsigned FIFO_DEPTH = 8,
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,

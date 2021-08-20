@@ -13,10 +13,10 @@
  * specific language governing permissions and limitations under the License.
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
 
 module hci_core_sink
+  import hwpe_stream_package::*;
+  import hci_package::*;
 #(
   // Stream interface params
   parameter int unsigned DATA_WIDTH      = hci_package::DEFAULT_DW,

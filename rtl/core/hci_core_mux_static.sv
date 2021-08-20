@@ -17,9 +17,9 @@
  * alternative fashion.
  */
 
-import hwpe_stream_package::*;
 
 module hci_core_mux_static
+  import hwpe_stream_package::*;
 #(
   parameter int unsigned NB_CHAN = 2,
   parameter int unsigned DW = hci_package::DEFAULT_DW,

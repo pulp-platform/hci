@@ -13,10 +13,10 @@
  * specific language governing permissions and limitations under the License.
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
 
 module hci_core_r_valid_filter
+  import hwpe_stream_package::*;
+  import hci_package::*;
 (
   input  logic clk_i,
   input  logic rst_ni,

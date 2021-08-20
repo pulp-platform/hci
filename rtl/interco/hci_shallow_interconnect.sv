@@ -19,9 +19,9 @@
  * memories (SRAMs or SCMs).
  */
  
-import hci_package::*;
 
 module hci_shallow_interconnect
+  import hci_package::*;
 #(
   parameter int unsigned NB_CHAN = 2
 )

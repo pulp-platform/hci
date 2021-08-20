@@ -44,10 +44,10 @@
  *
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
 
 module hci_core_mux_dynamic
+  import hwpe_stream_package::*;
+  import hci_package::*;
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 1,
