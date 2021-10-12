@@ -21,8 +21,7 @@ module hci_core_sink
     // Stream interface params
     parameter int unsigned DATA_WIDTH = hci_package::DEFAULT_DW,
     parameter int unsigned TCDM_FIFO_DEPTH = 0,
-    parameter int unsigned TRANS_CNT = 16,
-    parameter int unsigned MISALIGNED_ACCESSES = 1
+    parameter int unsigned TRANS_CNT = 16
     )
    (
     input logic clk_i,
@@ -108,39 +107,30 @@ module hci_core_sink
 
    assign stream_data_misaligned = stream.data;
    assign stream_strb_misaligned = stream.strb;
-
-
-   if(MISALIGNED_ACCESSES)
-     begin: realign_gen   
-        always_comb
-          begin
-             stream_data_aligned = '0;
-             stream_strb_aligned = '0;
-             case(addr_fifo.data[1:0])
-               2'b00: begin
-                  stream_data_aligned[DATA_WIDTH-32-1:0]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
-                  stream_strb_aligned[(DATA_WIDTH-32)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
-               end
-               2'b01: begin
-                  stream_data_aligned[DATA_WIDTH-24-1:8]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
-                  stream_strb_aligned[(DATA_WIDTH-24)/8-1:1] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
-               end
-               2'b10: begin
-                  stream_data_aligned[DATA_WIDTH-16-1:16]    = stream_data_misaligned[DATA_WIDTH-32-1:0];
-                  stream_strb_aligned[(DATA_WIDTH-16)/8-1:2] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
-               end
-               2'b11: begin
-                  stream_data_aligned[DATA_WIDTH-8-1:24]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
-                  stream_strb_aligned[(DATA_WIDTH-8)/8-1:3]  = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
-               end
-             endcase
-          end // always_comb
-end
-   else
+  
+   always_comb
      begin
-        assign stream_data_aligned[DATA_WIDTH-1:0]     = stream_data_misaligned[DATA_WIDTH-1:0];
-        assign stream_strb_aligned[(DATA_WIDTH)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH)/8-1:0];
-     end
+        stream_data_aligned = '0;
+        stream_strb_aligned = '0;
+        case(addr_fifo.data[1:0])
+          2'b00: begin
+             stream_data_aligned[DATA_WIDTH-32-1:0]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
+             stream_strb_aligned[(DATA_WIDTH-32)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
+          end
+          2'b01: begin
+             stream_data_aligned[DATA_WIDTH-32-1:0]     = stream_data_misaligned[DATA_WIDTH-24-1:8];
+             stream_strb_aligned[(DATA_WIDTH-32)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH-24)/8-1:1];
+          end
+          2'b10: begin
+             stream_data_aligned[DATA_WIDTH-32-1:0]     = stream_data_misaligned[DATA_WIDTH-16-1:16];
+             stream_strb_aligned[(DATA_WIDTH-32)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH-16)/8-1:2];
+          end
+          2'b11: begin
+             stream_data_aligned[DATA_WIDTH-32-1:0]      = stream_data_misaligned[DATA_WIDTH-8-1:24];
+             stream_strb_aligned[(DATA_WIDTH-32)/8-1:0]  = stream_strb_misaligned[(DATA_WIDTH-8)/8-1:3];
+          end
+        endcase
+     end // always_combend
 
 
    
