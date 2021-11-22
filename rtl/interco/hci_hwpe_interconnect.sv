@@ -81,7 +81,7 @@ module hci_hwpe_interconnect
   );
 
   // using the interface from hwpe-stream here
-  hwpe_stream_intf_tcdm virt_in  [NB_OUT_CHAN-1:0] (
+  hwpe_stream_intf_tcdm virt_in  [NB_IN_CHAN-1:0] (
     .clk ( clk_i )
   );
   hwpe_stream_intf_tcdm virt_out [NB_OUT_CHAN-1:0] (
@@ -151,13 +151,13 @@ module hci_hwpe_interconnect
     assign postfifo.gnt     = &virt_in_gnt;
     assign postfifo.r_valid = &virt_in_rvalid;
 
-    for(genvar ii=NB_IN_CHAN; ii<NB_OUT_CHAN; ii++) begin : virt_nil_bind
-      assign virt_in[ii].req  = '0;
-      assign virt_in[ii].add  = '0;
-      assign virt_in[ii].wen  = '0;
-      assign virt_in[ii].be   = '0;
-      assign virt_in[ii].data = '0;
-    end // virt_nil_bind
+    // for(genvar ii=NB_IN_CHAN; ii<NB_OUT_CHAN; ii++) begin : virt_nil_bind
+    //   assign virt_in[ii].req  = '0;
+    //   assign virt_in[ii].add  = '0;
+    //   assign virt_in[ii].wen  = '0;
+    //   assign virt_in[ii].be   = '0;
+    //   assign virt_in[ii].data = '0;
+    // end // virt_nil_bind
 
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) 
     begin : virt_out_bind
@@ -189,8 +189,9 @@ module hci_hwpe_interconnect
 
   //Re-order the interfaces such that the port requesting the lowest bits of data
   //are located at the correct bank offset
-  hwpe_stream_tcdm_reorder #(
-    .NB_CHAN ( NB_OUT_CHAN )
+  hci_hwpe_reorder #(
+    .NB_IN_CHAN  ( NB_IN_CHAN  )
+    .NB_OUT_CHAN ( NB_OUT_CHAN )
   ) i_reorder (
     .clk_i   ( clk_i            ),
     .rst_ni  ( rst_ni           ),
