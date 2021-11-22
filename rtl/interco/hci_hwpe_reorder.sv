@@ -37,7 +37,7 @@ import hwpe_stream_package::*;
 
 module hci_hwpe_reorder
 #(
-  parameter int unsigned NB_IN_CHAN  = 2
+  parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 2
 )
 (
@@ -92,7 +92,7 @@ module hci_hwpe_reorder
       assign in[i].gnt     = in_gnt     [i];
       assign in[i].r_data  = in_r_data  [i];
       assign in[i].r_valid = in_r_valid [i];
-      assign rev_winner[i] = winner_i + i;
+      assign rev_winner[i] = (NB_OUT_CHAN - order_i) + i;
 
       always_ff @(posedge clk_i or negedge rst_ni)
       begin : rev_winner_reg
@@ -116,9 +116,6 @@ module hci_hwpe_reorder
     assign in_wen  [NB_IN_CHAN] = '0;
     assign in_be   [NB_IN_CHAN] = '0;
     assign in_data [NB_IN_CHAN] = '0;
-    assign in[NB_IN_CHAN].gnt     = '0;
-    assign in[NB_IN_CHAN].r_data  = '0;
-    assign in[NB_IN_CHAN].r_valid = '0;
 
     for(i=0; i<NB_CHAN; i++) begin : out_chan_gen
 

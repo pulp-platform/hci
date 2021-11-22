@@ -190,7 +190,7 @@ module hci_hwpe_interconnect
   //Re-order the interfaces such that the port requesting the lowest bits of data
   //are located at the correct bank offset
   hci_hwpe_reorder #(
-    .NB_IN_CHAN  ( NB_IN_CHAN  )
+    .NB_IN_CHAN  ( NB_IN_CHAN  ),
     .NB_OUT_CHAN ( NB_OUT_CHAN )
   ) i_reorder (
     .clk_i   ( clk_i            ),
