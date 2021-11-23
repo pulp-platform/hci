@@ -44,3 +44,5 @@ sources:
       - rtl/interco/hci_hwpe_interconnect.sv
       # Level 4
       - rtl/hci_interconnect.sv
+      # Level 5
+      - rtl/hci_interconnect_wrap.sv
