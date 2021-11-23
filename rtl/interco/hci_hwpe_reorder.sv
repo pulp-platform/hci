@@ -13,32 +13,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
-/**
- * The **hwpe_stream_tcdm_reorder** block can be used to rotate the order of a
- * set of HWPE-Mem channels depending on an `order_i` input, which
- * can be changed dynamically (e.g. a counter). This is used
- * to "equalize" channels with different probabilities of issuing
- * a request so that the downstream HWPE-Mem channels are used with
- * the same average probability, minimizing the chances for
- * memory starvation.
- *
- * .. tabularcolumns:: |l|l|J|
- * .. _hwpe_stream_tcdm_reorder_params:
- * .. table:: **hwpe_stream_tcdm_reorder** design-time parameters.
- *
- *   +------------+-------------+------------------------------+
- *   | **Name**   | **Default** | **Description**              |
- *   +------------+-------------+------------------------------+
- *   | *NB_CHAN*  | 2           | Number of HWPE-Mem channels. |
- *   +------------+-------------+------------------------------+
- */
-
 import hwpe_stream_package::*;
 
 module hci_hwpe_reorder
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
-  parameter int unsigned NB_OUT_CHAN = 2
+  parameter int unsigned NB_OUT_CHAN = 2,
+  parameter int unsigned FILTER_WRITE_R_VALID = 0
 )
 (
   input  logic                       clk_i,
@@ -52,38 +33,95 @@ module hci_hwpe_reorder
 
 );
 
-  localparam NB_CHAN = NB_OUT_CHAN;
+  logic [NB_IN_CHAN-1:0]       in_req;
+  logic [NB_IN_CHAN-1:0]       in_req_q;
+  logic [NB_IN_CHAN-1:0][31:0] in_add;
+  logic [NB_IN_CHAN-1:0]       in_wen;
+  logic [NB_IN_CHAN-1:0][3:0]  in_be;
+  logic [NB_IN_CHAN-1:0][31:0] in_data;
+  logic [NB_IN_CHAN-1:0]       in_gnt;
+  logic [NB_IN_CHAN-1:0][31:0] in_r_data;
+  logic [NB_IN_CHAN-1:0]       in_r_valid;
+  logic [NB_OUT_CHAN-1:0]       out_req;
+  logic [NB_OUT_CHAN-1:0][31:0] out_add;
+  logic [NB_OUT_CHAN-1:0]       out_wen;
+  logic [NB_OUT_CHAN-1:0][3:0]  out_be;
+  logic [NB_OUT_CHAN-1:0][31:0] out_data;
+  logic [NB_OUT_CHAN-1:0]       out_gnt;
+  logic [NB_OUT_CHAN-1:0][31:0] out_r_data;
+  logic [NB_OUT_CHAN-1:0]       out_r_valid;
+  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_req;
+  // logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0][31:0] ma_add;
+  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0][31:0] ma_data;
+  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_gnt;
+  logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_req;
+  // logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0][31:0] mat_add;
+  // logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0][31:0] mat_data;
+  logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_gnt;
+  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_r_valid;
+  logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_r_valid;
 
-  logic [NB_CHAN-1:0][$clog2(NB_CHAN)-1:0] rr_priority;
-  logic [NB_CHAN-1:0][$clog2(NB_CHAN)-1:0] winner_rpe;
-  logic [NB_CHAN-1:0][$clog2(NB_CHAN)-1:0] winner_valid;
-  logic [NB_CHAN-1:0][$clog2(NB_IN_CHAN+1)-1:0] winner;
-  logic [NB_IN_CHAN-1:0][$clog2(NB_CHAN)-1:0] rev_winner;
-  logic [NB_IN_CHAN-1:0][$clog2(NB_CHAN)-1:0] rev_winner_q;
-  logic [NB_CHAN-1:0]                      out_req_q;
-
-  logic [NB_IN_CHAN:0]       in_req;
-  logic [NB_IN_CHAN:0][31:0] in_add;
-  logic [NB_IN_CHAN:0]       in_wen;
-  logic [NB_IN_CHAN:0][3:0]  in_be;
-  logic [NB_IN_CHAN:0][31:0] in_data;
-  logic [NB_IN_CHAN:0]       in_gnt;
-  logic [NB_IN_CHAN:0][31:0] in_r_data;
-  logic [NB_IN_CHAN:0]       in_r_valid;
-  logic [NB_CHAN-1:0]       out_req;
-  logic [NB_CHAN-1:0][31:0] out_add;
-  logic [NB_CHAN-1:0]       out_wen;
-  logic [NB_CHAN-1:0][3:0]  out_be;
-  logic [NB_CHAN-1:0][31:0] out_data;
-  logic [NB_CHAN-1:0]       out_gnt;
-  logic [NB_CHAN-1:0][31:0] out_r_data;
-  logic [NB_CHAN-1:0]       out_r_valid;
-
-  genvar i;
   generate
 
-    for(i=0; i<NB_IN_CHAN; i++) begin : in_chan_gen
-      // binding
+    for(genvar i=0; i<NB_IN_CHAN; i++) begin : in_chan_gen
+
+      if (FILTER_WRITE_R_VALID) begin : filter_write_r_valid_gen
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin
+          if(~rst_ni)
+            in_req_q[i] <= '0;
+          else if(clear_i)
+            in_req_q[i] <= '0;
+          else
+            in_req_q[i] <= in_req[i] & in_wen[i];
+        end
+      end
+      else begin : no_filter_write_r_valid_gen
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin
+          if(~rst_ni)
+            in_req_q[i] <= '0;
+          else if(clear_i)
+            in_req_q[i] <= '0;
+          else
+            in_req_q[i] <= in_req[i];
+        end
+      end
+
+      // address decoder mux from TCDM XBAR
+      addr_dec_resp_mux #(
+        .NumOut        ( NB_OUT_CHAN ),
+        .ReqDataWidth  ( 32      ),
+        .RespDataWidth ( 32      ),
+        .RespLat       ( 1       ),
+        .BroadCastOn   ( 0       ),
+        .WriteRespOn   ( 1       )
+      ) i_addr_dec_resp_mux (
+        .clk_i   ( clk_i         ),
+        .rst_ni  ( rst_ni        ),
+        .req_i   ( in_req[i]     ),
+        .add_i   ( (NB_OUT_CHAN - order_i) + i   ),
+        .wen_i   ( in_wen[i]     ),
+        .data_i  ( in_data[i]    ),
+        .gnt_o   ( in_gnt[i]     ),
+        .vld_o   ( in_r_valid[i] ),
+        .rdata_o ( in_r_data[i]  ),
+        .req_o   ( ma_req[i]     ),
+        .gnt_i   ( ma_gnt[i]     ),
+        .data_o  (               ), // unused ?
+        .rdata_i ( out_r_data    )
+      );
+
+      for(genvar j=0; j<NB_OUT_CHAN; j++) begin : transpose_gen
+        // assign ma_add [i][j] = in_add [i];
+        assign mat_req  [j][i] = ma_req  [i][j];
+        // assign mat_add  [j][i] = ma_add  [i][j];
+        // assign mat_data [j][i] = ma_data [i][j];
+        assign ma_r_valid [i][j] = mat_r_valid [i][j];
+      end
+      assign ma_gnt [i] = &(~out_req | out_gnt);
+    
+      // bindings
       assign in_req  [i] = in[i].req  ;
       assign in_add  [i] = in[i].add  ;
       assign in_wen  [i] = in[i].wen  ;
@@ -91,70 +129,37 @@ module hci_hwpe_reorder
       assign in_data [i] = in[i].data ;
       assign in[i].gnt     = in_gnt     [i];
       assign in[i].r_data  = in_r_data  [i];
-      assign in[i].r_valid = in_r_valid [i];
-      assign rev_winner[i] = (NB_OUT_CHAN - order_i) + i;
-
-      always_ff @(posedge clk_i or negedge rst_ni)
-      begin : rev_winner_reg
-        if(rst_ni == 1'b0) begin
-          rev_winner_q  [i] <= '0;
-        end
-        else if(clear_i == 1'b1) begin
-          rev_winner_q  [i] <= '0;
-        end
-        else begin
-          rev_winner_q  [i] <= rev_winner [i];
-        end
-      end
-      assign in_r_data [i] = out_r_data[rev_winner_q[i]];
-      assign in_r_valid[i] = out_r_valid[rev_winner_q[i]] & out_req_q[rev_winner_q[i]];
-      assign in_gnt    [i] = out_gnt[rev_winner[i]];
+      assign in[i].r_valid = in_r_valid [i] & in_req_q[i];
 
     end
-    assign in_req  [NB_IN_CHAN] = '0;
-    assign in_add  [NB_IN_CHAN] = '0;
-    assign in_wen  [NB_IN_CHAN] = '0;
-    assign in_be   [NB_IN_CHAN] = '0;
-    assign in_data [NB_IN_CHAN] = '0;
 
-    for(i=0; i<NB_CHAN; i++) begin : out_chan_gen
+    for(genvar i=0; i<NB_OUT_CHAN; i++) begin : out_chan_gen
 
-      // winners: if in the winner list, select the correspondent input; otherwise, take a final one nil'ed out
-      assign winner_rpe[i]   = order_i + i;
-      assign winner_valid[i] = winner_rpe[i] < NB_IN_CHAN ? 1'b1 : 1'b0;
-      assign winner[i]       = winner_valid[i] ? winner_rpe[i] : NB_IN_CHAN;
+      // we know that the input requests are non-colliding! so we just OR them!
+      always_comb
+      begin
+        out_req[i]  = '0;
+        out_add[i]  = '0;
+        out_wen[i]  = in_wen[0];
+        out_be[i]   = '0;
+        out_data[i] = '0;
+        for(int j=0; j<NB_IN_CHAN; j++) begin
+          out_req[i]  |= mat_req [i][j];
+          out_add[i]  |= mat_req [i][j] ? in_add  [j] : '0;
+          out_be[i]   |= mat_req [i][j] ? in_be   [j] : '0;
+          out_data[i] |= mat_req [i][j] ? in_data [j] : '0;
+        end
+      end
 
-      // binding
+      // bindings
       assign out[i].req  = out_req  [i];
       assign out[i].add  = out_add  [i];
       assign out[i].wen  = out_wen  [i];
       assign out[i].be   = out_be   [i];
       assign out[i].data = out_data [i];
-      assign out_gnt     [i] = out[i].gnt    ;
-      assign out_r_data  [i] = out[i].r_data ;
+      assign out_gnt     [i] = out[i].gnt;
+      assign out_r_data  [i] = out[i].r_data;
       assign out_r_valid [i] = out[i].r_valid;
-
-      always_comb
-      begin : mux_req_comb // NB_IN_CHAN+1 - way muxes
-        out_req   [i] = in_req  [winner[i]];
-        out_add   [i] = in_add  [winner[i]];
-        out_wen   [i] = in_wen  [winner[i]];
-        out_data  [i] = in_data [winner[i]];
-        out_be    [i] = in_be   [winner[i]];
-      end
-
-      always_ff @(posedge clk_i or negedge rst_ni)
-      begin : wta_resp_reg
-        if(rst_ni == 1'b0) begin
-          out_req_q [i] <= 1'b0;
-        end
-        else if(clear_i == 1'b1) begin
-          out_req_q [i] <= 1'b0;
-        end
-        else begin
-          out_req_q [i] <= out_req [i];
-        end
-      end
 
     end // out_chan_gen
 
