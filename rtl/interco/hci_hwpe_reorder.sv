@@ -88,6 +88,9 @@ module hci_hwpe_reorder
         end
       end
 
+      logic unsigned [$clog2(NB_OUT_CHAN)-1:0] add;
+      assign add = order_i + i;
+
       // address decoder mux from TCDM XBAR
       addr_dec_resp_mux #(
         .NumOut        ( NB_OUT_CHAN ),
@@ -100,7 +103,7 @@ module hci_hwpe_reorder
         .clk_i   ( clk_i         ),
         .rst_ni  ( rst_ni        ),
         .req_i   ( in_req[i]     ),
-        .add_i   ( (NB_OUT_CHAN - order_i) + i   ),
+        .add_i   ( add           ),
         .wen_i   ( in_wen[i]     ),
         .data_i  ( in_data[i]    ),
         .gnt_o   ( in_gnt[i]     ),
