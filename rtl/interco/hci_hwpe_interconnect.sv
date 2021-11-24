@@ -65,7 +65,6 @@ module hci_hwpe_interconnect
 
 
   logic [$clog2(NB_OUT_CHAN)-1:0] bank_offset_s;
-  logic [$clog2(NB_OUT_CHAN)-1:0] reorder_offset_s;
   logic [NB_IN_CHAN-1:0] virt_in_gnt;
   logic [NB_IN_CHAN-1:0] virt_in_rvalid;
 
@@ -124,7 +123,6 @@ module hci_hwpe_interconnect
     assign postfifo.r_user = '0;
     
     assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:2];
-    assign reorder_offset_s = NB_OUT_CHAN - bank_offset_s;
 
     for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : virt_in_bind
 
@@ -148,16 +146,8 @@ module hci_hwpe_interconnect
 
     end // virt_in_bind
     
-    assign postfifo.gnt     = &virt_in_gnt;
-    assign postfifo.r_valid = &virt_in_rvalid;
-
-    // for(genvar ii=NB_IN_CHAN; ii<NB_OUT_CHAN; ii++) begin : virt_nil_bind
-    //   assign virt_in[ii].req  = '0;
-    //   assign virt_in[ii].add  = '0;
-    //   assign virt_in[ii].wen  = '0;
-    //   assign virt_in[ii].be   = '0;
-    //   assign virt_in[ii].data = '0;
-    // end // virt_nil_bind
+    assign postfifo.gnt     = virt_in_gnt[0];
+    assign postfifo.r_valid = virt_in_rvalid[0];
 
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) 
     begin : virt_out_bind
@@ -172,17 +162,6 @@ module hci_hwpe_interconnect
 
       // unimplemented user bits = 0
       assign out[ii].user = '0;
-
-      // generate out_r_valid
-      always_ff @(posedge clk_i or negedge rst_ni)
-      begin : resp_r_valid
-        if(~rst_ni) begin
-          out_r_valid[ii] <= 1'b0;
-        end
-        else begin
-          out_r_valid[ii] <= out[ii].req & out[ii].gnt;
-        end
-      end  // resp_r_valid
     end // virt_out_bind
 
   endgenerate
@@ -193,12 +172,12 @@ module hci_hwpe_interconnect
     .NB_IN_CHAN  ( NB_IN_CHAN  ),
     .NB_OUT_CHAN ( NB_OUT_CHAN )
   ) i_reorder (
-    .clk_i   ( clk_i            ),
-    .rst_ni  ( rst_ni           ),
-    .clear_i ( clear_i          ),
-    .order_i ( reorder_offset_s ), 
-    .in      ( virt_in          ),
-    .out     ( virt_out         )
+    .clk_i   ( clk_i         ),
+    .rst_ni  ( rst_ni        ),
+    .clear_i ( clear_i       ),
+    .order_i ( bank_offset_s ), 
+    .in      ( virt_in       ),
+    .out     ( virt_out      )
   );
 
 endmodule // hci_hwpe_interconnect

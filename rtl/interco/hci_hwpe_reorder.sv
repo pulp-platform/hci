@@ -49,17 +49,15 @@ module hci_hwpe_reorder
   logic [NB_OUT_CHAN-1:0][31:0] out_data;
   logic [NB_OUT_CHAN-1:0]       out_gnt;
   logic [NB_OUT_CHAN-1:0][31:0] out_r_data;
-  logic [NB_OUT_CHAN-1:0]       out_r_valid;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_req;
-  // logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0][31:0] ma_add;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0][31:0] ma_data;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_gnt;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_req;
-  // logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0][31:0] mat_add;
-  // logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0][31:0] mat_data;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_gnt;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_r_valid;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_r_valid;
+
+  logic unsigned [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0][$clog2(NB_OUT_CHAN)-1:0] add_table;
 
   generate
 
@@ -100,26 +98,24 @@ module hci_hwpe_reorder
         .BroadCastOn   ( 0       ),
         .WriteRespOn   ( 1       )
       ) i_addr_dec_resp_mux (
-        .clk_i   ( clk_i         ),
-        .rst_ni  ( rst_ni        ),
-        .req_i   ( in_req[i]     ),
-        .add_i   ( add           ),
-        .wen_i   ( in_wen[i]     ),
-        .data_i  ( in_data[i]    ),
-        .gnt_o   ( in_gnt[i]     ),
-        .vld_o   ( in_r_valid[i] ),
-        .rdata_o ( in_r_data[i]  ),
-        .req_o   ( ma_req[i]     ),
-        .gnt_i   ( ma_gnt[i]     ),
-        .data_o  (               ), // unused ?
-        .rdata_i ( out_r_data    )
+        .clk_i   ( clk_i                 ),
+        .rst_ni  ( rst_ni                ),
+        .req_i   ( in_req[i]             ),
+        .add_i   ( add_table[order_i][i] ),
+        .wen_i   ( in_wen[i]             ),
+        .data_i  ( in_data[i]            ),
+        .gnt_o   ( in_gnt[i]             ),
+        .vld_o   ( in_r_valid[i]         ),
+        .rdata_o ( in_r_data[i]          ),
+        .req_o   ( ma_req[i]             ),
+        .gnt_i   ( ma_gnt[i]             ),
+        .data_o  (                       ), // unused ?
+        .rdata_i ( out_r_data            )
       );
 
-      for(genvar j=0; j<NB_OUT_CHAN; j++) begin : transpose_gen
-        // assign ma_add [i][j] = in_add [i];
+      for(genvar j=0; j<NB_OUT_CHAN; j++) begin : out_chan_gen
+        assign add_table[j][i] = i+j;
         assign mat_req  [j][i] = ma_req  [i][j];
-        // assign mat_add  [j][i] = ma_add  [i][j];
-        // assign mat_data [j][i] = ma_data [i][j];
         assign ma_r_valid [i][j] = mat_r_valid [i][j];
       end
       assign ma_gnt [i] = &(~out_req | out_gnt);
@@ -138,7 +134,7 @@ module hci_hwpe_reorder
 
     for(genvar i=0; i<NB_OUT_CHAN; i++) begin : out_chan_gen
 
-      // we know that the input requests are non-colliding! so we just OR them!
+      // we know that the input requests are non-colliding! so we just OR/MUX them!
       always_comb
       begin
         out_req[i]  = '0;
@@ -162,7 +158,6 @@ module hci_hwpe_reorder
       assign out[i].data = out_data [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
-      assign out_r_valid [i] = out[i].r_valid;
 
     end // out_chan_gen
 
