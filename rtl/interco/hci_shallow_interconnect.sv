@@ -42,7 +42,7 @@ module hci_shallow_interconnect
   logic hs_req_d;
   logic ls_req_d;
   logic switch_channels_d;
-  integer ls_stall_ctr_d;
+  logic unsigned [7:0] ls_stall_ctr_d;
 
   // priority_req is the OR of all requests coming out of the log interconnect.
   // it should be simplified to simply an OR of all requests coming *into* the
