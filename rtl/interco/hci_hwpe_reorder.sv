@@ -51,18 +51,18 @@ module hci_hwpe_reorder
   logic [NB_OUT_CHAN-1:0][31:0] out_r_data;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_req;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0][31:0] ma_data;
-  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_gnt;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_req;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_gnt;
-  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_r_valid;
-  logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_r_valid;
-
-  logic unsigned [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0][$clog2(NB_OUT_CHAN)-1:0] add_table;
 
   generate
 
+    // in_gnt out of in_chan_gen because only [0] is used
+    assign in_gnt[0] = &(~out_req | out_gnt);
+    assign in_gnt[NB_IN_CHAN-1:1] = '0;
+
     for(genvar i=0; i<NB_IN_CHAN; i++) begin : in_chan_gen
 
+      // only in_req_q[0] is actually used... keep the rest for symmetry only
       if (FILTER_WRITE_R_VALID) begin : filter_write_r_valid_gen
         always_ff @(posedge clk_i or negedge rst_ni)
         begin
@@ -71,7 +71,7 @@ module hci_hwpe_reorder
           else if(clear_i)
             in_req_q[i] <= '0;
           else
-            in_req_q[i] <= in_req[i] & in_wen[i];
+            in_req_q[i] <= in_req[0] & in_wen[0];
         end
       end
       else begin : no_filter_write_r_valid_gen
@@ -82,7 +82,7 @@ module hci_hwpe_reorder
           else if(clear_i)
             in_req_q[i] <= '0;
           else
-            in_req_q[i] <= in_req[i];
+            in_req_q[i] <= in_req[0];
         end
       end
 
@@ -92,33 +92,26 @@ module hci_hwpe_reorder
       // address decoder mux from TCDM XBAR
       addr_dec_resp_mux #(
         .NumOut        ( NB_OUT_CHAN ),
-        .ReqDataWidth  ( 32      ),
-        .RespDataWidth ( 32      ),
-        .RespLat       ( 1       ),
-        .BroadCastOn   ( 0       ),
-        .WriteRespOn   ( 1       )
+        .ReqDataWidth  ( 1           ),
+        .RespDataWidth ( 32          ),
+        .RespLat       ( 1           ),
+        .BroadCastOn   ( 0           ),
+        .WriteRespOn   ( 1           )
       ) i_addr_dec_resp_mux (
-        .clk_i   ( clk_i                 ),
-        .rst_ni  ( rst_ni                ),
-        .req_i   ( in_req[i]             ),
-        .add_i   ( add_table[order_i][i] ),
-        .wen_i   ( in_wen[i]             ),
-        .data_i  ( in_data[i]            ),
-        .gnt_o   ( in_gnt[i]             ),
-        .vld_o   ( in_r_valid[i]         ),
-        .rdata_o ( in_r_data[i]          ),
-        .req_o   ( ma_req[i]             ),
-        .gnt_i   ( ma_gnt[i]             ),
-        .data_o  (                       ), // unused ?
-        .rdata_i ( out_r_data            )
+        .clk_i   ( clk_i         ),
+        .rst_ni  ( rst_ni        ),
+        .req_i   ( in_req[0]     ),
+        .add_i   ( add           ),
+        .wen_i   ( in_wen[0]     ),
+        .data_i  ( '0            ),
+        .gnt_o   (               ), // unused
+        .vld_o   (               ), // unused
+        .rdata_o ( in_r_data[i]  ),
+        .req_o   ( ma_req[i]     ),
+        .gnt_i   ( '0            ),
+        .data_o  (               ), // unused
+        .rdata_i ( out_r_data    )
       );
-
-      for(genvar j=0; j<NB_OUT_CHAN; j++) begin : out_chan_gen
-        assign add_table[j][i] = i+j;
-        assign mat_req  [j][i] = ma_req  [i][j];
-        assign ma_r_valid [i][j] = mat_r_valid [i][j];
-      end
-      assign ma_gnt [i] = &(~out_req | out_gnt);
     
       // bindings
       assign in_req  [i] = in[i].req  ;
@@ -128,13 +121,13 @@ module hci_hwpe_reorder
       assign in_data [i] = in[i].data ;
       assign in[i].gnt     = in_gnt     [i];
       assign in[i].r_data  = in_r_data  [i];
-      assign in[i].r_valid = in_r_valid [i] & in_req_q[i];
+      assign in[i].r_valid = in_req_q[0]; // fixed latency = 1
 
     end
 
     for(genvar i=0; i<NB_OUT_CHAN; i++) begin : out_chan_gen
 
-      // we know that the input requests are non-colliding! so we just OR/MUX them!
+      // we just OR the req signals
       always_comb
       begin
         out_req[i]  = '0;
