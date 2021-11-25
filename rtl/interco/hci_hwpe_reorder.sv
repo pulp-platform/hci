@@ -56,6 +56,8 @@ module hci_hwpe_reorder
 
   generate
 
+    // broadcasting in_req[0] and in_gnt[0] is key to optimize area (2-3x) in hci_hwpe_reorder
+
     // in_gnt out of in_chan_gen because only [0] is used
     assign in_gnt[0] = &(~out_req | out_gnt);
     assign in_gnt[NB_IN_CHAN-1:1] = '0;
