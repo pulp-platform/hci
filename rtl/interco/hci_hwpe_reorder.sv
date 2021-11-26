@@ -49,10 +49,7 @@ module hci_hwpe_reorder
   logic [NB_OUT_CHAN-1:0][31:0] out_data;
   logic [NB_OUT_CHAN-1:0]       out_gnt;
   logic [NB_OUT_CHAN-1:0][31:0] out_r_data;
-  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]       ma_req;
-  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0][31:0] ma_data;
-  logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_req;
-  logic [NB_OUT_CHAN-1:0][NB_IN_CHAN-1:0]       mat_gnt;
+  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0] ma_req;
 
   generate
 
