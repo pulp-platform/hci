@@ -138,10 +138,10 @@ module hci_hwpe_reorder
         out_be[i]   = '0;
         out_data[i] = '0;
         for(int j=0; j<NB_IN_CHAN; j++) begin
-          out_req[i]  |= mat_req [i][j];
-          out_add[i]  |= mat_req [i][j] ? in_add  [j] : '0;
-          out_be[i]   |= mat_req [i][j] ? in_be   [j] : '0;
-          out_data[i] |= mat_req [i][j] ? in_data [j] : '0;
+          out_req[i]  |= ma_req [j][i];
+          out_add[i]  |= ma_req [j][i] ? in_add  [j] : '0;
+          out_be[i]   |= ma_req [j][i] ? in_be   [j] : '0;
+          out_data[i] |= ma_req [j][i] ? in_data [j] : '0;
         end
       end
 
