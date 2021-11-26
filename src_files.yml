@@ -15,7 +15,6 @@ hci:
      rtl/interco/hci_log_interconnect_l2.sv,
      rtl/interco/hci_new_log_interconnect.sv,
      rtl/hci_interconnect.sv,
-     rtl/hci_interconnect_wrap.sv,
      rtl/interco/hci_hwpe_reorder.sv,
      rtl/interco/hci_hwpe_interconnect.sv,
      rtl/interco/hci_shallow_interconnect.sv,
