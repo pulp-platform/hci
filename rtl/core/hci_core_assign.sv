@@ -13,6 +13,12 @@
  * specific language governing permissions and limitations under the License.
  */
 
+/**
+ * The **hci_core_assign** module implements a simple assignment for
+ * HCI-Core streams.
+ *
+ */
+
 import hwpe_stream_package::*;
 
 module hci_core_assign 
