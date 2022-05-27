@@ -13,6 +13,68 @@
  * specific language governing permissions and limitations under the License.
  */
 
+/**
+ * The **hci_core_fifo** module implements a hardware FIFO queue for
+ * HCI-Core interfaces, used to withstand data scarcity (`req`=0) or
+ * backpressure (`gnt`=0), decoupling two architectural domains.
+ * This FIFO is single-clock and therefore cannot be used to cross two
+ * distinct clock domains.
+ * The FIFO treats a HCI-Core load stream as a combination of two
+ * 32-bit HWPE-Streams, one going from the `tcdm_master` to the `tcdm_slave` interface
+ * carrying the `addr` (*outgoing stream*); the other from the `tcdm_slave` to the
+ * `tcdm_master` interface, carrying the `r_data` (*incoming stream*).
+ *
+ * On the slave side, the `req` and `gnt` of the HCI-Core interfaces
+ * are mapped on `valid` and `ready` respectively in the outgoing stream.
+ * Backpressure on the incoming stream (slave side) cannot be enforced by means
+ * of the HCI-Core slave interface and thus is carried by a specific
+ * input `ready_i` that must be generated outside of the TCDM FIFO, typically
+ * by a **hwpe_stream_source** module (output `tcdm_fifo_ready_o`).
+ * On the master side, `req` is mapped to the AND of the incoming stream `ready`
+ * signal and the outgoing stream `valid` signal. `gnt` is hooked to the
+ * outgoing stream `ready` signal.
+ * The `r_valid` is mapped on `valid` in the incoming stream.
+ * :numref:`_hci_core_fifo_mapping` shows this mapping.
+ *
+ * .. _hci_core_fifo_mapping:
+ * .. figure:: img/hci_core_fifo.*
+ *   :figwidth: 90%
+ *   :width: 90%
+ *   :align: center
+ *
+ *   Mapping of HCI-Core and HWPE-Stream signals inside the load FIFO.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_core_fifo_params:
+ * .. table:: **hci_core_fifo** design-time parameters.
+ *
+ *   +------------------------+--------------+--------------------------------------------------------------------------------------+
+ *   | **Name**               | **Default**  | **Description**                                                                      |
+ *   +------------------------+--------------+--------------------------------------------------------------------------------------+
+ *   | *FIFO_DEPTH*           | 8            | Depth of the FIFO queue (multiple of 2).                                             |
+ *   +------------------------+--------------+--------------------------------------------------------------------------------------+
+ *   | *LATCH_FIFO*           | 0            | If 1, use latches instead of flip-flops (requires special constraints in synthesis). |
+ *   +------------------------+--------------+--------------------------------------------------------------------------------------+
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_core_fifo_flags:
+ * .. table:: **hci_core_fifo** output flags.
+ *
+ *   +----------------+--------------+-----------------------------------+
+ *   | **Name**       | **Type**     | **Description**                   |
+ *   +----------------+--------------+-----------------------------------+
+ *   | *empty*        | `logic`      | 1 if the FIFO is currently empty. |
+ *   +----------------+--------------+-----------------------------------+
+ *   | *full*         | `logic`      | 1 if the FIFO is currently full.  |
+ *   +----------------+--------------+-----------------------------------+
+ *   | *push_pointer* | `logic[7:0]` | Unused.                           |
+ *   +----------------+--------------+-----------------------------------+
+ *   | *pop_pointer*  | `logic[7:0]` | Unused.                           |
+ *   +----------------+--------------+-----------------------------------+
+ *
+ */
+
+
 import hwpe_stream_package::*;
 import hci_package::*;
 
