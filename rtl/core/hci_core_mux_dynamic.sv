@@ -112,7 +112,10 @@ module hci_core_mux_dynamic
     else if (clear_i == 1'b1)
       rr_counter <= '0;
     else if (s_rr_counter_reg_en)
-      rr_counter <= (rr_counter + {{($clog2(NB_IN_CHAN/NB_OUT_CHAN)-1){1'b0}},1'b1}); //[$clog2(NB_IN_CHAN)-1:0];
+      if (rr_counter < NB_IN_CHAN/NB_OUT_CHAN-1) begin
+        rr_counter <= (rr_counter + {{($clog2(NB_IN_CHAN/NB_OUT_CHAN)-1){1'b0}},1'b1}); //[$clog2(NB_IN_CHAN)-1:0];
+      else
+        rr_counter <= '0;
   end
 
   genvar i,j;
@@ -154,8 +157,14 @@ module hci_core_mux_dynamic
 
       always_comb
       begin : rotating_priority_encoder_i
-        for(int j=0; j<NB_IN_CHAN/NB_OUT_CHAN; j++)
-          rr_priority[i][j] = rr_counter + i + j;
+        for(int jj=0; jj<NB_IN_CHAN/NB_OUT_CHAN; jj++) begin
+          if (jj < NB_IN_CHAN/NB_OUT_CHAN - i) begin
+            rr_priority[i][jj] = rr_counter + i + jj;
+          end
+          else begin
+            rr_priority[i][jj] = rr_counter + i + jj - NB_IN_CHAN/NB_OUT_CHAN;
+          end
+        end
       end
 
       always_comb
