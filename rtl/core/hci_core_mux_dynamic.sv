@@ -112,7 +112,7 @@ module hci_core_mux_dynamic
     else if (clear_i == 1'b1)
       rr_counter <= '0;
     else if (s_rr_counter_reg_en)
-      if (rr_counter < NB_IN_CHAN/NB_OUT_CHAN-1) begin
+      if (rr_counter < NB_IN_CHAN/NB_OUT_CHAN-1)
         rr_counter <= (rr_counter + {{($clog2(NB_IN_CHAN/NB_OUT_CHAN)-1){1'b0}},1'b1}); //[$clog2(NB_IN_CHAN)-1:0];
       else
         rr_counter <= '0;
