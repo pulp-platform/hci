@@ -157,14 +157,8 @@ module hci_core_mux_dynamic
 
       always_comb
       begin : rotating_priority_encoder_i
-        for(int jj=0; jj<NB_IN_CHAN/NB_OUT_CHAN; jj++) begin
-          if (jj < NB_IN_CHAN/NB_OUT_CHAN - i) begin
-            rr_priority[i][jj] = rr_counter + i + jj;
-          end
-          else begin
-            rr_priority[i][jj] = rr_counter + i + jj - NB_IN_CHAN/NB_OUT_CHAN;
-          end
-        end
+        for(int j=0; j<NB_IN_CHAN/NB_OUT_CHAN; j++)
+           rr_priority[i][j] = rr_counter + i + j;
       end
 
       always_comb
