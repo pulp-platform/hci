@@ -147,7 +147,7 @@ module hci_hwpe_interconnect
 
     end // virt_in_bind
 
-    // register GNT --> TCDM protocol assumes that (post FIFO)
+    // register REQ&GNT --> TCDM protocol assumes that (post FIFO)
     // the GNT and R_VALID are exactly asserted in consecutive
     // cycles
     always_ff @(posedge clk_i or negedge rst_ni)
@@ -159,7 +159,7 @@ module hci_hwpe_interconnect
         virt_in_gnt_0_q <= '0;
       end
       else begin
-        virt_in_gnt_0_q <= virt_in_gnt[0];
+        virt_in_gnt_0_q <= virt_in_gnt[0] & virt_in[0].req;
       end
     end
     
