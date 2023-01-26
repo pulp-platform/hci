@@ -67,6 +67,7 @@ module hci_hwpe_interconnect
   logic [$clog2(NB_OUT_CHAN)-1:0] bank_offset_s;
   logic [NB_IN_CHAN-1:0] virt_in_gnt;
   logic [NB_IN_CHAN-1:0] virt_in_rvalid;
+  logic                  virt_in_gnt_0_q;
 
   hci_core_intf #(
     .DW ( DWH ),
@@ -145,9 +146,27 @@ module hci_hwpe_interconnect
       assign virt_in_rvalid[ii] = virt_in[ii].r_valid;
 
     end // virt_in_bind
+
+    // register REQ&GNT --> TCDM protocol assumes that (post FIFO)
+    // the GNT and R_VALID are exactly asserted in consecutive
+    // cycles
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+      if(~rst_ni) begin
+        virt_in_gnt_0_q <= '0;
+      end
+      else if(clear_i) begin
+        virt_in_gnt_0_q <= '0;
+      end
+      else begin
+        virt_in_gnt_0_q <= virt_in_gnt[0] & virt_in[0].req;
+      end
+    end
     
-    assign postfifo.gnt     = virt_in_gnt[0];
-    assign postfifo.r_valid = virt_in_rvalid[0];
+    // only propagate GNT for those initiators that have asserted REQ
+    assign postfifo.gnt     = virt_in_gnt[0] & virt_in[0].req;
+    // filter R_VALID with registered GNT
+    assign postfifo.r_valid = virt_in_rvalid[0] & virt_in_gnt_0_q;
 
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) 
     begin : virt_out_bind
