@@ -19,6 +19,9 @@ dependencies:
 export_include_dirs:
   - rtl/common
 
+export_include_dirs:
+  - rtl/include
+
 sources:
   - include_dirs:
       - rtl/common
