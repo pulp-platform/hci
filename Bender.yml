@@ -30,7 +30,9 @@ sources:
       - rtl/core/hci_core_memmap_filter.sv
       - rtl/core/hci_core_mux_dynamic.sv
       - rtl/core/hci_core_mux_static.sv
+      - rtl/core/hci_core_mux_ooo.sv
       - rtl/core/hci_core_r_valid_filter.sv
+      - rtl/core/hci_core_r_user_filter.sv
       - rtl/core/hci_core_source.sv
       - rtl/core/hci_core_split.sv
       - rtl/interco/hci_log_interconnect.sv
