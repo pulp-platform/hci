@@ -106,8 +106,7 @@ module hci_core_source
         2'b00: begin 
           // In aligned address potential of using full bandwidth. 
           // This can happen when multiple data using same port
-          stream_data_aligned[31:0]              = stream_data_misaligned[31:0]; 
-          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-32-1:0];
+          stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
         end
         2'b01: begin
           stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-24-1:8];
