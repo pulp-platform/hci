@@ -1,5 +1,5 @@
 /* 
- * hci_hwpe_interconnect.sv
+ * hci_router.sv
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
  *
@@ -27,7 +27,7 @@
  *     hwpe_stream_tcdm_reorder block.
  */
 
-module hci_hwpe_interconnect
+module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
   parameter int unsigned NB_OUT_CHAN = 8,
@@ -187,7 +187,7 @@ module hci_hwpe_interconnect
 
   //Re-order the interfaces such that the port requesting the lowest bits of data
   //are located at the correct bank offset
-  hci_hwpe_reorder #(
+  hci_router_reorder #(
     .NB_IN_CHAN  ( NB_IN_CHAN  ),
     .NB_OUT_CHAN ( NB_OUT_CHAN )
   ) i_reorder (
@@ -199,4 +199,4 @@ module hci_hwpe_interconnect
     .out     ( virt_out      )
   );
 
-endmodule // hci_hwpe_interconnect
+endmodule // hci_router

@@ -1,5 +1,5 @@
 /*
- * hci_hwpe_reorder.sv
+ * hci_router_reorder.sv
  * Francesco Conti <f.conti@unibo.it>
  *
  * Copyright (C) 2014-2021 ETH Zurich, University of Bologna
@@ -15,7 +15,7 @@
 
 import hwpe_stream_package::*;
 
-module hci_hwpe_reorder
+module hci_router_reorder
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 2,
@@ -53,7 +53,7 @@ module hci_hwpe_reorder
 
   generate
 
-    // broadcasting in_req[0] and in_gnt[0] is key to optimize area (2-3x) in hci_hwpe_reorder
+    // broadcasting in_req[0] and in_gnt[0] is key to optimize area (2-3x) in hci_router_reorder
 
     // in_gnt out of in_chan_gen because only [0] is used
     assign in_gnt[0] = &(~out_req | out_gnt);
@@ -155,4 +155,4 @@ module hci_hwpe_reorder
 
   endgenerate
 
-endmodule // hci_hwpe_reorder
+endmodule // hci_router_reorder

@@ -136,9 +136,9 @@ module hci_interconnect #(
   endgenerate
 
   generate
-    if(N_HWPE > 0) begin: hwpe_interconnect_gen
+    if(N_HWPE > 0) begin: hwpe_branch_gen
 
-      hci_hwpe_interconnect #(
+      hci_router #(
         .FIFO_DEPTH  ( EXPFIFO ),
         .NB_OUT_CHAN ( N_MEM   ),
         .AWM         ( AWM     ),
@@ -148,7 +148,7 @@ module hci_interconnect #(
         .WWH         ( WWH     ),
         .OWH         ( OWH     ),
         .UWH         ( UWH     )
-      ) i_hwpe_interconnect (
+      ) i_router (
         .clk_i   ( clk_i    ),
         .rst_ni  ( rst_ni   ),
         .clear_i ( clear_i  ),
@@ -156,9 +156,9 @@ module hci_interconnect #(
         .out     ( hwpe_mem )
       );
 
-      hci_shallow_interconnect #(
+      hci_arbiter #(
         .NB_CHAN ( N_MEM )
-      ) i_shallow_interconnect (
+      ) i_arbiter (
         .clk_i   ( clk_i               ),
         .rst_ni  ( rst_ni              ),
         .clear_i ( clear_i             ),
@@ -169,7 +169,7 @@ module hci_interconnect #(
       );
 
     end
-    else begin: no_hwpe_interconnect_gen
+    else begin: no_hwpe_branch_gen
 
       for(genvar ii=0; ii<N_MEM; ii++) begin: no_hwpe_mem_binding
         hci_mem_assign i_mem_assign (
