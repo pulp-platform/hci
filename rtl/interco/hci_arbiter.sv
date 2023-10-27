@@ -1,5 +1,5 @@
 /*
- * hci_shallow_interconnect.sv
+ * hci_arbiter.sv
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
  *
@@ -21,7 +21,7 @@
  
 import hci_package::*;
 
-module hci_shallow_interconnect
+module hci_arbiter
 #(
   parameter int unsigned NB_CHAN = 2
 )
@@ -138,4 +138,4 @@ module hci_shallow_interconnect
     end // tcdm_binding
   endgenerate
 
-endmodule // hci_shallow_interconnect
+endmodule // hci_arbiter
