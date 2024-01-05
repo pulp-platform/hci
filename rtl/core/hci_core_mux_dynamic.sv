@@ -111,8 +111,12 @@ module hci_core_mux_dynamic
       rr_counter <= '0;
     else if (clear_i == 1'b1)
       rr_counter <= '0;
-    else if (s_rr_counter_reg_en)
-      rr_counter <= (rr_counter + {{($clog2(NB_IN_CHAN/NB_OUT_CHAN)-1){1'b0}},1'b1}); //[$clog2(NB_IN_CHAN)-1:0];
+    else if (s_rr_counter_reg_en) begin
+      if (rr_counter < NB_IN_CHAN)
+        rr_counter <= (rr_counter + {{($clog2(NB_IN_CHAN/NB_OUT_CHAN)-1){1'b0}},1'b1}); //[$clog2(NB_IN_CHAN)-1:0];
+      else
+        rr_counter <= '0;
+    end
   end
 
   genvar i,j;
@@ -155,7 +159,7 @@ module hci_core_mux_dynamic
       always_comb
       begin : rotating_priority_encoder_i
         for(int j=0; j<NB_IN_CHAN/NB_OUT_CHAN; j++)
-          rr_priority[i][j] = rr_counter + i + j;
+          rr_priority[i][j] = (rr_counter + i + j < NB_IN_CHAN) ? rr_counter + i + j : rr_counter + i + j + 1;
       end
 
       always_comb
@@ -170,7 +174,7 @@ module hci_core_mux_dynamic
         winner_d[i] = rr_counter + i;
         for(int jj=0; jj<NB_IN_CHAN/NB_OUT_CHAN; jj++) begin
           if (in_req[rr_priority[i][jj]*NB_OUT_CHAN+i] == 1'b1)
-            winner_d[i] = rr_priority[i][jj];
+            winner_d[i] = (rr_priority[i][jj] < NB_IN_CHAN) ? rr_priority[i][jj] : rr_priority[i][jj] + 1;
         end
       end
 
