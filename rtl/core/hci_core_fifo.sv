@@ -138,7 +138,7 @@ module hci_core_fifo #(
     .clk ( clk_i )
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( DW )
+    .DATA_WIDTH ( UW+DW )
 `ifndef SYNTHESIS
     ,
     .BYPASS_VCR_ASSERT ( 1'b1 ),
