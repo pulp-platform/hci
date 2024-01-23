@@ -72,12 +72,18 @@ module hci_core_mux_ooo
   // round-robin counter
   always_ff @(posedge clk_i, negedge rst_ni)
   begin : round_robin_counter
-    if(rst_ni == 1'b0)
+    if(rst_ni == 1'b0) begin
       rr_counter_q <= '0;
-    else if (clear_i == 1'b1)
+    end
+    else if (clear_i == 1'b1) begin
       rr_counter_q <= '0;
-    else if (s_rr_counter_reg_en)
-      rr_counter_q <= (rr_counter_q + {{($clog2(NB_CHAN)-1){1'b0}},1'b1}); 
+    end
+    else if (s_rr_counter_reg_en) begin
+      if (rr_counter_q == NB_CHAN-1)
+        rr_counter_q <= '0;
+      else
+        rr_counter_q <= (rr_counter_q + {{($clog2(NB_CHAN)-1){1'b0}},1'b1}); 
+    end
   end
 
   for(genvar ii=0; ii<NB_CHAN; ii++) begin: in_port_binding
