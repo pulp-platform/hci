@@ -135,7 +135,6 @@ module hci_core_source
   hwpe_stream_addressgen_v3 i_addressgen (
     .clk_i       ( clk_i                    ),
     .rst_ni      ( rst_ni                   ),
-    .test_mode_i ( test_mode_i              ),
     .enable_i    ( address_gen_en           ),
     .clear_i     ( address_gen_clr          ),
     .presample_i ( ctrl_i.req_start         ),
