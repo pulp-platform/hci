@@ -95,7 +95,8 @@ module hci_core_source
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16,
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
-  parameter int unsigned MISALIGNED_ACCESSES = 1
+  parameter int unsigned MISALIGNED_ACCESSES = 1,
+  parameter int unsigned PASSTHROUGH_FIFO = 0
 )
 (
   input logic clk_i,
@@ -143,17 +144,32 @@ module hci_core_source
     .flags_o     ( flags_o.addressgen_flags )
   );
 
-  hwpe_stream_fifo #(
-    .DATA_WIDTH ( 36 ),
-    .FIFO_DEPTH ( 2  )
-  ) i_fifo_addr (
-    .clk_i   ( clk_i           ),
-    .rst_ni  ( rst_ni          ),
-    .clear_i ( clear_i         ),
-    .flags_o ( addr_fifo_flags ),
-    .push_i  ( addr            ),
-    .pop_o   ( addr_fifo       )
-  );
+  if (PASSTHROUGH_FIFO) begin : passthrough_gen
+    hwpe_stream_fifo_passthrough #(
+      .DATA_WIDTH ( 36 ),
+      .FIFO_DEPTH ( 2  )
+    ) i_fifo_addr (
+      .clk_i   ( clk_i           ),
+      .rst_ni  ( rst_ni          ),
+      .clear_i ( clear_i         ),
+      .flags_o ( addr_fifo_flags ),
+      .push_i  ( addr            ),
+      .pop_o   ( addr_fifo       )
+    );
+  end
+  else begin : nopassthrough_gen
+    hwpe_stream_fifo #(
+      .DATA_WIDTH ( 36 ),
+      .FIFO_DEPTH ( 2  )
+    ) i_fifo_addr (
+      .clk_i   ( clk_i           ),
+      .rst_ni  ( rst_ni          ),
+      .clear_i ( clear_i         ),
+      .flags_o ( addr_fifo_flags ),
+      .push_i  ( addr            ),
+      .pop_o   ( addr_fifo       )
+    );
+  end
 
   logic                  stream_valid_q;
   logic [DATA_WIDTH-1:0] stream_data_q;
