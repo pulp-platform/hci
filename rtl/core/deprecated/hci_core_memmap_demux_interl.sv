@@ -31,8 +31,8 @@ module hci_core_memmap_demux_interl #(
   input  logic [NB_REGION-1:0][AW-1:0] region_start_addr_i,
   input  logic [NB_REGION-1:0][AW-1:0] region_end_addr_i,
 
-  hci_core_intf.slave  slave,
-  hci_core_intf.master master [NB_REGION-1:0]
+  hci_core_intf.target    slave,
+  hci_core_intf.initiator master [NB_REGION-1:0]
 );
 
     enum logic [1:0] {IDLE, RESPONSE } state_q, state_d;

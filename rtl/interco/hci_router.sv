@@ -42,8 +42,8 @@ module hci_router
   input  logic rst_ni,
   input  logic clear_i,
 
-  hci_core_intf.slave in,
-  hci_mem_intf.master out [NB_OUT_CHAN-1:0]
+  hci_core_intf.target   in,
+  hci_mem_intf.initiator out [NB_OUT_CHAN-1:0]
 );
 
   //There is only one input port, but with variable data width.

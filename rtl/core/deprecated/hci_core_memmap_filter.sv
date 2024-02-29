@@ -29,9 +29,9 @@ module hci_core_memmap_filter #(
   input  logic [NB_REGION-1:0][AW-1:0] region_start_addr_i,
   input  logic [NB_REGION-1:0][AW-1:0] region_end_addr_i,
 
-  hci_core_intf.slave  slave,
-  hci_core_intf.master interl_master,
-  hci_core_intf.master per_master
+  hci_core_intf.target    slave,
+  hci_core_intf.initiator interl_master,
+  hci_core_intf.initiator per_master
 );
 
     enum logic [1:0] {IDLE, ON_TCDM, ON_PER, ERROR } state_q, state_d;

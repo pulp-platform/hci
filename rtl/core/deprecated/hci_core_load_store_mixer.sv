@@ -28,9 +28,9 @@ module hci_core_load_store_mixer
   input  logic         rst_ni,
   input  logic         clear_i,
 
-  hci_core_intf.slave  in_load,
-  hci_core_intf.slave  in_store,
-  hci_core_intf.master out
+  hci_core_intf.target    in_load,
+  hci_core_intf.target    in_store,
+  hci_core_intf.initiator out
 );
 
   // this is a variant of the dynamic mux, supporting only two channels:

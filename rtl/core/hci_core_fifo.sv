@@ -87,14 +87,14 @@ module hci_core_fifo #(
   parameter int unsigned LATCH_FIFO = 0
 )
 (
-  input  logic         clk_i,
-  input  logic         rst_ni,
-  input  logic         clear_i,
+  input  logic            clk_i,
+  input  logic            rst_ni,
+  input  logic            clear_i,
 
-  output flags_fifo_t  flags_o,
+  output flags_fifo_t     flags_o,
 
-  hci_core_intf.slave  tcdm_slave,
-  hci_core_intf.master tcdm_master
+  hci_core_intf.target    tcdm_slave,
+  hci_core_intf.initiator tcdm_master
 );
 
   flags_fifo_t flags_incoming, flags_outgoing;
