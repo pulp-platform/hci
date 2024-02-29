@@ -23,6 +23,8 @@ interface hci_core_intf (
   parameter int unsigned AW = hci_package::DEFAULT_AW; /// Address Width
   parameter int unsigned BW = hci_package::DEFAULT_BW; /// Width of a "byte" in bits (default 8)
   parameter int unsigned UW = hci_package::DEFAULT_UW; /// User Width
+  parameter int unsigned IW = hci_package::DEFAULT_IW; /// ID Width
+  parameter int unsigned EW = hci_package::DEFAULT_EW; /// ECC Width
 
   // handshake signals
   logic req;
@@ -35,12 +37,16 @@ interface hci_core_intf (
   logic        [DW-1:0]            data;
   logic        [DW/BW-1:0]         be;
   logic        [UW-1:0]            user;
+  logic        [EW-1:0]            ecc;
+  logic        [IW-1:0]            id;
 
   // response phase payload
   logic [DW-1:0] r_data;
   logic          r_valid;
   logic          r_opc;
   logic [UW-1:0] r_user;
+  logic [EW-1:0] r_ecc;
+  logic [IW-1:0] r_id;
 
   modport initiator (
     output req,
@@ -51,10 +57,14 @@ interface hci_core_intf (
     output be,
     output lrdy,
     output user,
+    output ecc,
+    output id,
     input  r_data,
     input  r_valid,
     input  r_opc,
-    input  r_user
+    input  r_user,
+    input  r_ecc,
+    input  r_id
   );
 
   modport target (
@@ -66,10 +76,14 @@ interface hci_core_intf (
     input  be,
     input  lrdy,
     input  user,
+    input  ecc,
+    input  id,
     output r_data,
     output r_valid,
     output r_opc,
-    output r_user
+    output r_user,
+    output r_ecc,
+    output r_id
   );
 
   modport monitor (
@@ -81,10 +95,14 @@ interface hci_core_intf (
     input be,
     input lrdy,
     input user,
+    input ecc,
+    input id,
     input r_data,
     input r_valid,
     input r_opc,
-    input r_user
+    input r_user,
+    input r_ecc,
+    input r_id
   );
 
 endinterface // hci_core_intf
@@ -98,6 +116,7 @@ interface hci_mem_intf (
   parameter int unsigned BW = hci_package::DEFAULT_BW; /// Width of a "byte" in bits (default 8)
   parameter int unsigned IW = hci_package::DEFAULT_IW; /// width of ID
   parameter int unsigned UW = hci_package::DEFAULT_UW;  /// User Width
+  parameter int unsigned EW = hci_package::DEFAULT_EW; /// ECC Width
 
   // handshake signals
   logic req;
@@ -110,11 +129,13 @@ interface hci_mem_intf (
   logic [DW/BW-1:0] be;
   logic [IW-1:0]    id;
   logic [UW-1:0]    user;
+  logic [EW-1:0]    ecc;
 
   // response phase payload
   logic [DW-1:0] r_data;
   logic [IW-1:0] r_id;
   logic [UW-1:0] r_user;
+  logic [EW-1:0] r_ecc;
 
   modport initiator (
     output req,
@@ -125,9 +146,11 @@ interface hci_mem_intf (
     output be,
     output id,
     output user,
+    output ecc,
     input  r_data,
     input  r_id,
-    input  r_user
+    input  r_user,
+    input  r_ecc
   );
 
   modport target (
@@ -139,9 +162,11 @@ interface hci_mem_intf (
     input  be,
     input  id,
     input  user,
+    input  ecc,
     output r_data,
     output r_id,
-    output r_user
+    output r_user,
+    output r_ecc
   );
 
   modport monitor (
@@ -153,9 +178,11 @@ interface hci_mem_intf (
     input be,
     input id,
     input user,
+    input ecc,
     input r_data,
     input r_id,
-    input r_user
+    input r_user,
+    input r_ecc
   );
 
 endinterface // hci_mem_intf
