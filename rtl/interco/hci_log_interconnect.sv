@@ -38,7 +38,7 @@ module hci_log_interconnect
   hci_mem_intf.initiator         mems  [N_MEM-1:0]
 );
 
-  // master side
+  // initiator side
   logic [N_CH0+N_CH1-1:0]             cores_req;
   logic [N_CH0+N_CH1-1:0] [AWC-1:0]   cores_add;
   logic [N_CH0+N_CH1-1:0]             cores_wen;
@@ -47,7 +47,7 @@ module hci_log_interconnect
   logic [N_CH0+N_CH1-1:0]             cores_gnt;
   logic [N_CH0+N_CH1-1:0]             cores_r_valid;
   logic [N_CH0+N_CH1-1:0] [UW+DW-1:0] cores_r_rdata;
-  // slave side
+  // target side
   logic [N_MEM-1:0]             mems_req;
   logic [N_MEM-1:0] [AWM-1:0]   mems_add;
   logic [N_MEM-1:0]             mems_wen;

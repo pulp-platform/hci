@@ -220,7 +220,7 @@ module hci_core_split #(
       end
     end
 
-    // Master port binding
+    // initiator port binding
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin: tcdm_binding
       assign tcdm_initiator[ii].req   = tcdm_fifo[ii].req;
       assign tcdm_initiator[ii].add   = tcdm_fifo[ii].add;

@@ -24,13 +24,13 @@
  * carrying the `addr` (*outgoing stream*); the other from the `tcdm_target` to the
  * `tcdm_initiator` interface, carrying the `r_data` (*incoming stream*).
  *
- * On the slave side, the `req` and `gnt` of the HCI-Core interfaces
+ * On the target side, the `req` and `gnt` of the HCI-Core interfaces
  * are mapped on `valid` and `ready` respectively in the outgoing stream.
- * Backpressure on the incoming stream (slave side) cannot be enforced by means
- * of the HCI-Core slave interface and thus is carried by a specific
+ * Backpressure on the incoming stream (target side) cannot be enforced by means
+ * of the HCI-Core target interface and thus is carried by a specific
  * input `ready_i` that must be generated outside of the TCDM FIFO, typically
  * by a **hwpe_stream_source** module (output `tcdm_fifo_ready_o`).
- * On the master side, `req` is mapped to the AND of the incoming stream `ready`
+ * On the initiator side, `req` is mapped to the AND of the incoming stream `ready`
  * signal and the outgoing stream `valid` signal. `gnt` is hooked to the
  * outgoing stream `ready` signal.
  * The `r_valid` is mapped on `valid` in the incoming stream.

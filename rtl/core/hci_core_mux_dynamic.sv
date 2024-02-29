@@ -15,11 +15,11 @@
 
 /**
  * The **TCDM multiplexer** can be used to funnel more input "virtual"
- * TCDM channels `in` into a smaller set of master ports `out`.
+ * TCDM channels `in` into a smaller set of initiator ports `out`.
  * It uses a round robin counter to avoid starvation, and differs
  * from the modules used within the logarithmic interconnect in
  * that arbitration is performed depending on the round robin
- * counter and not on the slave port; in other words, its task is
+ * counter and not on the target port; in other words, its task is
  * to fill all out ports with requests from the in port, and not
  * to route in requests to a specific out port.
  *
