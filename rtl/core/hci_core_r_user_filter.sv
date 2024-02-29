@@ -68,6 +68,7 @@ module hci_core_r_user_filter #(
  * These asserts try to avoid this scenario!
  */
 `ifndef SYNTHESIS
+`ifndef VERILATOR
   // gnt=1 & wen=1 => the following cycle r_valid=1
   property p_gnt_wen_high_then_r_valid_high_next_cycle;
     @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
@@ -83,6 +84,7 @@ module hci_core_r_user_filter #(
 
   assert_gnt_low_then_r_valid_low_next_cycle: assert property (p_gnt_low_then_r_valid_low_next_cycle)
     else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_user` filter is at the 1-cycle latency boundary?");
+`endif
 `endif
 
 endmodule // hci_core_r_user_filter
