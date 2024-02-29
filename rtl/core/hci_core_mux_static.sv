@@ -58,7 +58,7 @@ module hci_core_mux_static
 
       assign in_req     [ii] = in[ii].req;
       assign in_gnt     [ii] = in[ii].gnt;
-      assign in_lrdy    [ii] = in[ii].lrdy;
+      assign in_lrdy    [ii] = in[ii].r_ready;
       assign in_add     [ii] = in[ii].add;
       assign in_wen     [ii] = in[ii].wen;
       assign in_data    [ii] = in[ii].data;
@@ -76,13 +76,13 @@ module hci_core_mux_static
       assign in[ii].r_user  = out.r_user;
     end
 
-    assign out.req   = in_req   [sel_i];
-    assign out.add   = in_add   [sel_i];
-    assign out.wen   = in_wen   [sel_i];
-    assign out.be    = in_be    [sel_i];
-    assign out.data  = in_data  [sel_i];
-    assign out.lrdy  = in_lrdy  [sel_i];
-    assign out.user  = in_user  [sel_i];
+    assign out.req     = in_req   [sel_i];
+    assign out.add     = in_add   [sel_i];
+    assign out.wen     = in_wen   [sel_i];
+    assign out.be      = in_be    [sel_i];
+    assign out.data    = in_data  [sel_i];
+    assign out.r_ready = in_lrdy  [sel_i];
+    assign out.user    = in_user  [sel_i];
 
   endgenerate
 

@@ -29,7 +29,7 @@ interface hci_core_intf (
   // handshake signals
   logic req;
   logic gnt;
-  logic lrdy; // load ready signal
+  logic r_ready; // load ready signal
 
   // request phase payload
   logic        [AW-1:0]            add;
@@ -55,7 +55,7 @@ interface hci_core_intf (
     output wen,
     output data,
     output be,
-    output lrdy,
+    output r_ready,
     output user,
     output ecc,
     output id,
@@ -74,7 +74,7 @@ interface hci_core_intf (
     input  wen,
     input  data,
     input  be,
-    input  lrdy,
+    input  r_ready,
     input  user,
     input  ecc,
     input  id,
@@ -93,7 +93,7 @@ interface hci_core_intf (
     input wen,
     input data,
     input be,
-    input lrdy,
+    input r_ready,
     input user,
     input ecc,
     input id,

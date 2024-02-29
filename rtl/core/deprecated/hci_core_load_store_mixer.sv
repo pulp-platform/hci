@@ -96,7 +96,7 @@ module hci_core_load_store_mixer
     assign in_wen   [LOAD] = in_load.wen;
     assign in_be    [LOAD] = in_load.be;
     assign in_data  [LOAD] = in_load.data;
-    assign in_lrdy  [LOAD] = in_load.lrdy;
+    assign in_lrdy  [LOAD] = in_load.r_ready;
     assign in_user  [LOAD] = in_load.user;
     assign in_load.gnt     = in_gnt     [LOAD];
     assign in_load.r_data  = in_r_data  [LOAD];
@@ -109,7 +109,7 @@ module hci_core_load_store_mixer
     assign in_wen   [STORE] = in_store.wen;
     assign in_be    [STORE] = in_store.be;
     assign in_data  [STORE] = in_store.data;
-    assign in_lrdy  [STORE] = in_store.lrdy;
+    assign in_lrdy  [STORE] = in_store.r_ready;
     assign in_user  [STORE] = in_store.user;
     assign in_store.gnt     = in_gnt     [STORE];
     assign in_store.r_data  = in_r_data  [STORE];
@@ -117,13 +117,13 @@ module hci_core_load_store_mixer
     assign in_store.r_opc   = in_r_opc   [STORE];
     assign in_store.r_user  = in_r_user  [STORE];
 
-    assign out.req   = out_req   [0];
-    assign out.add   = out_add   [0];
-    assign out.wen   = out_wen   [0];
-    assign out.be    = out_be    [0];
-    assign out.data  = out_data  [0];
-    assign out.lrdy  = out_lrdy  [0];
-    assign out.user  = out_user  [0];
+    assign out.req     = out_req   [0];
+    assign out.add     = out_add   [0];
+    assign out.wen     = out_wen   [0];
+    assign out.be      = out_be    [0];
+    assign out.data    = out_data  [0];
+    assign out.r_ready = out_lrdy  [0];
+    assign out.user    = out_user  [0];
     assign out_gnt     [0] = out.gnt;
     assign out_r_data  [0] = out.r_data;
     assign out_r_valid [0] = out.r_valid;

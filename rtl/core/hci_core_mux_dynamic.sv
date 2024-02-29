@@ -125,7 +125,7 @@ module hci_core_mux_dynamic
       assign in_wen   [j] = in[j].wen;
       assign in_be    [j] = in[j].be;
       assign in_data  [j] = in[j].data;
-      assign in_lrdy  [j] = in[j].lrdy;
+      assign in_lrdy  [j] = in[j].r_ready;
       assign in_user  [j] = in[j].user;
       assign in[j].gnt     = in_gnt     [j];
       assign in[j].r_data  = in_r_data  [j];
@@ -137,13 +137,13 @@ module hci_core_mux_dynamic
 
     for(i=0; i<NB_OUT_CHAN; i++) begin : out_chan_binding
 
-      assign out[i].req   = out_req  [i];
-      assign out[i].add   = out_add  [i];
-      assign out[i].wen   = out_wen  [i];
-      assign out[i].be    = out_be   [i];
-      assign out[i].data  = out_data [i];
-      assign out[i].lrdy  = out_lrdy [i];
-      assign out[i].user  = out_user [i];
+      assign out[i].req     = out_req  [i];
+      assign out[i].add     = out_add  [i];
+      assign out[i].wen     = out_wen  [i];
+      assign out[i].be      = out_be   [i];
+      assign out[i].data    = out_data [i];
+      assign out[i].r_ready = out_lrdy [i];
+      assign out[i].user    = out_user [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
       assign out_r_valid [i] = out[i].r_valid;

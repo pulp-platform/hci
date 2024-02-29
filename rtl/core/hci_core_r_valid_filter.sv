@@ -28,18 +28,18 @@ module hci_core_r_valid_filter
 
   logic wen_q;
 
-  assign tcdm_initiator.add   = tcdm_target.add;
-  assign tcdm_initiator.data  = tcdm_target.data;
-  assign tcdm_initiator.be    = tcdm_target.be;
-  assign tcdm_initiator.wen   = tcdm_target.wen;
-  assign tcdm_initiator.req   = tcdm_target.req;
-  assign tcdm_initiator.lrdy  = tcdm_target.lrdy;
-  assign tcdm_initiator.user  = tcdm_target.user;
-  assign tcdm_target.gnt     = tcdm_initiator.gnt;
-  assign tcdm_target.r_data  = tcdm_initiator.r_data;
-  assign tcdm_target.r_opc   = tcdm_initiator.r_opc;
-  assign tcdm_target.r_user  = tcdm_initiator.r_user;
-  assign tcdm_target.r_valid = enable_i ? tcdm_initiator.r_valid & wen_q : tcdm_initiator.r_valid;
+  assign tcdm_initiator.add     = tcdm_target.add;
+  assign tcdm_initiator.data    = tcdm_target.data;
+  assign tcdm_initiator.be      = tcdm_target.be;
+  assign tcdm_initiator.wen     = tcdm_target.wen;
+  assign tcdm_initiator.req     = tcdm_target.req;
+  assign tcdm_initiator.r_ready = tcdm_target.r_ready;
+  assign tcdm_initiator.user    = tcdm_target.user;
+  assign tcdm_target.gnt        = tcdm_initiator.gnt;
+  assign tcdm_target.r_data     = tcdm_initiator.r_data;
+  assign tcdm_target.r_opc      = tcdm_initiator.r_opc;
+  assign tcdm_target.r_user     = tcdm_initiator.r_user;
+  assign tcdm_target.r_valid    = enable_i ? tcdm_initiator.r_valid & wen_q : tcdm_initiator.r_valid;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin

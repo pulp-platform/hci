@@ -210,13 +210,13 @@ module hci_core_source
     assign stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
   end
 
-  assign tcdm.lrdy  = stream.ready;
-  assign tcdm.req   = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready : '0;
-  assign tcdm.add   = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
-  assign tcdm.wen   = 1'b1;
-  assign tcdm.be    = 4'h0;
-  assign tcdm.data  = '0;
-  assign tcdm.user  = '0;
+  assign tcdm.r_ready = stream.ready;
+  assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready : '0;
+  assign tcdm.add     = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
+  assign tcdm.wen     = 1'b1;
+  assign tcdm.be      = 4'h0;
+  assign tcdm.data    = '0;
+  assign tcdm.user    = '0;
   assign stream.strb  = '1;
   assign stream.data  = stream_data_aligned;
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?

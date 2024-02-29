@@ -113,19 +113,19 @@ module hci_core_memmap_filter #(
       per_initiator.req  = target.req & ~destination_interleaved;
       target.gnt  = interl_initiator.gnt | per_initiator.gnt | (target.req & ~(|(destination_map)));
       // interl_initiator request
-      interl_initiator.add   = target.add;
-      interl_initiator.wen   = target.wen;
-      interl_initiator.data  = target.data;
-      interl_initiator.be    = target.be;
-      interl_initiator.lrdy  = target.lrdy;
-      interl_initiator.user  = target.user;
+      interl_initiator.add     = target.add;
+      interl_initiator.wen     = target.wen;
+      interl_initiator.data    = target.data;
+      interl_initiator.be      = target.be;
+      interl_initiator.r_ready = target.r_ready;
+      interl_initiator.user    = target.user;
       // per_initiator request
-      per_initiator.add   = target.add;
-      per_initiator.wen   = target.wen;
-      per_initiator.data  = target.data;
-      per_initiator.be    = target.be;
-      per_initiator.lrdy  = target.lrdy;
-      per_initiator.user  = target.user;
+      per_initiator.add     = target.add;
+      per_initiator.wen     = target.wen;
+      per_initiator.data    = target.data;
+      per_initiator.be      = target.be;
+      per_initiator.r_ready = target.r_ready;
+      per_initiator.user    = target.user;
       // target response
       case(state_q)
         IDLE: begin
