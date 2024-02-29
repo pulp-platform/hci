@@ -161,7 +161,7 @@ module hci_core_fifo #(
     assign tcdm_target.r_user = '0;
   end
   assign tcdm_target.r_valid  = stream_incoming_pop.valid;
-  assign stream_incoming_pop.ready = tcdm_target.lrdy;
+  assign stream_incoming_pop.ready = tcdm_target.r_ready;
 
   // enforce protocol on incoming stream
   if (UW > 0)
@@ -239,7 +239,7 @@ module hci_core_fifo #(
     assign tcdm_initiator_user = '0;
   end
   assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full;
-  assign tcdm_initiator.lrdy = incoming_fifo_not_full;
+  assign tcdm_initiator.r_ready = incoming_fifo_not_full;
   assign stream_outgoing_pop.ready = tcdm_initiator.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0
 
   hwpe_stream_fifo #(

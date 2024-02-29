@@ -197,12 +197,12 @@ module hci_core_sink
   end
 
   // hci port binding
-  assign tcdm_prefifo.req   = (cs != STREAMER_IDLE) ? stream.valid & addr_fifo.valid : '0;
-  assign tcdm_prefifo.add   = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
-  assign tcdm_prefifo.wen   = '0;
-  assign tcdm_prefifo.be    = (cs != STREAMER_IDLE) ? stream_strb_aligned            : '0;
-  assign tcdm_prefifo.data  = (cs != STREAMER_IDLE) ? stream_data_aligned            : '0;
-  assign tcdm_prefifo.lrdy  = '1;
+  assign tcdm_prefifo.req     = (cs != STREAMER_IDLE) ? stream.valid & addr_fifo.valid : '0;
+  assign tcdm_prefifo.add     = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
+  assign tcdm_prefifo.wen     = '0;
+  assign tcdm_prefifo.be      = (cs != STREAMER_IDLE) ? stream_strb_aligned            : '0;
+  assign tcdm_prefifo.data    = (cs != STREAMER_IDLE) ? stream_data_aligned            : '0;
+  assign tcdm_prefifo.r_ready = '1;
   assign stream.ready    = ~stream.valid | (tcdm_prefifo.gnt & addr_fifo.valid);
   assign addr_fifo.ready =  stream.valid & stream.ready;
 

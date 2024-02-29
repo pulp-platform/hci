@@ -141,11 +141,11 @@ module hci_core_memmap_demux_interl #(
       for(genvar ii=0; ii<NB_REGION; ii++) begin
         assign initiator[ii].add[AW-1:AWC] = '0;
         assign initiator[ii].add[AWC-1:0]  = target.add[AWC-1:0] - region_start_addr_i[ii][AWC-1:0];
-        assign initiator[ii].wen   = target.wen;
-        assign initiator[ii].data  = target.data;
-        assign initiator[ii].be    = target.be;
-        assign initiator[ii].lrdy  = target.lrdy;
-        assign initiator[ii].req   = initiator_req_aux[ii];
+        assign initiator[ii].wen           = target.wen;
+        assign initiator[ii].data          = target.data;
+        assign initiator[ii].be            = target.be;
+        assign initiator[ii].r_ready       = target.r_ready;
+        assign initiator[ii].req           = initiator_req_aux[ii];
         assign initiator_gnt_aux     [ii] = initiator[ii].gnt;
         assign initiator_r_valid_aux [ii] = initiator[ii].r_valid;
         assign initiator_r_data_aux  [ii] = initiator[ii].r_data;

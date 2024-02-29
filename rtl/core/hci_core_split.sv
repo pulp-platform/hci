@@ -83,13 +83,13 @@ module hci_core_split #(
 
   // Signal binding
   for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin: tcdm_binding
-    assign tcdm[ii].add   = tcdm_target.add + ii*BW_OUT;
-    assign tcdm[ii].wen   = tcdm_target.wen;
-    assign tcdm[ii].be    = tcdm_target.be[(ii+1)*BW_OUT-1:ii*BW_OUT];
-    assign tcdm[ii].data  = tcdm_target.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
-    assign tcdm[ii].user  = tcdm_target.user;
-    assign tcdm[ii].lrdy  = ~cs_rvalid ?  tcdm_target.lrdy :            // if state is RVALID, propagate load-ready directly
-                                         &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their lrdy
+    assign tcdm[ii].add     = tcdm_target.add + ii*BW_OUT;
+    assign tcdm[ii].wen     = tcdm_target.wen;
+    assign tcdm[ii].be      = tcdm_target.be[(ii+1)*BW_OUT-1:ii*BW_OUT];
+    assign tcdm[ii].data    = tcdm_target.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
+    assign tcdm[ii].user    = tcdm_target.user;
+    assign tcdm[ii].r_ready = ~cs_rvalid ?  tcdm_target.r_ready :         // if state is RVALID, propagate load-ready directly
+                                           &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their r_ready
 
     assign tcdm_r_data [ii] = tcdm[ii].r_data;
     assign tcdm_r_valid[ii] = ~cs_rvalid ?  tcdm[ii].r_valid :            // if state is RVALID, propagate r_valid directly
@@ -205,7 +205,7 @@ module hci_core_split #(
       end
     end
 
-    // LRDY masking
+    // r_ready masking
     assign tcdm_initiator_lrdy_masked_d = cs_rvalid ? tcdm_initiator_lrdy_masked_q | tcdm_initiator_r_valid | ~tcdm_initiator_req : tcdm_initiator_r_valid | ~tcdm_initiator_req;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
@@ -222,13 +222,13 @@ module hci_core_split #(
 
     // initiator port binding
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin: tcdm_binding
-      assign tcdm_initiator[ii].req   = tcdm_fifo[ii].req;
-      assign tcdm_initiator[ii].add   = tcdm_fifo[ii].add;
-      assign tcdm_initiator[ii].wen   = tcdm_fifo[ii].wen;
-      assign tcdm_initiator[ii].be    = tcdm_fifo[ii].be;
-      assign tcdm_initiator[ii].data  = tcdm_fifo[ii].data;
-      assign tcdm_initiator[ii].user  = tcdm_fifo[ii].user;
-      assign tcdm_initiator[ii].lrdy  = tcdm_fifo[ii].lrdy;
+      assign tcdm_initiator[ii].req     = tcdm_fifo[ii].req;
+      assign tcdm_initiator[ii].add     = tcdm_fifo[ii].add;
+      assign tcdm_initiator[ii].wen     = tcdm_fifo[ii].wen;
+      assign tcdm_initiator[ii].be      = tcdm_fifo[ii].be;
+      assign tcdm_initiator[ii].data    = tcdm_fifo[ii].data;
+      assign tcdm_initiator[ii].user    = tcdm_fifo[ii].user;
+      assign tcdm_initiator[ii].r_ready = tcdm_fifo[ii].r_ready;
 
       assign tcdm_initiator_req[ii] = tcdm_initiator[ii].req;
 

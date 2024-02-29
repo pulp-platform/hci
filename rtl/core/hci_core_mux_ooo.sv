@@ -87,7 +87,7 @@ module hci_core_mux_ooo
 
     assign in_req     [ii] = in[ii].req;
     assign in_gnt     [ii] = in[ii].gnt;
-    assign in_lrdy    [ii] = in[ii].lrdy;
+    assign in_lrdy    [ii] = in[ii].r_ready;
     assign in_add     [ii] = in[ii].add;
     assign in_wen     [ii] = in[ii].wen;
     assign in_data    [ii] = in[ii].data;
@@ -119,12 +119,12 @@ module hci_core_mux_ooo
   end
 
   // select input port depending on winner-takes-all arbitration
-  assign out.req   = in_req   [winner_d];
-  assign out.add   = in_add   [winner_d];
-  assign out.wen   = in_wen   [winner_d];
-  assign out.be    = in_be    [winner_d];
-  assign out.data  = in_data  [winner_d];
-  assign out.lrdy  = in_lrdy  [out.r_user];
-  assign out.user  = in_user  [winner_d];
+  assign out.req     = in_req   [winner_d];
+  assign out.add     = in_add   [winner_d];
+  assign out.wen     = in_wen   [winner_d];
+  assign out.be      = in_be    [winner_d];
+  assign out.data    = in_data  [winner_d];
+  assign out.r_ready = in_lrdy  [out.r_user];
+  assign out.user    = in_user  [winner_d];
 
 endmodule // hci_core_mux_ooo

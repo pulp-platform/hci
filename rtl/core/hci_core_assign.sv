@@ -27,14 +27,14 @@ module hci_core_assign
   hci_core_intf.initiator tcdm_initiator
 );
 
-  assign tcdm_initiator.req    = tcdm_target.req;
-  assign tcdm_target.gnt       = tcdm_initiator.gnt;
-  assign tcdm_initiator.add    = tcdm_target.add;
-  assign tcdm_initiator.wen    = tcdm_target.wen;
-  assign tcdm_initiator.data   = tcdm_target.data;
-  assign tcdm_initiator.be     = tcdm_target.be;
-  assign tcdm_initiator.lrdy   = tcdm_target.lrdy;
-  assign tcdm_initiator.user   = tcdm_target.user;
+  assign tcdm_initiator.req     = tcdm_target.req;
+  assign tcdm_target.gnt        = tcdm_initiator.gnt;
+  assign tcdm_initiator.add     = tcdm_target.add;
+  assign tcdm_initiator.wen     = tcdm_target.wen;
+  assign tcdm_initiator.data    = tcdm_target.data;
+  assign tcdm_initiator.be      = tcdm_target.be;
+  assign tcdm_initiator.r_ready = tcdm_target.r_ready;
+  assign tcdm_initiator.user    = tcdm_target.user;
   assign tcdm_target.r_data  = tcdm_initiator.r_data;
   assign tcdm_target.r_valid = tcdm_initiator.r_valid;
   assign tcdm_target.r_opc   = tcdm_initiator.r_opc;
