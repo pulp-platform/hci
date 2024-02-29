@@ -28,8 +28,8 @@ module hci_router_reorder
 
   input  logic [$clog2(NB_OUT_CHAN)-1:0] order_i,
 
-  hwpe_stream_intf_tcdm.target       in  [NB_IN_CHAN-1:0],
-  hwpe_stream_intf_tcdm.initiator    out [NB_OUT_CHAN-1:0]
+  hwpe_stream_intf_tcdm.slave  in  [NB_IN_CHAN-1:0],
+  hwpe_stream_intf_tcdm.master out [NB_OUT_CHAN-1:0]
 
 );
 
