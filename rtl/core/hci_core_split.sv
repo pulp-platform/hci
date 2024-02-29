@@ -50,8 +50,8 @@ module hci_core_split #(
   input logic clk_i,
   input logic rst_ni,
   input logic clear_i,
-  hci_core_intf.slave  tcdm_slave,
-  hci_core_intf.master tcdm_master [NB_OUT_CHAN-1:0]
+  hci_core_intf.target    tcdm_slave,
+  hci_core_intf.initiator tcdm_master [NB_OUT_CHAN-1:0]
 );
 
   localparam DW_OUT = DW/NB_OUT_CHAN;

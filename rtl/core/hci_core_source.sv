@@ -107,7 +107,7 @@ module hci_core_source
   input logic clear_i,
   input logic enable_i,
 
-  hci_core_intf.master           tcdm,
+  hci_core_intf.initiator        tcdm,
   hwpe_stream_intf_stream.source stream,
 
   // control plane

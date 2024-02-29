@@ -34,8 +34,8 @@ module hci_core_mux_static
 
   input  logic [$clog2(NB_CHAN-1):0] sel_i,
 
-  hci_core_intf.slave  in  [NB_CHAN-1:0],
-  hci_core_intf.master out
+  hci_core_intf.target               in  [NB_CHAN-1:0],
+  hci_core_intf.initiator            out
 );
 
   // tcdm ports binding

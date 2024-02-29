@@ -97,8 +97,8 @@ module hci_core_sink
   input logic clear_i,
   input logic enable_i,
 
-  hci_core_intf.master           tcdm,
-  hwpe_stream_intf_stream.sink   stream,
+  hci_core_intf.initiator      tcdm,
+  hwpe_stream_intf_stream.sink stream,
 
   // control plane
   input  hci_streamer_ctrl_t  ctrl_i,

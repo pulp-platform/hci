@@ -22,8 +22,8 @@ module hci_core_r_valid_filter
   input  logic rst_ni,
   input  logic clear_i,
   input  logic enable_i,
-  hci_core_intf.slave  tcdm_slave,
-  hci_core_intf.master tcdm_master
+  hci_core_intf.target    tcdm_slave,
+  hci_core_intf.initiator tcdm_master
 );
 
   logic wen_q;

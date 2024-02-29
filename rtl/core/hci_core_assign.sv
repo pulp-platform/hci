@@ -23,8 +23,8 @@ import hwpe_stream_package::*;
 
 module hci_core_assign 
 (
-  hci_core_intf.slave  tcdm_slave,
-  hci_core_intf.master tcdm_master
+  hci_core_intf.target    tcdm_slave,
+  hci_core_intf.initiator tcdm_master
 );
 
   assign tcdm_master.req    = tcdm_slave.req;

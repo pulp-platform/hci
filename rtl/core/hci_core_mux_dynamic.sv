@@ -57,12 +57,12 @@ module hci_core_mux_dynamic
   parameter int unsigned UW = hci_package::DEFAULT_UW
 )
 (
-  input  logic         clk_i,
-  input  logic         rst_ni,
-  input  logic         clear_i,
+  input  logic            clk_i,
+  input  logic            rst_ni,
+  input  logic            clear_i,
 
-  hci_core_intf.slave  in  [NB_IN_CHAN-1:0],
-  hci_core_intf.master out [NB_OUT_CHAN-1:0]
+  hci_core_intf.target    in  [NB_IN_CHAN-1:0],
+  hci_core_intf.initiator out [NB_OUT_CHAN-1:0]
 );
 
   // based on MUX2Req.sv from LIC

@@ -41,8 +41,8 @@ module hci_core_mux_ooo
   input  logic                                    priority_force_i,
   input  logic [NB_CHAN-1:0][$clog2(NB_CHAN)-1:0] priority_i,
 
-  hci_core_intf.slave                             in  [NB_CHAN-1:0],
-  hci_core_intf.master                            out
+  hci_core_intf.target                            in  [NB_CHAN-1:0],
+  hci_core_intf.initiator                         out
 );
 
   // tcdm ports binding

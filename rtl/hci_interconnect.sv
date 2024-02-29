@@ -43,11 +43,11 @@ module hci_interconnect #(
   input logic                   rst_ni              ,
   input logic                   clear_i             ,
   input hci_interconnect_ctrl_t ctrl_i              ,
-  hci_core_intf.slave           cores   [N_CORE-1:0],
-  hci_core_intf.slave           dma     [N_DMA-1:0] ,
-  hci_core_intf.slave           ext     [N_EXT-1:0] ,
-  hci_mem_intf.master           mems    [N_MEM-1:0] ,
-  hci_core_intf.slave           hwpe
+  hci_core_intf.target           cores   [N_CORE-1:0],
+  hci_core_intf.target           dma     [N_DMA-1:0] ,
+  hci_core_intf.target           ext     [N_EXT-1:0] ,
+  hci_mem_intf.initiator         mems    [N_MEM-1:0] ,
+  hci_core_intf.target           hwpe
 );
 
   hci_core_intf #(

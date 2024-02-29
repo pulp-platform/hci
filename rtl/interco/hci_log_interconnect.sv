@@ -34,8 +34,8 @@ module hci_log_interconnect
   input  logic                   clk_i,
   input  logic                   rst_ni,
   input  hci_interconnect_ctrl_t ctrl_i,
-  hci_core_intf.slave            cores [N_CH0+N_CH1-1:0],
-  hci_mem_intf.master            mems  [N_MEM-1:0]
+  hci_core_intf.target           cores [N_CH0+N_CH1-1:0],
+  hci_mem_intf.initiator         mems  [N_MEM-1:0]
 );
 
   // master side

@@ -42,7 +42,7 @@ interface hci_core_intf (
   logic          r_opc;
   logic [UW-1:0] r_user;
 
-  modport master (
+  modport initiator (
     output req,
     input  gnt,
     output add,
@@ -57,7 +57,7 @@ interface hci_core_intf (
     input  r_user
   );
 
-  modport slave (
+  modport target (
     input  req,
     output gnt,
     input  add,
@@ -116,7 +116,7 @@ interface hci_mem_intf (
   logic [IW-1:0] r_id;
   logic [UW-1:0] r_user;
 
-  modport master (
+  modport initiator (
     output req,
     input  gnt,
     output add,
@@ -130,7 +130,7 @@ interface hci_mem_intf (
     input  r_user
   );
 
-  modport slave (
+  modport target (
     input  req,
     output gnt,
     input  add,
