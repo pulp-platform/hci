@@ -144,7 +144,6 @@ module hci_core_memmap_demux_interl #(
         assign master[ii].wen   = slave.wen;
         assign master[ii].data  = slave.data;
         assign master[ii].be    = slave.be;
-        assign master[ii].boffs = slave.boffs;
         assign master[ii].lrdy  = slave.lrdy;
         assign master[ii].req = master_req_aux[ii];
         assign master_gnt_aux     [ii] = master[ii].gnt;

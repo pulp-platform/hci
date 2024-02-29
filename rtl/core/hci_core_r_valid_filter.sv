@@ -32,7 +32,6 @@ module hci_core_r_valid_filter
   assign tcdm_master.data  = tcdm_slave.data;
   assign tcdm_master.be    = tcdm_slave.be;
   assign tcdm_master.wen   = tcdm_slave.wen;
-  assign tcdm_master.boffs = tcdm_slave.boffs;
   assign tcdm_master.req   = tcdm_slave.req;
   assign tcdm_master.lrdy  = tcdm_slave.lrdy;
   assign tcdm_master.user  = tcdm_slave.user;

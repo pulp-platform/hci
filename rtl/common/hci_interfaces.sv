@@ -22,8 +22,6 @@ interface hci_core_intf (
   parameter int unsigned DW = hci_package::DEFAULT_DW; /// Data Width
   parameter int unsigned AW = hci_package::DEFAULT_AW; /// Address Width
   parameter int unsigned BW = hci_package::DEFAULT_BW; /// Width of a "byte" in bits (default 8)
-  parameter int unsigned WW = hci_package::DEFAULT_WW; /// Width of a "word" in bits (default 32)
-  parameter int unsigned OW = AW; /// intra-bank offset width, defaults to addr width
   parameter int unsigned UW = hci_package::DEFAULT_UW; /// User Width
 
   // handshake signals
@@ -36,7 +34,6 @@ interface hci_core_intf (
   logic                            wen; // wen=1'b1 for LOAD, wen=1'b0 for STORE
   logic        [DW-1:0]            data;
   logic        [DW/BW-1:0]         be;
-  logic signed [DW/WW-1:0][OW-1:0] boffs; // intra-bank offset, used for bank-restricted scatter/gather
   logic        [UW-1:0]            user;
 
   // response phase payload
@@ -52,7 +49,6 @@ interface hci_core_intf (
     output wen,
     output data,
     output be,
-    output boffs,
     output lrdy,
     output user,
     input  r_data,
@@ -68,7 +64,6 @@ interface hci_core_intf (
     input  wen,
     input  data,
     input  be,
-    input  boffs,
     input  lrdy,
     input  user,
     output r_data,
@@ -84,7 +79,6 @@ interface hci_core_intf (
     input wen,
     input data,
     input be,
-    input boffs,
     input lrdy,
     input user,
     input r_data,
@@ -102,7 +96,7 @@ interface hci_mem_intf (
   parameter int unsigned AW = hci_package::DEFAULT_AW; /// Address Width
   parameter int unsigned DW = hci_package::DEFAULT_DW; /// Data Width
   parameter int unsigned BW = hci_package::DEFAULT_BW; /// Width of a "byte" in bits (default 8)
-  parameter int unsigned IW = 8; /// width of ID
+  parameter int unsigned IW = hci_package::DEFAULT_IW; /// width of ID
   parameter int unsigned UW = hci_package::DEFAULT_UW;  /// User Width
 
   // handshake signals

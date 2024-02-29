@@ -34,8 +34,6 @@ module hci_router
   parameter int unsigned DWH = hci_package::DEFAULT_DW,
   parameter int unsigned AWH = hci_package::DEFAULT_AW,
   parameter int unsigned BWH = hci_package::DEFAULT_BW,
-  parameter int unsigned WWH = hci_package::DEFAULT_WW,
-  parameter int unsigned OWH = AWH,
   parameter int unsigned UWH = hci_package::DEFAULT_UW, // User Width not yet implemented
   parameter int unsigned AWM = 12
 )
@@ -73,8 +71,6 @@ module hci_router
     .DW ( DWH ),
     .AW ( AWH ),
     .BW ( BWH ),
-    .WW ( WWH ),
-    .OW ( OWH ),
     .UW ( UWH )
   ) postfifo (
     .clk ( clk_i )
@@ -107,8 +103,6 @@ module hci_router
         .DW         ( DWH        ),
         .BW         ( AWH        ),
         .AW         ( BWH        ),
-        .WW         ( WWH        ),
-        .OW         ( OWH        ),
         .UW         ( UWH        )
       ) i_fifo (
         .clk_i       ( clk_i         ),

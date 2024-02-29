@@ -117,7 +117,6 @@ module hci_core_memmap_filter #(
       interl_master.wen   = slave.wen;
       interl_master.data  = slave.data;
       interl_master.be    = slave.be;
-      interl_master.boffs = slave.boffs;
       interl_master.lrdy  = slave.lrdy;
       interl_master.user  = slave.user;
       // per_master request
@@ -125,7 +124,6 @@ module hci_core_memmap_filter #(
       per_master.wen   = slave.wen;
       per_master.data  = slave.data;
       per_master.be    = slave.be;
-      per_master.boffs = slave.boffs;
       per_master.lrdy  = slave.lrdy;
       per_master.user  = slave.user;
       // slave response

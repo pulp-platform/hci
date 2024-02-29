@@ -216,7 +216,6 @@ module hci_core_source
   assign tcdm.wen   = 1'b1;
   assign tcdm.be    = 4'h0;
   assign tcdm.data  = '0;
-  assign tcdm.boffs = '0;
   assign tcdm.user  = '0;
   assign stream.strb  = '1;
   assign stream.data  = stream_data_aligned;
