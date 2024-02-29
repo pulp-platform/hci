@@ -27,24 +27,24 @@ module hci_core_r_user_filter #(
   input  logic rst_ni,
   input  logic clear_i,
   input  logic enable_i,
-  hci_core_intf.target    tcdm_slave,
-  hci_core_intf.initiator tcdm_master
+  hci_core_intf.target    tcdm_target,
+  hci_core_intf.initiator tcdm_initiator
 );
 
   logic [UW-1:0] user_q;
 
-  assign tcdm_master.add   = tcdm_slave.add;
-  assign tcdm_master.data  = tcdm_slave.data;
-  assign tcdm_master.be    = tcdm_slave.be;
-  assign tcdm_master.wen   = tcdm_slave.wen;
-  assign tcdm_master.req   = tcdm_slave.req;
-  assign tcdm_master.lrdy  = tcdm_slave.lrdy;
-  assign tcdm_master.user  = '0;
-  assign tcdm_slave.gnt     = tcdm_master.gnt;
-  assign tcdm_slave.r_data  = tcdm_master.r_data;
-  assign tcdm_slave.r_opc   = tcdm_master.r_opc;
-  assign tcdm_slave.r_user  = user_q;
-  assign tcdm_slave.r_valid = tcdm_master.r_valid;
+  assign tcdm_initiator.add   = tcdm_target.add;
+  assign tcdm_initiator.data  = tcdm_target.data;
+  assign tcdm_initiator.be    = tcdm_target.be;
+  assign tcdm_initiator.wen   = tcdm_target.wen;
+  assign tcdm_initiator.req   = tcdm_target.req;
+  assign tcdm_initiator.lrdy  = tcdm_target.lrdy;
+  assign tcdm_initiator.user  = '0;
+  assign tcdm_target.gnt     = tcdm_initiator.gnt;
+  assign tcdm_target.r_data  = tcdm_initiator.r_data;
+  assign tcdm_target.r_opc   = tcdm_initiator.r_opc;
+  assign tcdm_target.r_user  = user_q;
+  assign tcdm_target.r_valid = tcdm_initiator.r_valid;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
@@ -54,8 +54,8 @@ module hci_core_r_user_filter #(
     else if (clear_i) begin
       user_q <= '0;
     end
-    else if(enable_i & tcdm_slave.req) begin
-      user_q <= tcdm_slave.user;
+    else if(enable_i & tcdm_target.req) begin
+      user_q <= tcdm_target.user;
     end
   end
 
@@ -70,7 +70,7 @@ module hci_core_r_user_filter #(
 `ifndef SYNTHESIS
   // gnt=1 & wen=1 => the following cycle r_valid=1
   property p_gnt_wen_high_then_r_valid_high_next_cycle;
-    @(posedge clk_i) (tcdm_master.gnt && tcdm_master.wen) |-> ##1 tcdm_master.r_valid;
+    @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
   endproperty
 
   assert_gnt_wen_high_then_r_valid_high_next_cycle: assert property (p_gnt_wen_high_then_r_valid_high_next_cycle)
@@ -78,7 +78,7 @@ module hci_core_r_user_filter #(
 
   // gnt=0 => the following cycle r_valid=0
   property p_gnt_low_then_r_valid_low_next_cycle;
-    @(posedge clk_i) (!tcdm_master.gnt) |-> ##1 !tcdm_master.r_valid;
+    @(posedge clk_i) (!tcdm_initiator.gnt) |-> ##1 !tcdm_initiator.r_valid;
   endproperty
 
   assert_gnt_low_then_r_valid_low_next_cycle: assert property (p_gnt_low_then_r_valid_low_next_cycle)

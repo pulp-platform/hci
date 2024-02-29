@@ -216,20 +216,20 @@ module hci_core_sink
       hwpe_stream_tcdm_fifo_store #(
         .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
       ) i_tcdm_fifo (
-        .clk_i       ( clk_i        ),
-        .rst_ni      ( rst_ni       ),
-        .clear_i     ( clear_i      ),
-        .tcdm_slave  ( tcdm_prefifo ),
-        .tcdm_master ( tcdm         ),
-        .flags_o     (              )
+        .clk_i          ( clk_i        ),
+        .rst_ni         ( rst_ni       ),
+        .clear_i        ( clear_i      ),
+        .tcdm_target    ( tcdm_prefifo ),
+        .tcdm_initiator ( tcdm         ),
+        .flags_o        (              )
       );
 
     end
     else begin: no_tcdm_fifos_gen
 
       hci_core_assign i_tcdm_assign (
-        .tcdm_slave  ( tcdm_prefifo ),
-        .tcdm_master ( tcdm         )
+        .tcdm_target    ( tcdm_prefifo ),
+        .tcdm_initiator ( tcdm         )
       );
 
     end

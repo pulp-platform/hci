@@ -50,8 +50,8 @@ module hci_core_split #(
   input logic clk_i,
   input logic rst_ni,
   input logic clear_i,
-  hci_core_intf.target    tcdm_slave,
-  hci_core_intf.initiator tcdm_master [NB_OUT_CHAN-1:0]
+  hci_core_intf.target    tcdm_target,
+  hci_core_intf.initiator tcdm_initiator [NB_OUT_CHAN-1:0]
 );
 
   localparam DW_OUT = DW/NB_OUT_CHAN;
@@ -83,12 +83,12 @@ module hci_core_split #(
 
   // Signal binding
   for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin: tcdm_binding
-    assign tcdm[ii].add   = tcdm_slave.add + ii*BW_OUT;
-    assign tcdm[ii].wen   = tcdm_slave.wen;
-    assign tcdm[ii].be    = tcdm_slave.be[(ii+1)*BW_OUT-1:ii*BW_OUT];
-    assign tcdm[ii].data  = tcdm_slave.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
-    assign tcdm[ii].user  = tcdm_slave.user;
-    assign tcdm[ii].lrdy  = ~cs_rvalid ?  tcdm_slave.lrdy :          // if state is RVALID, propagate load-ready directly
+    assign tcdm[ii].add   = tcdm_target.add + ii*BW_OUT;
+    assign tcdm[ii].wen   = tcdm_target.wen;
+    assign tcdm[ii].be    = tcdm_target.be[(ii+1)*BW_OUT-1:ii*BW_OUT];
+    assign tcdm[ii].data  = tcdm_target.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
+    assign tcdm[ii].user  = tcdm_target.user;
+    assign tcdm[ii].lrdy  = ~cs_rvalid ?  tcdm_target.lrdy :          // if state is RVALID, propagate load-ready directly
                                          &tcdm_master_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their lrdy
 
     assign tcdm_r_data [ii] = tcdm[ii].r_data;
@@ -98,37 +98,37 @@ module hci_core_split #(
     assign tcdm_add    [ii] = tcdm[ii].add;
     assign tcdm_req    [ii] = tcdm[ii].req;
 
-    assign tcdm_master_r_valid[ii] = tcdm_master[ii].r_valid;
+    assign tcdm_master_r_valid[ii] = tcdm_initiator[ii].r_valid;
   end
-  assign tcdm_slave.gnt     = &(tcdm_gnt);
-  assign tcdm_slave.r_valid = &(tcdm_r_valid);
-  assign tcdm_slave.r_data  = { >> {tcdm_r_data} };
-  assign tcdm_slave.r_user  = tcdm[0].r_user; // we assume they are identical at this stage (if not, it's broken!)
+  assign tcdm_target.gnt     = &(tcdm_gnt);
+  assign tcdm_target.r_valid = &(tcdm_r_valid);
+  assign tcdm_target.r_data  = { >> {tcdm_r_data} };
+  assign tcdm_target.r_user  = tcdm[0].r_user; // we assume they are identical at this stage (if not, it's broken!)
 
   if(FIFO_DEPTH == 0) begin : no_fifo_gen
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : assign_loop_gen
-      assign tcdm[ii].req   = tcdm_slave.req;
+      assign tcdm[ii].req   = tcdm_target.req;
       hci_core_assign i_assign (
-        .tcdm_slave  ( tcdm        [ii] ),
-        .tcdm_master ( tcdm_master [ii] )
+        .tcdm_target    ( tcdm           [ii] ),
+        .tcdm_initiator ( tcdm_initiator [ii] )
       );
     end
   end
   else begin : fifo_gen
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : fifo_loop_gen
-      assign tcdm[ii].req = ~cs_gnt ?  tcdm_slave.req :       // if state is GNT, propagate requests directly
+      assign tcdm[ii].req = ~cs_gnt ?  tcdm_target.req :       // if state is GNT, propagate requests directly
                                       ~tcdm_req_masked_q[ii]; // if state is NO-GNT, only propagate request that were not granted before
       hci_core_fifo #(
         .FIFO_DEPTH ( FIFO_DEPTH ),
         .DW         ( DW_OUT     ),
         .UW         ( UW         )
       ) i_fifo (
-        .clk_i       ( clk_i          ),
-        .rst_ni      ( rst_ni         ),
-        .clear_i     ( clear_i        ),
-        .flags_o     (                ),
-        .tcdm_slave  ( tcdm      [ii] ),
-        .tcdm_master ( tcdm_fifo [ii] )
+        .clk_i          ( clk_i          ),
+        .rst_ni         ( rst_ni         ),
+        .clear_i        ( clear_i        ),
+        .flags_o        (                ),
+        .tcdm_target    ( tcdm      [ii] ),
+        .tcdm_initiator ( tcdm_fifo [ii] )
       );
     end
 
@@ -152,7 +152,7 @@ module hci_core_split #(
     begin
       ns_gnt = cs_gnt;
       if(cs_gnt == 1'b0) begin // gnt
-        if(tcdm_slave.req & ~(&tcdm_gnt))
+        if(tcdm_target.req & ~(&tcdm_gnt))
           ns_gnt = 1'b1;
       end
       else begin // no-gnt
@@ -222,21 +222,21 @@ module hci_core_split #(
 
     // Master port binding
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin: tcdm_binding
-      assign tcdm_master[ii].req   = tcdm_fifo[ii].req;
-      assign tcdm_master[ii].add   = tcdm_fifo[ii].add;
-      assign tcdm_master[ii].wen   = tcdm_fifo[ii].wen;
-      assign tcdm_master[ii].be    = tcdm_fifo[ii].be;
-      assign tcdm_master[ii].data  = tcdm_fifo[ii].data;
-      assign tcdm_master[ii].user  = tcdm_fifo[ii].user;
-      assign tcdm_master[ii].lrdy  = tcdm_fifo[ii].lrdy;
+      assign tcdm_initiator[ii].req   = tcdm_fifo[ii].req;
+      assign tcdm_initiator[ii].add   = tcdm_fifo[ii].add;
+      assign tcdm_initiator[ii].wen   = tcdm_fifo[ii].wen;
+      assign tcdm_initiator[ii].be    = tcdm_fifo[ii].be;
+      assign tcdm_initiator[ii].data  = tcdm_fifo[ii].data;
+      assign tcdm_initiator[ii].user  = tcdm_fifo[ii].user;
+      assign tcdm_initiator[ii].lrdy  = tcdm_fifo[ii].lrdy;
 
-      assign tcdm_master_req[ii] = tcdm_master[ii].req;
+      assign tcdm_master_req[ii] = tcdm_initiator[ii].req;
 
-      assign tcdm_fifo[ii].gnt     = tcdm_master[ii].gnt;
-      assign tcdm_fifo[ii].r_valid = tcdm_master[ii].r_valid;
-      assign tcdm_fifo[ii].r_data  = tcdm_master[ii].r_data;
-      assign tcdm_fifo[ii].r_opc   = tcdm_master[ii].r_opc;
-      assign tcdm_fifo[ii].r_user  = tcdm_master[ii].r_user;
+      assign tcdm_fifo[ii].gnt     = tcdm_initiator[ii].gnt;
+      assign tcdm_fifo[ii].r_valid = tcdm_initiator[ii].r_valid;
+      assign tcdm_fifo[ii].r_data  = tcdm_initiator[ii].r_data;
+      assign tcdm_fifo[ii].r_opc   = tcdm_initiator[ii].r_opc;
+      assign tcdm_fifo[ii].r_user  = tcdm_initiator[ii].r_user;
     end
 
   end

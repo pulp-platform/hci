@@ -17,20 +17,20 @@ import hwpe_stream_package::*;
 
 module hci_mem_assign
 (
-  hci_mem_intf.target    tcdm_slave,
-  hci_mem_intf.initiator tcdm_master
+  hci_mem_intf.target    tcdm_target,
+  hci_mem_intf.initiator tcdm_initiator
 );
 
-  assign tcdm_master.req    = tcdm_slave.req;
-  assign tcdm_slave.gnt     = tcdm_master.gnt;
-  assign tcdm_master.add    = tcdm_slave.add;
-  assign tcdm_master.wen    = tcdm_slave.wen;
-  assign tcdm_master.data   = tcdm_slave.data;
-  assign tcdm_master.be     = tcdm_slave.be;
-  assign tcdm_master.id     = tcdm_slave.id;
-  assign tcdm_master.user   = tcdm_slave.user;
-  assign tcdm_slave.r_data  = tcdm_master.r_data;
-  assign tcdm_slave.r_id    = tcdm_master.r_id;
-  assign tcdm_slave.r_user  = tcdm_master.r_user;
+  assign tcdm_initiator.req    = tcdm_target.req;
+  assign tcdm_target.gnt     = tcdm_initiator.gnt;
+  assign tcdm_initiator.add    = tcdm_target.add;
+  assign tcdm_initiator.wen    = tcdm_target.wen;
+  assign tcdm_initiator.data   = tcdm_target.data;
+  assign tcdm_initiator.be     = tcdm_target.be;
+  assign tcdm_initiator.id     = tcdm_target.id;
+  assign tcdm_initiator.user   = tcdm_target.user;
+  assign tcdm_target.r_data  = tcdm_initiator.r_data;
+  assign tcdm_target.r_id    = tcdm_initiator.r_id;
+  assign tcdm_target.r_user  = tcdm_initiator.r_user;
 
 endmodule // hci_mem_assign
