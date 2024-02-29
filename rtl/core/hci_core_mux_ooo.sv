@@ -31,9 +31,7 @@ module hci_core_mux_ooo
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned AW = hci_package::DEFAULT_AW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned WW = hci_package::DEFAULT_WW,
-  parameter int unsigned UW = hci_package::DEFAULT_UW,
-  parameter int unsigned OW = AW
+  parameter int unsigned UW = hci_package::DEFAULT_UW
 )
 (
   input  logic                                    clk_i,
@@ -55,7 +53,6 @@ module hci_core_mux_ooo
   logic        [NB_CHAN-1:0]                    in_wen;
   logic        [NB_CHAN-1:0][DW-1:0]            in_data;
   logic        [NB_CHAN-1:0][DW/BW-1:0]         in_be;
-  logic signed [NB_CHAN-1:0][DW/WW-1:0][OW-1:0] in_boffs;
   logic        [NB_CHAN-1:0][DW-1:0]            in_r_data;
   logic        [NB_CHAN-1:0]                    in_r_valid;
   logic        [NB_CHAN-1:0]                    in_r_opc;
@@ -95,7 +92,6 @@ module hci_core_mux_ooo
     assign in_wen     [ii] = in[ii].wen;
     assign in_data    [ii] = in[ii].data;
     assign in_be      [ii] = in[ii].be;
-    assign in_boffs   [ii] = in[ii].boffs;
     assign in_r_data  [ii] = in[ii].r_data;
     assign in_r_valid [ii] = in[ii].r_valid;
     assign in_r_opc   [ii] = in[ii].r_opc;
@@ -129,7 +125,6 @@ module hci_core_mux_ooo
   assign out.be    = in_be    [winner_d];
   assign out.data  = in_data  [winner_d];
   assign out.lrdy  = in_lrdy  [out.r_user];
-  assign out.boffs = in_boffs [winner_d];
   assign out.user  = in_user  [winner_d];
 
 endmodule // hci_core_mux_ooo

@@ -202,7 +202,6 @@ module hci_core_sink
   assign tcdm_prefifo.wen   = '0;
   assign tcdm_prefifo.be    = (cs != STREAMER_IDLE) ? stream_strb_aligned            : '0;
   assign tcdm_prefifo.data  = (cs != STREAMER_IDLE) ? stream_data_aligned            : '0;
-  assign tcdm_prefifo.boffs = '0;
   assign tcdm_prefifo.lrdy  = '1;
   assign stream.ready    = ~stream.valid | (tcdm_prefifo.gnt & addr_fifo.valid);
   assign addr_fifo.ready =  stream.valid & stream.ready;

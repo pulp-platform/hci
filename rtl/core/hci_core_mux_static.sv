@@ -25,8 +25,6 @@ module hci_core_mux_static
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned AW = hci_package::DEFAULT_AW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned WW = hci_package::DEFAULT_WW,
-  parameter int unsigned OW = AW,
   parameter int unsigned UW = hci_package::DEFAULT_UW
 )
 (
@@ -50,7 +48,6 @@ module hci_core_mux_static
     logic        [NB_CHAN-1:0]                    in_wen;
     logic        [NB_CHAN-1:0][DW-1:0]            in_data;
     logic        [NB_CHAN-1:0][DW/BW-1:0]         in_be;
-    logic signed [NB_CHAN-1:0][DW/WW-1:0][OW-1:0] in_boffs;
     logic        [NB_CHAN-1:0][UW-1:0]            in_user;
     logic        [NB_CHAN-1:0][DW-1:0]            in_r_data;
     logic        [NB_CHAN-1:0]                    in_r_valid;
@@ -66,7 +63,6 @@ module hci_core_mux_static
       assign in_wen     [ii] = in[ii].wen;
       assign in_data    [ii] = in[ii].data;
       assign in_be      [ii] = in[ii].be;
-      assign in_boffs   [ii] = in[ii].boffs;
       assign in_user    [ii] = in[ii].user;
       assign in_r_data  [ii] = in[ii].r_data;
       assign in_r_valid [ii] = in[ii].r_valid;
@@ -86,7 +82,6 @@ module hci_core_mux_static
     assign out.be    = in_be    [sel_i];
     assign out.data  = in_data  [sel_i];
     assign out.lrdy  = in_lrdy  [sel_i];
-    assign out.boffs = in_boffs [sel_i];
     assign out.user  = in_user  [sel_i];
 
   endgenerate

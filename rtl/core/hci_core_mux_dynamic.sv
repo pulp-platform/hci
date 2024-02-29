@@ -54,8 +54,6 @@ module hci_core_mux_dynamic
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned AW = hci_package::DEFAULT_AW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned WW = hci_package::DEFAULT_WW,
-  parameter int unsigned OW = 1,
   parameter int unsigned UW = hci_package::DEFAULT_UW
 )
 (
@@ -75,7 +73,6 @@ module hci_core_mux_dynamic
   logic [NB_IN_CHAN-1:0]                     in_wen;
   logic [NB_IN_CHAN-1:0][DW/BW-1:0]          in_be;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_data;
-  logic [NB_IN_CHAN-1:0][DW/WW-1:0][OW-1:0]  in_boffs;
   logic [NB_IN_CHAN-1:0][UW-1:0]             in_user;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_r_data;
   logic [NB_IN_CHAN-1:0]                     in_r_valid;
@@ -89,7 +86,6 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0]                    out_wen;
   logic [NB_OUT_CHAN-1:0][DW/BW-1:0]         out_be;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_data;
-  logic [NB_OUT_CHAN-1:0][DW/WW-1:0][OW-1:0] out_boffs;
   logic [NB_OUT_CHAN-1:0][UW-1:0]            out_user;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_r_data;
   logic [NB_OUT_CHAN-1:0]                    out_r_valid;
@@ -130,7 +126,6 @@ module hci_core_mux_dynamic
       assign in_be    [j] = in[j].be;
       assign in_data  [j] = in[j].data;
       assign in_lrdy  [j] = in[j].lrdy;
-      assign in_boffs [j] = in[j].boffs;
       assign in_user  [j] = in[j].user;
       assign in[j].gnt     = in_gnt     [j];
       assign in[j].r_data  = in_r_data  [j];
@@ -148,7 +143,6 @@ module hci_core_mux_dynamic
       assign out[i].be    = out_be   [i];
       assign out[i].data  = out_data [i];
       assign out[i].lrdy  = out_lrdy [i];
-      assign out[i].boffs = out_boffs [i];
       assign out[i].user  = out_user [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
@@ -184,7 +178,6 @@ module hci_core_mux_dynamic
         out_wen  [i] = in_wen  [winner_d[i]*NB_OUT_CHAN+i];
         out_data [i] = in_data [winner_d[i]*NB_OUT_CHAN+i];
         out_be   [i] = in_be   [winner_d[i]*NB_OUT_CHAN+i];
-        out_boffs[i] = in_boffs[winner_d[i]*NB_OUT_CHAN+i];
         out_lrdy [i] = in_lrdy [winner_d[i]*NB_OUT_CHAN+i];
         out_user [i] = in_user [winner_d[i]*NB_OUT_CHAN+i];
       end

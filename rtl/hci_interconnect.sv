@@ -36,8 +36,6 @@ module hci_interconnect #(
   parameter int unsigned DWH     = hci_package::DEFAULT_DW  , // Data Width for HWPE Interconnect
   parameter int unsigned AWH     = hci_package::DEFAULT_AW  , // Address Width for HWPE Interconnect
   parameter int unsigned BWH     = hci_package::DEFAULT_BW  , // Byte Width for HWPE Interconnect
-  parameter int unsigned WWH     = hci_package::DEFAULT_WW  , // Word Width for HWPE Interconnect
-  parameter int unsigned OWH     = AWH                      , // Offset Width for HWPE Interconnect
   parameter int unsigned UWH     = hci_package::DEFAULT_UW  , // User Width for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                          // Log interconnect type selector
 ) (
@@ -145,8 +143,6 @@ module hci_interconnect #(
         .DWH         ( DWH     ),
         .AWH         ( AWH     ),
         .BWH         ( BWH     ),
-        .WWH         ( WWH     ),
-        .OWH         ( OWH     ),
         .UWH         ( UWH     )
       ) i_router (
         .clk_i   ( clk_i    ),

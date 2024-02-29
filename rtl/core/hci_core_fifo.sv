@@ -83,8 +83,6 @@ module hci_core_fifo #(
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,
   parameter int unsigned AW = hci_package::DEFAULT_AW, /// addr width
-  parameter int unsigned WW = hci_package::DEFAULT_WW, /// width of a "word" in bits (default 32)
-  parameter int unsigned OW = AW, /// intra-bank offset width, defaults to addr width
   parameter int unsigned UW = hci_package::DEFAULT_UW,
   parameter int unsigned LATCH_FIFO = 0
 )
@@ -240,7 +238,6 @@ module hci_core_fifo #(
     assign { >> { tcdm_master_add, tcdm_master_data, tcdm_master_be, tcdm_master_wen }} = stream_outgoing_pop_data;
     assign tcdm_master_user = '0;
   end
-  assign tcdm_master.boffs = '0; // FIXME
   assign tcdm_master.req = stream_outgoing_pop.valid & incoming_fifo_not_full;
   assign tcdm_master.lrdy = incoming_fifo_not_full;
   assign stream_outgoing_pop.ready = tcdm_master.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0

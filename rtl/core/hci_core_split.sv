@@ -88,7 +88,6 @@ module hci_core_split #(
     assign tcdm[ii].be    = tcdm_slave.be[(ii+1)*BW_OUT-1:ii*BW_OUT];
     assign tcdm[ii].data  = tcdm_slave.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
     assign tcdm[ii].user  = tcdm_slave.user;
-    assign tcdm[ii].boffs = '0; // ignore boffs
     assign tcdm[ii].lrdy  = ~cs_rvalid ?  tcdm_slave.lrdy :          // if state is RVALID, propagate load-ready directly
                                          &tcdm_master_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their lrdy
 
@@ -229,7 +228,6 @@ module hci_core_split #(
       assign tcdm_master[ii].be    = tcdm_fifo[ii].be;
       assign tcdm_master[ii].data  = tcdm_fifo[ii].data;
       assign tcdm_master[ii].user  = tcdm_fifo[ii].user;
-      assign tcdm_master[ii].boffs = tcdm_fifo[ii].boffs;
       assign tcdm_master[ii].lrdy  = tcdm_fifo[ii].lrdy;
 
       assign tcdm_master_req[ii] = tcdm_master[ii].req;

@@ -33,7 +33,6 @@ module hci_core_assign
   assign tcdm_master.wen    = tcdm_slave.wen;
   assign tcdm_master.data   = tcdm_slave.data;
   assign tcdm_master.be     = tcdm_slave.be;
-  assign tcdm_master.boffs  = tcdm_slave.boffs;
   assign tcdm_master.lrdy   = tcdm_slave.lrdy;
   assign tcdm_master.user   = tcdm_slave.user;
   assign tcdm_slave.r_data  = tcdm_master.r_data;
