@@ -74,10 +74,10 @@ module hci_core_split #(
   logic [NB_OUT_CHAN-1:0][31:0]       tcdm_add;
   logic [NB_OUT_CHAN-1:0]             tcdm_gnt;
   logic [NB_OUT_CHAN-1:0]             tcdm_r_valid;
-  logic [NB_OUT_CHAN-1:0]             tcdm_master_r_valid;
+  logic [NB_OUT_CHAN-1:0]             tcdm_initiator_r_valid;
   logic [NB_OUT_CHAN-1:0]             tcdm_req_masked_d, tcdm_req_masked_q;
-  logic [NB_OUT_CHAN-1:0]             tcdm_master_req;
-  logic [NB_OUT_CHAN-1:0]             tcdm_master_lrdy_masked_d, tcdm_master_lrdy_masked_q;
+  logic [NB_OUT_CHAN-1:0]             tcdm_initiator_req;
+  logic [NB_OUT_CHAN-1:0]             tcdm_initiator_lrdy_masked_d, tcdm_initiator_lrdy_masked_q;
   logic cs_gnt, ns_gnt;       // 0=gnt, 1=no-gnt
   logic cs_rvalid, ns_rvalid; // 0=rvalid, 1=no-rvalid
 
@@ -88,17 +88,17 @@ module hci_core_split #(
     assign tcdm[ii].be    = tcdm_target.be[(ii+1)*BW_OUT-1:ii*BW_OUT];
     assign tcdm[ii].data  = tcdm_target.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
     assign tcdm[ii].user  = tcdm_target.user;
-    assign tcdm[ii].lrdy  = ~cs_rvalid ?  tcdm_target.lrdy :          // if state is RVALID, propagate load-ready directly
-                                         &tcdm_master_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their lrdy
+    assign tcdm[ii].lrdy  = ~cs_rvalid ?  tcdm_target.lrdy :            // if state is RVALID, propagate load-ready directly
+                                         &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their lrdy
 
     assign tcdm_r_data [ii] = tcdm[ii].r_data;
-    assign tcdm_r_valid[ii] = ~cs_rvalid ?  tcdm[ii].r_valid :         // if state is RVALID, propagate r_valid directly
-                                           &tcdm_master_lrdy_masked_q; // if state is NO-RVALID, stop streamers by lowering their r_valid
+    assign tcdm_r_valid[ii] = ~cs_rvalid ?  tcdm[ii].r_valid :            // if state is RVALID, propagate r_valid directly
+                                           &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop streamers by lowering their r_valid
     assign tcdm_gnt    [ii] = tcdm[ii].gnt;
     assign tcdm_add    [ii] = tcdm[ii].add;
     assign tcdm_req    [ii] = tcdm[ii].req;
 
-    assign tcdm_master_r_valid[ii] = tcdm_initiator[ii].r_valid;
+    assign tcdm_initiator_r_valid[ii] = tcdm_initiator[ii].r_valid;
   end
   assign tcdm_target.gnt     = &(tcdm_gnt);
   assign tcdm_target.r_valid = &(tcdm_r_valid);
@@ -196,27 +196,27 @@ module hci_core_split #(
     begin
       ns_rvalid = cs_rvalid;
       if(cs_rvalid == 1'b0) begin // rvalid
-        if(|tcdm_master_r_valid & ~(&tcdm_master_r_valid)) // if there is some valid response, but not all
+        if(|tcdm_initiator_r_valid & ~(&tcdm_initiator_r_valid)) // if there is some valid response, but not all
           ns_rvalid = 1'b1;
       end
       else begin // no-gnt
-        if(&(tcdm_master_r_valid | tcdm_master_lrdy_masked_q))
+        if(&(tcdm_initiator_r_valid | tcdm_initiator_lrdy_masked_q))
           ns_rvalid = 1'b0;
       end
     end
 
     // LRDY masking
-    assign tcdm_master_lrdy_masked_d = cs_rvalid ? tcdm_master_lrdy_masked_q | tcdm_master_r_valid | ~tcdm_master_req : tcdm_master_r_valid | ~tcdm_master_req;
+    assign tcdm_initiator_lrdy_masked_d = cs_rvalid ? tcdm_initiator_lrdy_masked_q | tcdm_initiator_r_valid | ~tcdm_initiator_req : tcdm_initiator_r_valid | ~tcdm_initiator_req;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
       if(~rst_ni) begin
-        tcdm_master_lrdy_masked_q <= '0;
+        tcdm_initiator_lrdy_masked_q <= '0;
       end
       else if (clear_i) begin
-        tcdm_master_lrdy_masked_q <= '0;
+        tcdm_initiator_lrdy_masked_q <= '0;
       end
       else begin
-        tcdm_master_lrdy_masked_q <= tcdm_master_lrdy_masked_d;
+        tcdm_initiator_lrdy_masked_q <= tcdm_initiator_lrdy_masked_d;
       end
     end
 
@@ -230,7 +230,7 @@ module hci_core_split #(
       assign tcdm_initiator[ii].user  = tcdm_fifo[ii].user;
       assign tcdm_initiator[ii].lrdy  = tcdm_fifo[ii].lrdy;
 
-      assign tcdm_master_req[ii] = tcdm_initiator[ii].req;
+      assign tcdm_initiator_req[ii] = tcdm_initiator[ii].req;
 
       assign tcdm_fifo[ii].gnt     = tcdm_initiator[ii].gnt;
       assign tcdm_fifo[ii].r_valid = tcdm_initiator[ii].r_valid;

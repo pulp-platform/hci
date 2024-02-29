@@ -101,8 +101,8 @@ module hci_core_fifo #(
 
   logic incoming_fifo_not_full;
 
-  logic             tcdm_master_r_valid_d, tcdm_master_r_valid_q;
-  logic [UW+DW-1:0] tcdm_master_r_data_d, tcdm_master_r_data_q;
+  logic             tcdm_initiator_r_valid_d, tcdm_initiator_r_valid_q;
+  logic [UW+DW-1:0] tcdm_initiator_r_data_d, tcdm_initiator_r_data_q;
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( AW+UW+DW+DW/BW+1 )
@@ -147,8 +147,8 @@ module hci_core_fifo #(
   );
 
   // wrap tcdm incoming ports into a stream
-  assign stream_incoming_push.data  = tcdm_master_r_valid_d ? tcdm_master_r_data_d : tcdm_master_r_data_q;
-  assign stream_incoming_push.valid = tcdm_master_r_valid_d | tcdm_master_r_valid_q;
+  assign stream_incoming_push.data  = tcdm_initiator_r_valid_d ? tcdm_initiator_r_data_d : tcdm_initiator_r_data_q;
+  assign stream_incoming_push.valid = tcdm_initiator_r_valid_d | tcdm_initiator_r_valid_q;
   assign stream_incoming_push.strb = '1;
 
   assign incoming_fifo_not_full = stream_incoming_push.ready;
@@ -165,35 +165,35 @@ module hci_core_fifo #(
 
   // enforce protocol on incoming stream
   if (UW > 0)
-    assign tcdm_master_r_data_d = {tcdm_initiator.r_user, tcdm_initiator.r_data};
+    assign tcdm_initiator_r_data_d = {tcdm_initiator.r_user, tcdm_initiator.r_data};
   else
-    assign tcdm_master_r_data_d = tcdm_initiator.r_data;
-  assign tcdm_master_r_valid_d = tcdm_initiator.r_valid;
+    assign tcdm_initiator_r_data_d = tcdm_initiator.r_data;
+  assign tcdm_initiator_r_valid_d = tcdm_initiator.r_valid;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
     if(~rst_ni)
-      tcdm_master_r_valid_q <= 1'b0;
+      tcdm_initiator_r_valid_q <= 1'b0;
     else if(clear_i)
-      tcdm_master_r_valid_q <= 1'b0;
+      tcdm_initiator_r_valid_q <= 1'b0;
     else begin
-      if(tcdm_master_r_valid_d & stream_incoming_push.ready)
-        tcdm_master_r_valid_q <= 1'b0;
-      else if(tcdm_master_r_valid_d)
-        tcdm_master_r_valid_q <= 1'b1;
-      else if(tcdm_master_r_valid_q & stream_incoming_push.ready)
-        tcdm_master_r_valid_q <= 1'b0;
+      if(tcdm_initiator_r_valid_d & stream_incoming_push.ready)
+        tcdm_initiator_r_valid_q <= 1'b0;
+      else if(tcdm_initiator_r_valid_d)
+        tcdm_initiator_r_valid_q <= 1'b1;
+      else if(tcdm_initiator_r_valid_q & stream_incoming_push.ready)
+        tcdm_initiator_r_valid_q <= 1'b0;
     end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
     if(~rst_ni)
-      tcdm_master_r_data_q <= '0;
+      tcdm_initiator_r_data_q <= '0;
     else if(clear_i)
-      tcdm_master_r_data_q <= '0;
-    else if(tcdm_master_r_valid_d)
-        tcdm_master_r_data_q <= tcdm_master_r_data_d;
+      tcdm_initiator_r_data_q <= '0;
+    else if(tcdm_initiator_r_valid_d)
+        tcdm_initiator_r_data_q <= tcdm_initiator_r_data_d;
   end
 
   hwpe_stream_fifo #(
@@ -221,22 +221,22 @@ module hci_core_fifo #(
   logic [AW+UW+DW+DW/BW+1-1:0] stream_outgoing_pop_data;
   assign stream_outgoing_pop_data = stream_outgoing_pop.data; 
 
-  logic [AW-1:0]    tcdm_master_add;
-  logic [DW-1:0]    tcdm_master_data;
-  logic [UW-1:0]    tcdm_master_user;
-  logic [DW/BW-1:0] tcdm_master_be;
-  logic             tcdm_master_wen;
-  assign tcdm_initiator.add  = tcdm_master_add;
-  assign tcdm_initiator.data = tcdm_master_data;
-  assign tcdm_initiator.user = tcdm_master_user;
-  assign tcdm_initiator.be   = tcdm_master_be;
-  assign tcdm_initiator.wen  = tcdm_master_wen;
+  logic [AW-1:0]    tcdm_initiator_add;
+  logic [DW-1:0]    tcdm_initiator_data;
+  logic [UW-1:0]    tcdm_initiator_user;
+  logic [DW/BW-1:0] tcdm_initiator_be;
+  logic             tcdm_initiator_wen;
+  assign tcdm_initiator.add  = tcdm_initiator_add;
+  assign tcdm_initiator.data = tcdm_initiator_data;
+  assign tcdm_initiator.user = tcdm_initiator_user;
+  assign tcdm_initiator.be   = tcdm_initiator_be;
+  assign tcdm_initiator.wen  = tcdm_initiator_wen;
   if (UW > 0)
-    assign { >> { tcdm_master_add, tcdm_master_user, tcdm_master_data, tcdm_master_be, tcdm_master_wen }} = stream_outgoing_pop_data;
+    assign { >> { tcdm_initiator_add, tcdm_initiator_user, tcdm_initiator_data, tcdm_initiator_be, tcdm_initiator_wen }} = stream_outgoing_pop_data;
   else
   begin
-    assign { >> { tcdm_master_add, tcdm_master_data, tcdm_master_be, tcdm_master_wen }} = stream_outgoing_pop_data;
-    assign tcdm_master_user = '0;
+    assign { >> { tcdm_initiator_add, tcdm_initiator_data, tcdm_initiator_be, tcdm_initiator_wen }} = stream_outgoing_pop_data;
+    assign tcdm_initiator_user = '0;
   end
   assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full;
   assign tcdm_initiator.lrdy = incoming_fifo_not_full;

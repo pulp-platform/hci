@@ -30,8 +30,8 @@ module hci_core_memmap_filter #(
   input  logic [NB_REGION-1:0][AW-1:0] region_end_addr_i,
 
   hci_core_intf.target    target,
-  hci_core_intf.initiator interl_master,
-  hci_core_intf.initiator per_master
+  hci_core_intf.initiator interl_initiator,
+  hci_core_intf.initiator per_initiator
 );
 
     enum logic [1:0] {IDLE, ON_TCDM, ON_PER, ERROR } state_q, state_d;
@@ -82,16 +82,16 @@ module hci_core_memmap_filter #(
     always_comb
     begin : fsm_comb_state
       state_d = state_q;
-      if((state_q != ON_PER) || (per_master.r_valid == 1'b1)) begin
+      if((state_q != ON_PER) || (per_initiator.r_valid == 1'b1)) begin
         if (target.req) begin
           if (destination_interleaved) begin
-            if(interl_master.gnt)
+            if(interl_initiator.gnt)
               state_d = ON_TCDM;
             else
               state_d = IDLE;
           end
           else if(destination_non_interleaved) begin
-            if(per_master.gnt)
+            if(per_initiator.gnt)
               state_d = ON_PER;
             else
               state_d = IDLE;
@@ -109,23 +109,23 @@ module hci_core_memmap_filter #(
     always_comb
     begin : fsm_comb_out
       // handshake
-      interl_master.req = target.req & destination_interleaved;
-      per_master.req  = target.req & ~destination_interleaved;
-      target.gnt  = interl_master.gnt | per_master.gnt | (target.req & ~(|(destination_map)));
-      // interl_master request
-      interl_master.add   = target.add;
-      interl_master.wen   = target.wen;
-      interl_master.data  = target.data;
-      interl_master.be    = target.be;
-      interl_master.lrdy  = target.lrdy;
-      interl_master.user  = target.user;
-      // per_master request
-      per_master.add   = target.add;
-      per_master.wen   = target.wen;
-      per_master.data  = target.data;
-      per_master.be    = target.be;
-      per_master.lrdy  = target.lrdy;
-      per_master.user  = target.user;
+      interl_initiator.req = target.req & destination_interleaved;
+      per_initiator.req  = target.req & ~destination_interleaved;
+      target.gnt  = interl_initiator.gnt | per_initiator.gnt | (target.req & ~(|(destination_map)));
+      // interl_initiator request
+      interl_initiator.add   = target.add;
+      interl_initiator.wen   = target.wen;
+      interl_initiator.data  = target.data;
+      interl_initiator.be    = target.be;
+      interl_initiator.lrdy  = target.lrdy;
+      interl_initiator.user  = target.user;
+      // per_initiator request
+      per_initiator.add   = target.add;
+      per_initiator.wen   = target.wen;
+      per_initiator.data  = target.data;
+      per_initiator.be    = target.be;
+      per_initiator.lrdy  = target.lrdy;
+      per_initiator.user  = target.user;
       // target response
       case(state_q)
         IDLE: begin
@@ -135,16 +135,16 @@ module hci_core_memmap_filter #(
           target.r_user  = '0;
         end
         ON_TCDM: begin
-          target.r_valid = interl_master.r_valid;
-          target.r_data  = interl_master.r_data;
-          target.r_opc   = interl_master.r_opc;
-          target.r_user  = interl_master.r_user;
+          target.r_valid = interl_initiator.r_valid;
+          target.r_data  = interl_initiator.r_data;
+          target.r_opc   = interl_initiator.r_opc;
+          target.r_user  = interl_initiator.r_user;
         end
         ON_PER: begin
-          target.r_valid = per_master.r_valid;
-          target.r_data  = per_master.r_data;
-          target.r_opc   = per_master.r_opc;
-          target.r_user  = per_master.r_user;
+          target.r_valid = per_initiator.r_valid;
+          target.r_data  = per_initiator.r_data;
+          target.r_opc   = per_initiator.r_opc;
+          target.r_user  = per_initiator.r_user;
         end
         ERROR: begin
           target.r_valid = 1'b1;
