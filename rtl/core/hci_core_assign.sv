@@ -23,21 +23,21 @@ import hwpe_stream_package::*;
 
 module hci_core_assign 
 (
-  hci_core_intf.target    tcdm_slave,
-  hci_core_intf.initiator tcdm_master
+  hci_core_intf.target    tcdm_target,
+  hci_core_intf.initiator tcdm_initiator
 );
 
-  assign tcdm_master.req    = tcdm_slave.req;
-  assign tcdm_slave.gnt     = tcdm_master.gnt;
-  assign tcdm_master.add    = tcdm_slave.add;
-  assign tcdm_master.wen    = tcdm_slave.wen;
-  assign tcdm_master.data   = tcdm_slave.data;
-  assign tcdm_master.be     = tcdm_slave.be;
-  assign tcdm_master.lrdy   = tcdm_slave.lrdy;
-  assign tcdm_master.user   = tcdm_slave.user;
-  assign tcdm_slave.r_data  = tcdm_master.r_data;
-  assign tcdm_slave.r_valid = tcdm_master.r_valid;
-  assign tcdm_slave.r_opc   = tcdm_master.r_opc;
-  assign tcdm_slave.r_user  = tcdm_master.r_user;
+  assign tcdm_initiator.req    = tcdm_target.req;
+  assign tcdm_target.gnt       = tcdm_initiator.gnt;
+  assign tcdm_initiator.add    = tcdm_target.add;
+  assign tcdm_initiator.wen    = tcdm_target.wen;
+  assign tcdm_initiator.data   = tcdm_target.data;
+  assign tcdm_initiator.be     = tcdm_target.be;
+  assign tcdm_initiator.lrdy   = tcdm_target.lrdy;
+  assign tcdm_initiator.user   = tcdm_target.user;
+  assign tcdm_target.r_data  = tcdm_initiator.r_data;
+  assign tcdm_target.r_valid = tcdm_initiator.r_valid;
+  assign tcdm_target.r_opc   = tcdm_initiator.r_opc;
+  assign tcdm_target.r_user  = tcdm_initiator.r_user;
 
 endmodule // hci_core_assign

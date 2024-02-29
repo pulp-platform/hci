@@ -93,8 +93,8 @@ module hci_router
     // FIFOs for HWPE ports
     if(FIFO_DEPTH == 0) begin: no_fifo_gen
       hci_core_assign i_no_fifo (
-        .tcdm_slave  ( in            ),
-        .tcdm_master ( postfifo      )
+        .tcdm_target    ( in            ),
+        .tcdm_initiator ( postfifo      )
       );
     end // no_fifo_gen
     else begin: fifo_gen
@@ -105,12 +105,12 @@ module hci_router
         .AW         ( BWH        ),
         .UW         ( UWH        )
       ) i_fifo (
-        .clk_i       ( clk_i         ),
-        .rst_ni      ( rst_ni        ),
-        .clear_i     ( clear_i       ),
-        .flags_o     (               ),
-        .tcdm_slave  ( in            ),
-        .tcdm_master ( postfifo      )
+        .clk_i          ( clk_i         ),
+        .rst_ni         ( rst_ni        ),
+        .clear_i        ( clear_i       ),
+        .flags_o        (               ),
+        .tcdm_target    ( in            ),
+        .tcdm_initiator ( postfifo      )
       );
     end // fifo_gen
 

@@ -22,24 +22,24 @@ module hci_core_r_valid_filter
   input  logic rst_ni,
   input  logic clear_i,
   input  logic enable_i,
-  hci_core_intf.target    tcdm_slave,
-  hci_core_intf.initiator tcdm_master
+  hci_core_intf.target    tcdm_target,
+  hci_core_intf.initiator tcdm_initiator
 );
 
   logic wen_q;
 
-  assign tcdm_master.add   = tcdm_slave.add;
-  assign tcdm_master.data  = tcdm_slave.data;
-  assign tcdm_master.be    = tcdm_slave.be;
-  assign tcdm_master.wen   = tcdm_slave.wen;
-  assign tcdm_master.req   = tcdm_slave.req;
-  assign tcdm_master.lrdy  = tcdm_slave.lrdy;
-  assign tcdm_master.user  = tcdm_slave.user;
-  assign tcdm_slave.gnt     = tcdm_master.gnt;
-  assign tcdm_slave.r_data  = tcdm_master.r_data;
-  assign tcdm_slave.r_opc   = tcdm_master.r_opc;
-  assign tcdm_slave.r_user  = tcdm_master.r_user;
-  assign tcdm_slave.r_valid = enable_i ? tcdm_master.r_valid & wen_q : tcdm_master.r_valid;
+  assign tcdm_initiator.add   = tcdm_target.add;
+  assign tcdm_initiator.data  = tcdm_target.data;
+  assign tcdm_initiator.be    = tcdm_target.be;
+  assign tcdm_initiator.wen   = tcdm_target.wen;
+  assign tcdm_initiator.req   = tcdm_target.req;
+  assign tcdm_initiator.lrdy  = tcdm_target.lrdy;
+  assign tcdm_initiator.user  = tcdm_target.user;
+  assign tcdm_target.gnt     = tcdm_initiator.gnt;
+  assign tcdm_target.r_data  = tcdm_initiator.r_data;
+  assign tcdm_target.r_opc   = tcdm_initiator.r_opc;
+  assign tcdm_target.r_user  = tcdm_initiator.r_user;
+  assign tcdm_target.r_valid = enable_i ? tcdm_initiator.r_valid & wen_q : tcdm_initiator.r_valid;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
@@ -49,8 +49,8 @@ module hci_core_r_valid_filter
     else if (clear_i) begin
       wen_q <= '0;
     end
-    else if(enable_i & tcdm_slave.req) begin
-      wen_q <= tcdm_slave.wen;
+    else if(enable_i & tcdm_target.req) begin
+      wen_q <= tcdm_target.wen;
     end
   end
 

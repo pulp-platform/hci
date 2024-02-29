@@ -169,8 +169,8 @@ module hci_interconnect #(
 
       for(genvar ii=0; ii<N_MEM; ii++) begin: no_hwpe_mem_binding
         hci_mem_assign i_mem_assign (
-          .tcdm_slave  ( all_except_hwpe_mem [ii] ),
-          .tcdm_master ( mems                [ii] )
+          .tcdm_target    ( all_except_hwpe_mem [ii] ),
+          .tcdm_initiator ( mems                [ii] )
         );
       end
 
@@ -180,20 +180,20 @@ module hci_interconnect #(
   generate
     for(genvar ii=0; ii<N_CORE; ii++) begin: cores_binding
       hci_core_assign i_cores_assign (
-        .tcdm_slave  ( cores           [ii] ),
-        .tcdm_master ( all_except_hwpe [ii] )
+        .tcdm_target    ( cores           [ii] ),
+        .tcdm_initiator ( all_except_hwpe [ii] )
       );
     end // cores_binding
     for(genvar ii=0; ii<N_EXT; ii++) begin: ext_binding
       hci_core_assign i_ext_assign (
-        .tcdm_slave  ( ext             [ii]        ),
-        .tcdm_master ( all_except_hwpe [N_CORE+ii] )
+        .tcdm_target    ( ext             [ii]        ),
+        .tcdm_initiator ( all_except_hwpe [N_CORE+ii] )
       );
     end // ext_binding
     for(genvar ii=0; ii<N_DMA; ii++) begin: dma_binding
       hci_core_assign i_dma_assign (
-        .tcdm_slave  ( dma             [ii]              ),
-        .tcdm_master ( all_except_hwpe [N_CORE+N_EXT+ii] )
+        .tcdm_target    ( dma             [ii]              ),
+        .tcdm_initiator ( all_except_hwpe [N_CORE+N_EXT+ii] )
       );
     end // dma_binding
   endgenerate

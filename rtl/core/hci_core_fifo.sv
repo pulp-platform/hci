@@ -20,9 +20,9 @@
  * This FIFO is single-clock and therefore cannot be used to cross two
  * distinct clock domains.
  * The FIFO treats a HCI-Core load stream as a combination of two
- * 32-bit HWPE-Streams, one going from the `tcdm_master` to the `tcdm_slave` interface
- * carrying the `addr` (*outgoing stream*); the other from the `tcdm_slave` to the
- * `tcdm_master` interface, carrying the `r_data` (*incoming stream*).
+ * 32-bit HWPE-Streams, one going from the `tcdm_initiator` to the `tcdm_target` interface
+ * carrying the `addr` (*outgoing stream*); the other from the `tcdm_target` to the
+ * `tcdm_initiator` interface, carrying the `r_data` (*incoming stream*).
  *
  * On the slave side, the `req` and `gnt` of the HCI-Core interfaces
  * are mapped on `valid` and `ready` respectively in the outgoing stream.
@@ -93,8 +93,8 @@ module hci_core_fifo #(
 
   output flags_fifo_t     flags_o,
 
-  hci_core_intf.target    tcdm_slave,
-  hci_core_intf.initiator tcdm_master
+  hci_core_intf.target    tcdm_target,
+  hci_core_intf.initiator tcdm_initiator
 );
 
   flags_fifo_t flags_incoming, flags_outgoing;
@@ -154,21 +154,21 @@ module hci_core_fifo #(
   assign incoming_fifo_not_full = stream_incoming_push.ready;
 
   if (UW > 0) begin
-    assign tcdm_slave.r_data = stream_incoming_pop.data[DW-1:0];
-    assign tcdm_slave.r_user = stream_incoming_pop.data[UW+DW-1:DW];
+    assign tcdm_target.r_data = stream_incoming_pop.data[DW-1:0];
+    assign tcdm_target.r_user = stream_incoming_pop.data[UW+DW-1:DW];
   end else begin
-    assign tcdm_slave.r_data = stream_incoming_pop.data;
-    assign tcdm_slave.r_user = '0;
+    assign tcdm_target.r_data = stream_incoming_pop.data;
+    assign tcdm_target.r_user = '0;
   end
-  assign tcdm_slave.r_valid  = stream_incoming_pop.valid;
-  assign stream_incoming_pop.ready = tcdm_slave.lrdy;
+  assign tcdm_target.r_valid  = stream_incoming_pop.valid;
+  assign stream_incoming_pop.ready = tcdm_target.lrdy;
 
   // enforce protocol on incoming stream
   if (UW > 0)
-    assign tcdm_master_r_data_d = {tcdm_master.r_user, tcdm_master.r_data};
+    assign tcdm_master_r_data_d = {tcdm_initiator.r_user, tcdm_initiator.r_data};
   else
-    assign tcdm_master_r_data_d = tcdm_master.r_data;
-  assign tcdm_master_r_valid_d = tcdm_master.r_valid;
+    assign tcdm_master_r_data_d = tcdm_initiator.r_data;
+  assign tcdm_master_r_valid_d = tcdm_initiator.r_valid;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
@@ -211,12 +211,12 @@ module hci_core_fifo #(
 
   // wrap tcdm outgoing ports into a stream
   if (UW > 0)
-    assign stream_outgoing_push.data = { tcdm_slave.add, tcdm_slave.user, tcdm_slave.data, tcdm_slave.be, tcdm_slave.wen };
+    assign stream_outgoing_push.data = { tcdm_target.add, tcdm_target.user, tcdm_target.data, tcdm_target.be, tcdm_target.wen };
   else
-    assign stream_outgoing_push.data = { tcdm_slave.add, tcdm_slave.data, tcdm_slave.be, tcdm_slave.wen };
+    assign stream_outgoing_push.data = { tcdm_target.add, tcdm_target.data, tcdm_target.be, tcdm_target.wen };
   assign stream_outgoing_push.strb = '1;
-  assign stream_outgoing_push.valid = tcdm_slave.req;
-  assign tcdm_slave.gnt = stream_outgoing_push.ready;
+  assign stream_outgoing_push.valid = tcdm_target.req;
+  assign tcdm_target.gnt = stream_outgoing_push.ready;
 
   logic [AW+UW+DW+DW/BW+1-1:0] stream_outgoing_pop_data;
   assign stream_outgoing_pop_data = stream_outgoing_pop.data; 
@@ -226,11 +226,11 @@ module hci_core_fifo #(
   logic [UW-1:0]    tcdm_master_user;
   logic [DW/BW-1:0] tcdm_master_be;
   logic             tcdm_master_wen;
-  assign tcdm_master.add  = tcdm_master_add;
-  assign tcdm_master.data = tcdm_master_data;
-  assign tcdm_master.user = tcdm_master_user;
-  assign tcdm_master.be   = tcdm_master_be;
-  assign tcdm_master.wen  = tcdm_master_wen;
+  assign tcdm_initiator.add  = tcdm_master_add;
+  assign tcdm_initiator.data = tcdm_master_data;
+  assign tcdm_initiator.user = tcdm_master_user;
+  assign tcdm_initiator.be   = tcdm_master_be;
+  assign tcdm_initiator.wen  = tcdm_master_wen;
   if (UW > 0)
     assign { >> { tcdm_master_add, tcdm_master_user, tcdm_master_data, tcdm_master_be, tcdm_master_wen }} = stream_outgoing_pop_data;
   else
@@ -238,9 +238,9 @@ module hci_core_fifo #(
     assign { >> { tcdm_master_add, tcdm_master_data, tcdm_master_be, tcdm_master_wen }} = stream_outgoing_pop_data;
     assign tcdm_master_user = '0;
   end
-  assign tcdm_master.req = stream_outgoing_pop.valid & incoming_fifo_not_full;
-  assign tcdm_master.lrdy = incoming_fifo_not_full;
-  assign stream_outgoing_pop.ready = tcdm_master.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0
+  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full;
+  assign tcdm_initiator.lrdy = incoming_fifo_not_full;
+  assign stream_outgoing_pop.ready = tcdm_initiator.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0
 
   hwpe_stream_fifo #(
     .DATA_WIDTH ( AW+UW+DW+DW/BW+1 ),
