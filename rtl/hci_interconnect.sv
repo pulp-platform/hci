@@ -24,8 +24,8 @@ module hci_interconnect #(
   parameter int unsigned N_DMA   = 4                        , // Number of DMA ports
   parameter int unsigned N_EXT   = 4                        , // Number of External ports
   parameter int unsigned N_MEM   = 16                       , // Number of Memory banks
-  parameter int unsigned AWC     = hci_package::DEFAULT_AW  , // Address Width Core   (slave ports)
-  parameter int unsigned AWM     = hci_package::DEFAULT_AW  , // Address width memory (master ports)
+  parameter int unsigned AWC     = hci_package::DEFAULT_AW  , // Address Width Core   (target ports)
+  parameter int unsigned AWM     = hci_package::DEFAULT_AW  , // Address width memory (initiator ports)
   parameter int unsigned DW_LIC  = hci_package::DEFAULT_DW  , // Data Width for Log Interconnect
   parameter int unsigned BW_LIC  = hci_package::DEFAULT_BW  , // Byte Width for Log Interconnect
   parameter int unsigned UW_LIC  = hci_package::DEFAULT_UW  , // User Width for Log Interconnect

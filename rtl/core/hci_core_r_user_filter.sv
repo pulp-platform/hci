@@ -63,7 +63,7 @@ module hci_core_r_user_filter #(
  * The hci_core_r_user_filter works *only* if it is positioned at the 1-cycle latency boundary, i.e.,
  * the boundary in a cluster where we are guaranteed that a grant on a read results in a response in
  * the following cycle. Positioning it in another place results in hard-to-debug problems, typically
- * showing up as r_valid's never being taken or being served to the wrong master by a OoO mux or a
+ * showing up as r_valid's never being taken or being served to the wrong initiator by a OoO mux or a
  * dynamic mux.
  * These asserts try to avoid this scenario!
  */

@@ -29,7 +29,7 @@ module hci_core_memmap_filter #(
   input  logic [NB_REGION-1:0][AW-1:0] region_start_addr_i,
   input  logic [NB_REGION-1:0][AW-1:0] region_end_addr_i,
 
-  hci_core_intf.target    slave,
+  hci_core_intf.target    target,
   hci_core_intf.initiator interl_master,
   hci_core_intf.initiator per_master
 );
@@ -44,7 +44,7 @@ module hci_core_memmap_filter #(
     begin 
       destination_map = '0;
       for (int unsigned i=0; i<NB_REGION; i++) begin
-        if ((slave.add >= region_start_addr_i[i]) && (slave.add < region_end_addr_i[i])) begin
+        if ((target.add >= region_start_addr_i[i]) && (target.add < region_end_addr_i[i])) begin
           destination_map[i] = 1'b1;
         end
       end
@@ -83,7 +83,7 @@ module hci_core_memmap_filter #(
     begin : fsm_comb_state
       state_d = state_q;
       if((state_q != ON_PER) || (per_master.r_valid == 1'b1)) begin
-        if (slave.req) begin
+        if (target.req) begin
           if (destination_interleaved) begin
             if(interl_master.gnt)
               state_d = ON_TCDM;
@@ -109,54 +109,54 @@ module hci_core_memmap_filter #(
     always_comb
     begin : fsm_comb_out
       // handshake
-      interl_master.req = slave.req & destination_interleaved;
-      per_master.req  = slave.req & ~destination_interleaved;
-      slave.gnt  = interl_master.gnt | per_master.gnt | (slave.req & ~(|(destination_map)));
+      interl_master.req = target.req & destination_interleaved;
+      per_master.req  = target.req & ~destination_interleaved;
+      target.gnt  = interl_master.gnt | per_master.gnt | (target.req & ~(|(destination_map)));
       // interl_master request
-      interl_master.add   = slave.add;
-      interl_master.wen   = slave.wen;
-      interl_master.data  = slave.data;
-      interl_master.be    = slave.be;
-      interl_master.lrdy  = slave.lrdy;
-      interl_master.user  = slave.user;
+      interl_master.add   = target.add;
+      interl_master.wen   = target.wen;
+      interl_master.data  = target.data;
+      interl_master.be    = target.be;
+      interl_master.lrdy  = target.lrdy;
+      interl_master.user  = target.user;
       // per_master request
-      per_master.add   = slave.add;
-      per_master.wen   = slave.wen;
-      per_master.data  = slave.data;
-      per_master.be    = slave.be;
-      per_master.lrdy  = slave.lrdy;
-      per_master.user  = slave.user;
-      // slave response
+      per_master.add   = target.add;
+      per_master.wen   = target.wen;
+      per_master.data  = target.data;
+      per_master.be    = target.be;
+      per_master.lrdy  = target.lrdy;
+      per_master.user  = target.user;
+      // target response
       case(state_q)
         IDLE: begin
-          slave.r_valid = '0;
-          slave.r_data  = '0;
-          slave.r_opc   = '0;
-          slave.r_user  = '0;
+          target.r_valid = '0;
+          target.r_data  = '0;
+          target.r_opc   = '0;
+          target.r_user  = '0;
         end
         ON_TCDM: begin
-          slave.r_valid = interl_master.r_valid;
-          slave.r_data  = interl_master.r_data;
-          slave.r_opc   = interl_master.r_opc;
-          slave.r_user  = interl_master.r_user;
+          target.r_valid = interl_master.r_valid;
+          target.r_data  = interl_master.r_data;
+          target.r_opc   = interl_master.r_opc;
+          target.r_user  = interl_master.r_user;
         end
         ON_PER: begin
-          slave.r_valid = per_master.r_valid;
-          slave.r_data  = per_master.r_data;
-          slave.r_opc   = per_master.r_opc;
-          slave.r_user  = per_master.r_user;
+          target.r_valid = per_master.r_valid;
+          target.r_data  = per_master.r_data;
+          target.r_opc   = per_master.r_opc;
+          target.r_user  = per_master.r_user;
         end
         ERROR: begin
-          slave.r_valid = 1'b1;
-          slave.r_data  = 32'hbadacce5; // May need modification for DW != 32
-          slave.r_opc   = 1;
-          slave.r_user  = '0;
+          target.r_valid = 1'b1;
+          target.r_data  = 32'hbadacce5; // May need modification for DW != 32
+          target.r_opc   = 1;
+          target.r_user  = '0;
         end
         default: begin
-          slave.r_valid = '0;
-          slave.r_data  = '0;
-          slave.r_opc   = '0;
-          slave.r_user  = '0;
+          target.r_valid = '0;
+          target.r_data  = '0;
+          target.r_opc   = '0;
+          target.r_user  = '0;
         end
       endcase
     end
