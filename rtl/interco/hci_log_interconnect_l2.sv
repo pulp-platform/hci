@@ -73,7 +73,6 @@ module hci_log_interconnect_l2 #(
       end
       assign cores[i].gnt     = cores_gnt     [i];
       assign cores[i].r_valid = cores_r_valid [i];
-      assign cores[i].r_opc   = '0;
     end // cores_unrolling
     for(genvar i=0; i<N_MEM; i++) begin : mems_unrolling
       assign mems[i].req  = mems_req    [i];

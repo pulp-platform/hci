@@ -55,7 +55,6 @@ module hci_core_mux_ooo
   logic        [NB_CHAN-1:0][DW/BW-1:0]         in_be;
   logic        [NB_CHAN-1:0][DW-1:0]            in_r_data;
   logic        [NB_CHAN-1:0]                    in_r_valid;
-  logic        [NB_CHAN-1:0]                    in_r_opc;
   logic        [NB_CHAN-1:0][UW-1:0]            in_user; // used as id
   logic        [NB_CHAN-1:0][UW-1:0]            in_r_user; // used as id
 
@@ -94,14 +93,12 @@ module hci_core_mux_ooo
     assign in_be      [ii] = in[ii].be;
     assign in_r_data  [ii] = in[ii].r_data;
     assign in_r_valid [ii] = in[ii].r_valid;
-    assign in_r_opc   [ii] = in[ii].r_opc;
     assign in_user    [ii] = ii;
 
     // out.r_user used as an ID signal
     assign in[ii].gnt     = (winner_d == ii)   ? in[ii].req & out.gnt : 1'b0;
     assign in[ii].r_valid = (out.r_user == ii) ? out.r_valid : 1'b0;
     assign in[ii].r_data  = out.r_data;
-    assign in[ii].r_opc   = out.r_opc;
 
     // assign priorities to each port depending on round-robin counter
     assign rr_priority_d[ii] = priority_force_i ? priority_i[ii] : (rr_counter_q + ii) % NB_CHAN;

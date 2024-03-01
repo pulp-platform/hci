@@ -235,7 +235,6 @@ module hci_core_split #(
       assign tcdm_fifo[ii].gnt     = tcdm_initiator[ii].gnt;
       assign tcdm_fifo[ii].r_valid = tcdm_initiator[ii].r_valid;
       assign tcdm_fifo[ii].r_data  = tcdm_initiator[ii].r_data;
-      assign tcdm_fifo[ii].r_opc   = tcdm_initiator[ii].r_opc;
       assign tcdm_fifo[ii].r_user  = tcdm_initiator[ii].r_user;
     end
 

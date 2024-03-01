@@ -51,7 +51,6 @@ module hci_core_mux_static
     logic        [NB_CHAN-1:0][UW-1:0]            in_user;
     logic        [NB_CHAN-1:0][DW-1:0]            in_r_data;
     logic        [NB_CHAN-1:0]                    in_r_valid;
-    logic        [NB_CHAN-1:0]                    in_r_opc;
     logic        [NB_CHAN-1:0][UW-1:0]            in_r_user;
 
     for(genvar ii=0; ii<NB_CHAN; ii++) begin: tcdm_binding
@@ -66,13 +65,11 @@ module hci_core_mux_static
       assign in_user    [ii] = in[ii].user;
       assign in_r_data  [ii] = in[ii].r_data;
       assign in_r_valid [ii] = in[ii].r_valid;
-      assign in_r_opc   [ii] = in[ii].r_opc;
       assign in_r_user  [ii] = in[ii].r_user;
 
       assign in[ii].gnt     = (sel_i == ii) ? out.gnt     : 1'b0;
       assign in[ii].r_valid = (sel_i == ii) ? out.r_valid : 1'b0;
       assign in[ii].r_data  = out.r_data;
-      assign in[ii].r_opc   = out.r_opc;
       assign in[ii].r_user  = out.r_user;
     end
 
