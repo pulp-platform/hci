@@ -116,6 +116,9 @@ module hci_router
 
     // unimplemented user bits = 0
     assign postfifo.r_user = '0;
+
+    // unimplemented ECC bits = 0
+    assign postfifo.r_ecc = '0;
     
     assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:2];
 
@@ -175,6 +178,9 @@ module hci_router
 
       // unimplemented user bits = 0
       assign out[ii].user = '0;
+
+      // unimplemented ecc bits = 0
+      assign out[ii].ecc = '0;
     end // virt_out_bind
 
   endgenerate

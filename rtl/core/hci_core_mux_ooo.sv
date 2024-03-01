@@ -31,7 +31,8 @@ module hci_core_mux_ooo
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned AW = hci_package::DEFAULT_AW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned UW = hci_package::DEFAULT_UW
+  parameter int unsigned UW = hci_package::DEFAULT_UW,
+  parameter int unsigned EW = hci_package::DEFAULT_EW
 )
 (
   input  logic                                    clk_i,
@@ -47,16 +48,13 @@ module hci_core_mux_ooo
 
   // tcdm ports binding
   logic        [NB_CHAN-1:0]                    in_req;
-  logic        [NB_CHAN-1:0]                    in_gnt;
   logic        [NB_CHAN-1:0]                    in_lrdy;
   logic        [NB_CHAN-1:0][AW-1:0]            in_add;
   logic        [NB_CHAN-1:0]                    in_wen;
   logic        [NB_CHAN-1:0][DW-1:0]            in_data;
   logic        [NB_CHAN-1:0][DW/BW-1:0]         in_be;
-  logic        [NB_CHAN-1:0][DW-1:0]            in_r_data;
-  logic        [NB_CHAN-1:0]                    in_r_valid;
   logic        [NB_CHAN-1:0][UW-1:0]            in_user; // used as id
-  logic        [NB_CHAN-1:0][UW-1:0]            in_r_user; // used as id
+  logic        [NB_CHAN-1:0][EW-1:0]            in_ecc;
 
   logic [$clog2(NB_CHAN)-1:0]              rr_counter_q;
   logic [NB_CHAN-1:0][$clog2(NB_CHAN)-1:0] rr_priority_d;
@@ -85,20 +83,19 @@ module hci_core_mux_ooo
   for(genvar ii=0; ii<NB_CHAN; ii++) begin: in_port_binding
 
     assign in_req     [ii] = in[ii].req;
-    assign in_gnt     [ii] = in[ii].gnt;
     assign in_lrdy    [ii] = in[ii].r_ready;
     assign in_add     [ii] = in[ii].add;
     assign in_wen     [ii] = in[ii].wen;
     assign in_data    [ii] = in[ii].data;
     assign in_be      [ii] = in[ii].be;
-    assign in_r_data  [ii] = in[ii].r_data;
-    assign in_r_valid [ii] = in[ii].r_valid;
     assign in_user    [ii] = ii;
+    assign in_ecc     [ii] = in[ii].ecc;
 
     // out.r_user used as an ID signal
     assign in[ii].gnt     = (winner_d == ii)   ? in[ii].req & out.gnt : 1'b0;
     assign in[ii].r_valid = (out.r_user == ii) ? out.r_valid : 1'b0;
     assign in[ii].r_data  = out.r_data;
+    assign in[ii].r_ecc   = out.r_ecc;
 
     // assign priorities to each port depending on round-robin counter
     assign rr_priority_d[ii] = priority_force_i ? priority_i[ii] : (rr_counter_q + ii) % NB_CHAN;
@@ -123,5 +120,6 @@ module hci_core_mux_ooo
   assign out.data    = in_data  [winner_d];
   assign out.r_ready = in_lrdy  [out.r_user];
   assign out.user    = in_user  [winner_d];
+  assign out.ecc     = in_ecc   [winner_d];
 
 endmodule // hci_core_mux_ooo
