@@ -115,6 +115,7 @@ module hci_arbiter
           out[ii].data    = in_high[ii].data;
           out[ii].id      = in_high[ii].id;
           out[ii].user    = in_high[ii].user;
+          out[ii].ecc     = in_high[ii].ecc;
           in_high[ii].gnt = out[ii].gnt;
         end 
         else
@@ -126,6 +127,7 @@ module hci_arbiter
           out[ii].data   = in_low[ii].data;
           out[ii].id     = in_low[ii].id;
           out[ii].user   = in_low[ii].user;
+          out[ii].ecc    = in_low[ii].ecc;
           in_low[ii].gnt = out[ii].gnt;
         end
         in_high[ii].r_data = out[ii].r_data;
@@ -134,6 +136,8 @@ module hci_arbiter
         in_low [ii].r_id   = out[ii].r_id;
         in_high[ii].r_user = out[ii].r_user;
         in_low [ii].r_user = out[ii].r_user;
+        in_high[ii].r_ecc  = out[ii].r_ecc;
+        in_low [ii].r_ecc  = out[ii].r_ecc;
       end
     end // tcdm_binding
   endgenerate

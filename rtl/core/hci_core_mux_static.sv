@@ -25,7 +25,8 @@ module hci_core_mux_static
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned AW = hci_package::DEFAULT_AW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned UW = hci_package::DEFAULT_UW
+  parameter int unsigned UW = hci_package::DEFAULT_UW,
+  parameter int unsigned EW = hci_package::DEFAULT_EW
 )
 (
   input  logic                       clk_i,
@@ -42,35 +43,30 @@ module hci_core_mux_static
   generate
 
     logic        [NB_CHAN-1:0]                    in_req;
-    logic        [NB_CHAN-1:0]                    in_gnt;
     logic        [NB_CHAN-1:0]                    in_lrdy;
     logic        [NB_CHAN-1:0][AW-1:0]            in_add;
     logic        [NB_CHAN-1:0]                    in_wen;
     logic        [NB_CHAN-1:0][DW-1:0]            in_data;
     logic        [NB_CHAN-1:0][DW/BW-1:0]         in_be;
     logic        [NB_CHAN-1:0][UW-1:0]            in_user;
-    logic        [NB_CHAN-1:0][DW-1:0]            in_r_data;
-    logic        [NB_CHAN-1:0]                    in_r_valid;
-    logic        [NB_CHAN-1:0][UW-1:0]            in_r_user;
+    logic        [NB_CHAN-1:0][EW-1:0]            in_ecc;
 
     for(genvar ii=0; ii<NB_CHAN; ii++) begin: tcdm_binding
 
       assign in_req     [ii] = in[ii].req;
-      assign in_gnt     [ii] = in[ii].gnt;
       assign in_lrdy    [ii] = in[ii].r_ready;
       assign in_add     [ii] = in[ii].add;
       assign in_wen     [ii] = in[ii].wen;
       assign in_data    [ii] = in[ii].data;
       assign in_be      [ii] = in[ii].be;
       assign in_user    [ii] = in[ii].user;
-      assign in_r_data  [ii] = in[ii].r_data;
-      assign in_r_valid [ii] = in[ii].r_valid;
-      assign in_r_user  [ii] = in[ii].r_user;
+      assign in_ecc     [ii] = in[ii].ecc;
 
       assign in[ii].gnt     = (sel_i == ii) ? out.gnt     : 1'b0;
       assign in[ii].r_valid = (sel_i == ii) ? out.r_valid : 1'b0;
       assign in[ii].r_data  = out.r_data;
       assign in[ii].r_user  = out.r_user;
+      assign in[ii].r_ecc   = out.r_ecc;
     end
 
     assign out.req     = in_req   [sel_i];

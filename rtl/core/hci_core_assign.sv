@@ -39,4 +39,12 @@ module hci_core_assign
   assign tcdm_target.r_valid = tcdm_initiator.r_valid;
   assign tcdm_target.r_user  = tcdm_initiator.r_user;
 
+  // ECC signals
+  assign tcdm_initiator.ereq     = tcdm_target.ereq;
+  assign tcdm_target.egnt        = tcdm_initiator.egnt;
+  assign tcdm_target.r_evalid    = tcdm_initiator.r_evalid;
+  assign tcdm_initiator.r_eready = tcdm_target.r_eready;
+  assign tcdm_initiator.ecc      = tcdm_target.ecc;
+  assign tcdm_target.r_ecc       = tcdm_initiator.r_ecc;
+
 endmodule // hci_core_assign

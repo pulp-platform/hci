@@ -209,6 +209,9 @@ module hci_core_sink
   // unimplemented user bits = 0
   assign tcdm_prefifo.user = '0;
 
+  // FIXME unimplemented ECC bits
+  assign tcdm_prefifo.ecc = '0;
+
   generate
 
     if(TCDM_FIFO_DEPTH != 0) begin: tcdm_fifos_gen

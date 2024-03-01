@@ -21,7 +21,8 @@ module hci_core_load_store_mixer
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned AW = hci_package::DEFAULT_AW,
   parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned UW = hci_package::DEFAULT_UW
+  parameter int unsigned UW = hci_package::DEFAULT_UW,
+  parameter int unsigned EW = hci_package::DEFAULT_EW
 )
 (
   input  logic         clk_i,
@@ -51,9 +52,11 @@ module hci_core_load_store_mixer
   logic [NB_IN_CHAN-1:0][DW/BW-1:0]          in_be;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_data;
   logic [NB_IN_CHAN-1:0][UW-1:0]             in_user;
+  logic [NB_IN_CHAN-1:0][EW-1:0]             in_ecc;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_r_data;
   logic [NB_IN_CHAN-1:0]                     in_r_valid;
   logic [NB_IN_CHAN-1:0][UW-1:0]             in_r_user;
+  logic [NB_IN_CHAN-1:0][EW-1:0]             in_r_ecc;
 
   logic [NB_OUT_CHAN-1:0]                    out_req;
   logic [NB_OUT_CHAN-1:0]                    out_gnt;
@@ -63,9 +66,11 @@ module hci_core_load_store_mixer
   logic [NB_OUT_CHAN-1:0][DW/BW-1:0]         out_be;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_data;
   logic [NB_OUT_CHAN-1:0][UW-1:0]            out_user;
+  logic [NB_OUT_CHAN-1:0][EW-1:0]            out_ecc;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_r_data;
   logic [NB_OUT_CHAN-1:0]                    out_r_valid;
   logic [NB_OUT_CHAN-1:0][UW-1:0]            out_r_user;
+  logic [NB_OUT_CHAN-1:0][EW-1:0]            out_r_ecc;
 
   logic [$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                                              rr_counter;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN/NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0] rr_priority;
@@ -96,10 +101,12 @@ module hci_core_load_store_mixer
     assign in_data  [LOAD] = in_load.data;
     assign in_lrdy  [LOAD] = in_load.r_ready;
     assign in_user  [LOAD] = in_load.user;
+    assign in_ecc   [LOAD] = in_load.ecc;
     assign in_load.gnt     = in_gnt     [LOAD];
     assign in_load.r_data  = in_r_data  [LOAD];
     assign in_load.r_valid = in_r_valid [LOAD];
     assign in_load.r_user  = in_r_user  [LOAD];
+    assign in_load.r_ecc   = in_r_ecc   [LOAD];
 
     assign in_req   [STORE] = in_store.req;
     assign in_add   [STORE] = in_store.add;
@@ -108,10 +115,12 @@ module hci_core_load_store_mixer
     assign in_data  [STORE] = in_store.data;
     assign in_lrdy  [STORE] = in_store.r_ready;
     assign in_user  [STORE] = in_store.user;
+    assign in_ecc   [STORE] = in_store.ecc;
     assign in_store.gnt     = in_gnt     [STORE];
     assign in_store.r_data  = in_r_data  [STORE];
     assign in_store.r_valid = in_r_valid [STORE];
     assign in_store.r_user  = in_r_user  [STORE];
+    assign in_store.r_ecc   = in_r_ecc   [STORE];
 
     assign out.req     = out_req   [0];
     assign out.add     = out_add   [0];
@@ -120,10 +129,12 @@ module hci_core_load_store_mixer
     assign out.data    = out_data  [0];
     assign out.r_ready = out_lrdy  [0];
     assign out.user    = out_user  [0];
+    assign out.ecc     = out_ecc   [0];
     assign out_gnt     [0] = out.gnt;
     assign out_r_data  [0] = out.r_data;
     assign out_r_valid [0] = out.r_valid;
     assign out_r_user  [0] = out.r_user;
+    assign out_r_ecc   [0] = out.r_ecc;
 
     for(i=0; i<NB_OUT_CHAN; i++) begin : out_chan_binding
 
@@ -157,6 +168,7 @@ module hci_core_load_store_mixer
         out_be   [i] = in_be   [winner_d[i]*NB_OUT_CHAN+i];
         out_lrdy [i] = in_lrdy [winner_d[i]*NB_OUT_CHAN+i];
         out_user [i] = in_user [winner_d[i]*NB_OUT_CHAN+i];
+        out_ecc  [i] = in_ecc  [winner_d[i]*NB_OUT_CHAN+i];
       end
 
       always_ff @(posedge clk_i or negedge rst_ni)
@@ -195,16 +207,19 @@ module hci_core_load_store_mixer
           in_r_data  [j*NB_OUT_CHAN+i] = '0;
           in_r_valid [j*NB_OUT_CHAN+i] = 1'b0;
           in_r_user  [j*NB_OUT_CHAN+i] = '0;
+          in_r_ecc   [j*NB_OUT_CHAN+i] = '0;
         end
         if (out_r_valid[i]) begin
           in_r_data  [LOAD] = out_r_data[i];
           in_r_valid [LOAD] = out_r_valid[i];
           in_r_user  [LOAD] = out_r_user[i];
+          in_r_ecc   [LOAD] = out_r_ecc[i];
         end
         else begin
           in_r_data  [STORE] = out_r_data[i];
           in_r_valid [STORE] = out_r_valid[i];
           in_r_user  [STORE] = out_r_user[i];
+          in_r_ecc   [STORE] = out_r_ecc[i];
         end
       end
     end

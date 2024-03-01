@@ -84,6 +84,8 @@ module hci_core_fifo #(
   parameter int unsigned BW = hci_package::DEFAULT_BW,
   parameter int unsigned AW = hci_package::DEFAULT_AW, /// addr width
   parameter int unsigned UW = hci_package::DEFAULT_UW,
+  parameter int unsigned EW = hci_package::DEFAULT_EW,
+  parameter int unsigned EHW = hci_package::DEFAULT_EHW,
   parameter int unsigned LATCH_FIFO = 0
 )
 (
@@ -101,11 +103,11 @@ module hci_core_fifo #(
 
   logic incoming_fifo_not_full;
 
-  logic             tcdm_initiator_r_valid_d, tcdm_initiator_r_valid_q;
-  logic [UW+DW-1:0] tcdm_initiator_r_data_d, tcdm_initiator_r_data_q;
+  logic                tcdm_initiator_r_valid_d, tcdm_initiator_r_valid_q;
+  logic [EW+UW+DW-1:0] tcdm_initiator_r_data_d, tcdm_initiator_r_data_q;
 
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( AW+UW+DW+DW/BW+1 )
+    .DATA_WIDTH ( AW+UW+DW+DW/BW+EW+1 )
 `ifndef SYNTHESIS
     ,
     .BYPASS_VCR_ASSERT ( 1'b1 ),
@@ -115,7 +117,7 @@ module hci_core_fifo #(
     .clk ( clk_i )
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( AW+UW+DW+DW/BW+1 )
+    .DATA_WIDTH ( AW+UW+DW+DW/BW+EW+1 )
 `ifndef SYNTHESIS
     ,
     .BYPASS_VCR_ASSERT ( 1'b1 ),
@@ -126,7 +128,7 @@ module hci_core_fifo #(
   );
 
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( UW+DW )
+    .DATA_WIDTH ( UW+DW+EW )
 `ifndef SYNTHESIS
     ,
     .BYPASS_VCR_ASSERT ( 1'b1 ),
@@ -136,7 +138,7 @@ module hci_core_fifo #(
     .clk ( clk_i )
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( UW+DW )
+    .DATA_WIDTH ( UW+DW+EW )
 `ifndef SYNTHESIS
     ,
     .BYPASS_VCR_ASSERT ( 1'b1 ),
@@ -153,18 +155,26 @@ module hci_core_fifo #(
 
   assign incoming_fifo_not_full = stream_incoming_push.ready;
 
+  assign tcdm_target.r_data = stream_incoming_pop.data[DW-1:0];
   if (UW > 0) begin
-    assign tcdm_target.r_data = stream_incoming_pop.data[DW-1:0];
     assign tcdm_target.r_user = stream_incoming_pop.data[UW+DW-1:DW];
   end else begin
-    assign tcdm_target.r_data = stream_incoming_pop.data;
     assign tcdm_target.r_user = '0;
+  end
+  if (EW > 0) begin
+    assign tcdm_target.r_ecc = stream_incoming_pop.data[UW+DW+EW-1:UW+DW];
+  end else begin
+    assign tcdm_target.r_ecc = '0;
   end
   assign tcdm_target.r_valid  = stream_incoming_pop.valid;
   assign stream_incoming_pop.ready = tcdm_target.r_ready;
 
   // enforce protocol on incoming stream
-  if (UW > 0)
+  if (UW > 0 && EW > 0)
+    assign tcdm_initiator_r_data_d = {tcdm_initiator.r_ecc, tcdm_initiator.r_user, tcdm_initiator.r_data};
+  else if (EW > 0)
+    assign tcdm_initiator_r_data_d = {tcdm_initiator.r_ecc, tcdm_initiator.r_data};
+  else if (UW > 0)
     assign tcdm_initiator_r_data_d = {tcdm_initiator.r_user, tcdm_initiator.r_data};
   else
     assign tcdm_initiator_r_data_d = tcdm_initiator.r_data;
@@ -210,7 +220,11 @@ module hci_core_fifo #(
   );
 
   // wrap tcdm outgoing ports into a stream
-  if (UW > 0)
+  if (UW > 0 && EW > 0)
+    assign stream_outgoing_push.data = { tcdm_target.ecc, tcdm_target.add, tcdm_target.user, tcdm_target.data, tcdm_target.be, tcdm_target.wen };
+  else if (EW > 0)
+    assign stream_outgoing_push.data = { tcdm_target.ecc, tcdm_target.add, tcdm_target.data, tcdm_target.be, tcdm_target.wen };
+  else if (UW > 0)
     assign stream_outgoing_push.data = { tcdm_target.add, tcdm_target.user, tcdm_target.data, tcdm_target.be, tcdm_target.wen };
   else
     assign stream_outgoing_push.data = { tcdm_target.add, tcdm_target.data, tcdm_target.be, tcdm_target.wen };
@@ -224,17 +238,27 @@ module hci_core_fifo #(
   logic [AW-1:0]    tcdm_initiator_add;
   logic [DW-1:0]    tcdm_initiator_data;
   logic [UW-1:0]    tcdm_initiator_user;
+  logic [EW-1:0]    tcdm_initiator_ecc;
   logic [DW/BW-1:0] tcdm_initiator_be;
   logic             tcdm_initiator_wen;
   assign tcdm_initiator.add  = tcdm_initiator_add;
   assign tcdm_initiator.data = tcdm_initiator_data;
   assign tcdm_initiator.user = tcdm_initiator_user;
+  assign tcdm_initiator.ecc  = tcdm_initiator_ecc;
   assign tcdm_initiator.be   = tcdm_initiator_be;
   assign tcdm_initiator.wen  = tcdm_initiator_wen;
-  if (UW > 0)
+  if (UW > 0 && EW > 0) begin
+    assign { >> { tcdm_initiator_ecc, tcdm_initiator_add, tcdm_initiator_user, tcdm_initiator_data, tcdm_initiator_be, tcdm_initiator_wen }} = stream_outgoing_pop_data;
+  end
+  else if (EW > 0) begin
+    assign { >> { tcdm_initiator_ecc, tcdm_initiator_add, tcdm_initiator_data, tcdm_initiator_be, tcdm_initiator_wen }} = stream_outgoing_pop_data;
+    assign tcdm_initiator_user = '0;
+  end
+  else if (UW > 0) begin
     assign { >> { tcdm_initiator_add, tcdm_initiator_user, tcdm_initiator_data, tcdm_initiator_be, tcdm_initiator_wen }} = stream_outgoing_pop_data;
-  else
-  begin
+    assign tcdm_initiator_ecc = '0;
+  end
+  else begin
     assign { >> { tcdm_initiator_add, tcdm_initiator_data, tcdm_initiator_be, tcdm_initiator_wen }} = stream_outgoing_pop_data;
     assign tcdm_initiator_user = '0;
   end
