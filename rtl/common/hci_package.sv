@@ -21,7 +21,8 @@ package hci_package;
   parameter int unsigned DEFAULT_WW = 32; // Default Word Width
   parameter int unsigned DEFAULT_UW = 0;  // Default User Width
   parameter int unsigned DEFAULT_IW = 8;  // Default ID Width
-  parameter int unsigned DEFAULT_EW = 0;  // Default ECC Width
+  parameter int unsigned DEFAULT_EW = 0;  // Default ECC for Data Width
+  parameter int unsigned DEFAULT_EHW = 0; // Default ECC for Handhshake Width
 
   typedef struct packed {
     logic [1:0] arb_policy;
