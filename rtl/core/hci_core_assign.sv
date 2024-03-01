@@ -37,7 +37,6 @@ module hci_core_assign
   assign tcdm_initiator.user    = tcdm_target.user;
   assign tcdm_target.r_data  = tcdm_initiator.r_data;
   assign tcdm_target.r_valid = tcdm_initiator.r_valid;
-  assign tcdm_target.r_opc   = tcdm_initiator.r_opc;
   assign tcdm_target.r_user  = tcdm_initiator.r_user;
 
 endmodule // hci_core_assign

@@ -42,7 +42,6 @@ module hci_core_r_user_filter #(
   assign tcdm_initiator.user    = '0;
   assign tcdm_target.gnt        = tcdm_initiator.gnt;
   assign tcdm_target.r_data     = tcdm_initiator.r_data;
-  assign tcdm_target.r_opc      = tcdm_initiator.r_opc;
   assign tcdm_target.r_user     = user_q;
   assign tcdm_target.r_valid    = tcdm_initiator.r_valid;
 

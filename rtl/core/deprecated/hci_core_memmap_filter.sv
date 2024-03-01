@@ -131,31 +131,26 @@ module hci_core_memmap_filter #(
         IDLE: begin
           target.r_valid = '0;
           target.r_data  = '0;
-          target.r_opc   = '0;
           target.r_user  = '0;
         end
         ON_TCDM: begin
           target.r_valid = interl_initiator.r_valid;
           target.r_data  = interl_initiator.r_data;
-          target.r_opc   = interl_initiator.r_opc;
           target.r_user  = interl_initiator.r_user;
         end
         ON_PER: begin
           target.r_valid = per_initiator.r_valid;
           target.r_data  = per_initiator.r_data;
-          target.r_opc   = per_initiator.r_opc;
           target.r_user  = per_initiator.r_user;
         end
         ERROR: begin
           target.r_valid = 1'b1;
           target.r_data  = 32'hbadacce5; // May need modification for DW != 32
-          target.r_opc   = 1;
           target.r_user  = '0;
         end
         default: begin
           target.r_valid = '0;
           target.r_data  = '0;
-          target.r_opc   = '0;
           target.r_user  = '0;
         end
       endcase

@@ -53,7 +53,6 @@ interface hci_core_intf (
   // response phase payload
   logic [DW-1:0] r_data;
   logic          r_valid;
-  logic          r_opc;
   logic [UW-1:0] r_user;
   logic [EW-1:0] r_ecc;
   logic [IW-1:0] r_id;
@@ -71,7 +70,6 @@ interface hci_core_intf (
     output id,
     input  r_data,
     input  r_valid,
-    input  r_opc,
     input  r_user,
     input  r_ecc,
     input  r_id
@@ -90,7 +88,6 @@ interface hci_core_intf (
     input  id,
     output r_data,
     output r_valid,
-    output r_opc,
     output r_user,
     output r_ecc,
     output r_id
@@ -109,7 +106,6 @@ interface hci_core_intf (
     input id,
     input r_data,
     input r_valid,
-    input r_opc,
     input r_user,
     input r_ecc,
     input r_id
@@ -144,8 +140,7 @@ interface hci_core_intf (
       (r_data == $past(r_data)) && 
       (r_user == $past(r_user)) &&
       (r_ecc  == $past(r_ecc))  &&
-      (r_id   == $past(r_id))   &&
-      (r_opc  == $past(r_opc))
+      (r_id   == $past(r_id))
     ) | BYPASS_RSP3_ASSERT;
   endproperty;
 

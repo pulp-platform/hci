@@ -43,7 +43,6 @@ module hci_core_memmap_demux_interl #(
     logic [NB_REGION-1:0]         initiator_req_aux, initiator_gnt_aux;
     logic [NB_REGION-1:0]         initiator_r_valid_aux;
     logic [NB_REGION-1:0][DW-1:0] initiator_r_data_aux;
-    logic [NB_REGION-1:0]         initiator_r_opc_aux;
     logic [NB_REGION-1:0][UW-1:0] initiator_r_user_aux;
 
     logic [NB_REGION-1:0] destination_map;
@@ -117,19 +116,16 @@ module hci_core_memmap_demux_interl #(
         IDLE: begin
           target.r_valid = '0;
           target.r_data  = '0;
-          target.r_opc   = '0;
           target.r_user  = '0;
         end
         RESPONSE: begin
           target.r_valid = initiator_r_valid_aux [region_q];
           target.r_data  = initiator_r_data_aux  [region_q];
-          target.r_opc   = initiator_r_opc_aux   [region_q];
           target.r_user  = initiator_r_user_aux  [region_q];
         end
         default: begin
           target.r_valid = '0;
           target.r_data  = '0;
-          target.r_opc   = '0;
           target.r_user  = '0;
         end
       endcase
@@ -149,7 +145,6 @@ module hci_core_memmap_demux_interl #(
         assign initiator_gnt_aux     [ii] = initiator[ii].gnt;
         assign initiator_r_valid_aux [ii] = initiator[ii].r_valid;
         assign initiator_r_data_aux  [ii] = initiator[ii].r_data;
-        assign initiator_r_opc_aux   [ii] = initiator[ii].r_opc;
         assign initiator_r_user_aux  [ii] = initiator[ii].r_user;
       end
     endgenerate
