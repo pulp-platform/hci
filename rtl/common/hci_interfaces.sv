@@ -29,33 +29,43 @@ interface hci_core_intf (
   parameter bit BYPASS_RSP5_ASSERT = 1'b0;
 `endif
 
-  parameter int unsigned DW = hci_package::DEFAULT_DW; /// Data Width
-  parameter int unsigned AW = hci_package::DEFAULT_AW; /// Address Width
-  parameter int unsigned BW = hci_package::DEFAULT_BW; /// Width of a "byte" in bits (default 8)
-  parameter int unsigned UW = hci_package::DEFAULT_UW; /// User Width
-  parameter int unsigned IW = hci_package::DEFAULT_IW; /// ID Width
-  parameter int unsigned EW = hci_package::DEFAULT_EW; /// ECC Width
+  parameter int unsigned DW  = hci_package::DEFAULT_DW;  /// Data Width
+  parameter int unsigned AW  = hci_package::DEFAULT_AW;  /// Address Width
+  parameter int unsigned BW  = hci_package::DEFAULT_BW;  /// Width of a "byte" in bits (default 8)
+  parameter int unsigned UW  = hci_package::DEFAULT_UW;  /// User Width
+  parameter int unsigned IW  = hci_package::DEFAULT_IW;  /// ID Width
+  parameter int unsigned EW  = hci_package::DEFAULT_EW;  /// ECC Width
+  parameter int unsigned EHW = hci_package::DEFAULT_EHW; /// ECC Width
 
   // handshake signals
   logic req;
   logic gnt;
-  logic r_ready; // load ready signal
+  logic r_valid;
+  logic r_ready;
 
   // request phase payload
-  logic        [AW-1:0]            add;
-  logic                            wen; // wen=1'b1 for LOAD, wen=1'b0 for STORE
-  logic        [DW-1:0]            data;
-  logic        [DW/BW-1:0]         be;
-  logic        [UW-1:0]            user;
-  logic        [EW-1:0]            ecc;
-  logic        [IW-1:0]            id;
+  logic [AW-1:0]    add;
+  logic             wen; // wen=1'b1 for LOAD, wen=1'b0 for STORE
+  logic [DW-1:0]    data;
+  logic [DW/BW-1:0] be;
+  logic [UW-1:0]    user;
+  logic [IW-1:0]    id;
 
   // response phase payload
   logic [DW-1:0] r_data;
   logic          r_valid;
   logic [UW-1:0] r_user;
-  logic [EW-1:0] r_ecc;
   logic [IW-1:0] r_id;
+
+  // data ECC signals
+  logic [EW-1:0] ecc;
+  logic [EW-1:0] r_ecc;
+
+  // handshake ECC signals
+  logic [EHW-1:0] ereq;
+  logic [EHW-1:0] egnt;
+  logic [EHW-1:0] r_evalid;
+  logic [EHW-1:0] r_eready;
 
   modport initiator (
     output req,
@@ -66,13 +76,17 @@ interface hci_core_intf (
     output be,
     output r_ready,
     output user,
-    output ecc,
     output id,
     input  r_data,
     input  r_valid,
     input  r_user,
+    input  r_id,
+    output ecc,
     input  r_ecc,
-    input  r_id
+    output ereq,
+    input  egnt,
+    input  r_evalid,
+    output r_eready
   );
 
   modport target (
@@ -84,13 +98,17 @@ interface hci_core_intf (
     input  be,
     input  r_ready,
     input  user,
-    input  ecc,
     input  id,
     output r_data,
     output r_valid,
     output r_user,
-    output r_ecc,
-    output r_id
+    output r_id,
+    output ecc,
+    input  r_ecc,
+    input  ereq,
+    output egnt,
+    output r_evalid,
+    input  r_eready
   );
 
   modport monitor (
@@ -102,13 +120,17 @@ interface hci_core_intf (
     input be,
     input r_ready,
     input user,
-    input ecc,
     input id,
     input r_data,
     input r_valid,
     input r_user,
+    input r_id,
+    input ecc,
     input r_ecc,
-    input r_id
+    input ereq,
+    input egnt,
+    input r_evalid,
+    input r_eready
   );
 
 `ifndef SYNTHESIS
@@ -188,13 +210,21 @@ interface hci_mem_intf (
   logic [DW/BW-1:0] be;
   logic [IW-1:0]    id;
   logic [UW-1:0]    user;
-  logic [EW-1:0]    ecc;
 
   // response phase payload
   logic [DW-1:0] r_data;
   logic [IW-1:0] r_id;
   logic [UW-1:0] r_user;
+
+  // data ECC signals
+  logic [EW-1:0] ecc;
   logic [EW-1:0] r_ecc;
+
+  // handshake ECC signals
+  logic [EHW-1:0] ereq;
+  logic [EHW-1:0] egnt;
+  logic [EHW-1:0] r_evalid;
+  logic [EHW-1:0] r_eready;;
 
   modport initiator (
     output req,
@@ -205,11 +235,15 @@ interface hci_mem_intf (
     output be,
     output id,
     output user,
-    output ecc,
     input  r_data,
     input  r_id,
     input  r_user,
-    input  r_ecc
+    output ecc,
+    input  r_ecc,
+    output ereq,
+    input  egnt,
+    input  r_evalid,
+    output r_eready
   );
 
   modport target (
@@ -221,11 +255,15 @@ interface hci_mem_intf (
     input  be,
     input  id,
     input  user,
-    input  ecc,
     output r_data,
     output r_id,
     output r_user,
-    output r_ecc
+    output ecc,
+    input  r_ecc,
+    input  ereq,
+    output egnt,
+    output r_evalid,
+    input  r_eready
   );
 
   modport monitor (
@@ -237,11 +275,15 @@ interface hci_mem_intf (
     input be,
     input id,
     input user,
-    input ecc,
     input r_data,
     input r_id,
     input r_user,
-    input r_ecc
+    input ecc,
+    input r_ecc,
+    input ereq,
+    input egnt,
+    input r_evalid,
+    input r_eready
   );
 
 endinterface // hci_mem_intf
