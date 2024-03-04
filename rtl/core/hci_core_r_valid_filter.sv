@@ -35,10 +35,12 @@ module hci_core_r_valid_filter
   assign tcdm_initiator.req     = tcdm_target.req;
   assign tcdm_initiator.r_ready = tcdm_target.r_ready;
   assign tcdm_initiator.user    = tcdm_target.user;
+  assign tcdm_initiator.id      = tcdm_target.id;
   assign tcdm_initiator.ecc     = tcdm_target.ecc;
   assign tcdm_target.gnt        = tcdm_initiator.gnt;
   assign tcdm_target.r_data     = tcdm_initiator.r_data;
   assign tcdm_target.r_user     = tcdm_initiator.r_user;
+  assign tcdm_target.r_id       = tcdm_initiator.r_id;
   assign tcdm_target.r_ecc      = tcdm_initiator.r_ecc;
   assign tcdm_target.r_valid    = enable_i ? tcdm_initiator.r_valid & wen_q : tcdm_initiator.r_valid;
 
@@ -62,19 +64,16 @@ module hci_core_r_valid_filter
 `ifndef VERILATOR
   initial
     dw : assert(tcdm_target.DW == tcdm_initiator.DW);
-
   initial
     bw : assert(tcdm_target.BW == tcdm_initiator.BW);
-
   initial
     aw : assert(tcdm_target.AW == tcdm_initiator.AW);
-
   initial
     uw : assert(tcdm_target.UW == tcdm_initiator.UW);
-
+  initial
+    iw : assert(tcdm_target.IW == tcdm_initiator.IW);
   initial
     ew : assert(tcdm_target.EW == tcdm_initiator.EW);
-
   initial
     ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
 `endif

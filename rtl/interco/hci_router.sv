@@ -116,7 +116,10 @@ module hci_router
     end // fifo_gen
 
     // unimplemented user bits = 0
-    assign postfifo.r_user = '0;
+    assign postfifo.r_user = '0
+
+    // unimplemented id bits = 0
+    assign postfifo.r_id = '0;
 
     // unimplemented ECC bits = 0
     assign postfifo.r_ecc = '0;
@@ -178,7 +181,10 @@ module hci_router
       assign virt_out[ii].r_data  = out[ii].r_data;
 
       // unimplemented user bits = 0
-      assign out[ii].user = '0;
+      assign out[ii].user = '0
+
+      // unimplemented id bits = 0
+      assign out[ii].id = '0;
 
       // unimplemented ecc bits = 0
       assign out[ii].ecc = '0;
