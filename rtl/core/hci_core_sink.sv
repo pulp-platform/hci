@@ -321,12 +321,12 @@ module hci_core_sink
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    assign tcdm.ereq     = {(EHW){tcdm.req}};
-    assign tcdm.r_eready = {(EHW){tcdm.r_ready}};
+    assign tcdm_target.ereq     = {(EHW){tcdm_target.req}};
+    assign tcdm_target.r_eready = {(EHW){tcdm_target.r_ready}};
   end
   else begin : no_ecc_handshake_gen
-    assign tcdm.ereq     = '0;
-    assign tcdm.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm_target.ereq     = '0;
+    assign tcdm_target.r_eready = '1; // assign all gnt's to 1 
   end
 
 /*
