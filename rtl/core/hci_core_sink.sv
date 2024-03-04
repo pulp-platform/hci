@@ -117,19 +117,19 @@ module hci_core_sink
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 36 )
-  ) addr (
+  ) addr_push (
     .clk ( clk_i )
   );
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 36 )
-  ) addr_fifo (
+  ) addr_pop (
     .clk ( clk_i )
   );
 
   hci_core_intf #(
     .DW ( DATA_WIDTH )
-  ) tcdm_prefifo (
+  ) tcdm_target (
     .clk ( clk_i )
   );
 
@@ -139,7 +139,7 @@ module hci_core_sink
     .enable_i    ( address_gen_en           ),
     .clear_i     ( address_gen_clr          ),
     .presample_i ( ctrl_i.req_start         ),
-    .addr_o      ( addr                     ),
+    .addr_o      ( addr_push                ),
     .ctrl_i      ( ctrl_i.addressgen_ctrl   ),
     .flags_o     ( flags_o.addressgen_flags )
   );
@@ -152,8 +152,8 @@ module hci_core_sink
     .rst_ni  ( rst_ni          ),
     .clear_i ( clear_i         ),
     .flags_o ( addr_fifo_flags ),
-    .push_i  ( addr            ),
-    .pop_o   ( addr_fifo       )
+    .push_i  ( addr_push       ),
+    .pop_o   ( addr_pop        )
   );
 
   logic address_cnt_en, address_cnt_clr;
@@ -172,7 +172,7 @@ module hci_core_sink
     begin
       stream_data_aligned = '0;
       stream_strb_aligned = '0;
-      case(addr_fifo.data[1:0])
+      case(addr_pop.data[1:0])
         2'b00: begin
           stream_data_aligned[DATA_WIDTH-32-1:0]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
           stream_strb_aligned[(DATA_WIDTH-32)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
@@ -198,20 +198,20 @@ module hci_core_sink
   end
 
   // hci port binding
-  assign tcdm_prefifo.req     = (cs != STREAMER_IDLE) ? stream.valid & addr_fifo.valid : '0;
-  assign tcdm_prefifo.add     = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
-  assign tcdm_prefifo.wen     = '0;
-  assign tcdm_prefifo.be      = (cs != STREAMER_IDLE) ? stream_strb_aligned            : '0;
-  assign tcdm_prefifo.data    = (cs != STREAMER_IDLE) ? stream_data_aligned            : '0;
-  assign tcdm_prefifo.r_ready = '1;
-  assign stream.ready    = ~stream.valid | (tcdm_prefifo.gnt & addr_fifo.valid);
-  assign addr_fifo.ready =  stream.valid & stream.ready;
+  assign tcdm_target.req     = (cs != STREAMER_IDLE) ? stream.valid & addr_pop.valid : '0;
+  assign tcdm_target.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
+  assign tcdm_target.wen     = '0;
+  assign tcdm_target.be      = (cs != STREAMER_IDLE) ? stream_strb_aligned           : '0;
+  assign tcdm_target.data    = (cs != STREAMER_IDLE) ? stream_data_aligned           : '0;
+  assign tcdm_target.r_ready = '1;
+  assign stream.ready    = ~stream.valid | (tcdm_target.gnt & addr_pop.valid);
+  assign addr_pop.ready  =  stream.valid & stream.ready;
 
   // unimplemented user bits = 0
-  assign tcdm_prefifo.user = '0;
+  assign tcdm_target.user = '0;
 
   // FIXME unimplemented ECC bits
-  assign tcdm_prefifo.ecc = '0;
+  assign tcdm_target.ecc = '0;
 
   generate
 
@@ -220,20 +220,20 @@ module hci_core_sink
       hwpe_stream_tcdm_fifo_store #(
         .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
       ) i_tcdm_fifo (
-        .clk_i          ( clk_i        ),
-        .rst_ni         ( rst_ni       ),
-        .clear_i        ( clear_i      ),
-        .tcdm_target    ( tcdm_prefifo ),
-        .tcdm_initiator ( tcdm         ),
-        .flags_o        (              )
+        .clk_i          ( clk_i       ),
+        .rst_ni         ( rst_ni      ),
+        .clear_i        ( clear_i     ),
+        .tcdm_target    ( tcdm_target ),
+        .tcdm_initiator ( tcdm        ),
+        .flags_o        (             )
       );
 
     end
     else begin: no_tcdm_fifos_gen
 
       hci_core_assign i_tcdm_assign (
-        .tcdm_target    ( tcdm_prefifo ),
-        .tcdm_initiator ( tcdm         )
+        .tcdm_target    ( tcdm_target ),
+        .tcdm_initiator ( tcdm        )
       );
 
     end
@@ -300,7 +300,7 @@ module hci_core_sink
     endcase
   end
 
-  assign address_cnt_en = addr_fifo.valid & addr_fifo.ready;
+  assign address_cnt_en = addr_pop.valid & addr_pop.ready;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
