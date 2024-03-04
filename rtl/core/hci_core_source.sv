@@ -124,13 +124,13 @@ module hci_core_source
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 32 )
-  ) addr (
+  ) addr_push (
     .clk ( clk_i )
   );
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 32 )
-  ) addr_fifo (
+  ) addr_pop (
     .clk ( clk_i )
   );
 
@@ -141,7 +141,7 @@ module hci_core_source
     .enable_i    ( address_gen_en           ),
     .clear_i     ( address_gen_clr          ),
     .presample_i ( ctrl_i.req_start         ),
-    .addr_o      ( addr                     ),
+    .addr_o      ( addr_push                ),
     .ctrl_i      ( ctrl_i.addressgen_ctrl   ),
     .flags_o     ( flags_o.addressgen_flags )
   );
@@ -155,8 +155,8 @@ module hci_core_source
       .rst_ni  ( rst_ni          ),
       .clear_i ( clear_i         ),
       .flags_o ( addr_fifo_flags ),
-      .push_i  ( addr            ),
-      .pop_o   ( addr_fifo       )
+      .push_i  ( addr_push       ),
+      .pop_o   ( addr_pop        )
     );
   end
   else begin : nopassthrough_gen
@@ -168,8 +168,8 @@ module hci_core_source
       .rst_ni  ( rst_ni          ),
       .clear_i ( clear_i         ),
       .flags_o ( addr_fifo_flags ),
-      .push_i  ( addr            ),
-      .pop_o   ( addr_fifo       )
+      .push_i  ( addr_push       ),
+      .pop_o   ( addr_pop        )
     );
   end
 
@@ -211,8 +211,8 @@ module hci_core_source
   end
 
   assign tcdm.r_ready = stream.ready;
-  assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready : '0;
-  assign tcdm.add     = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
+  assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready : '0;
+  assign tcdm.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
   assign tcdm.wen     = 1'b1;
   assign tcdm.be      = 4'h0;
   assign tcdm.data    = '0;
@@ -221,7 +221,7 @@ module hci_core_source
   assign stream.strb  = '1;
   assign stream.data  = stream_data_aligned;
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
-  assign addr_fifo.ready = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready & tcdm.gnt : 1'b0;
+  assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready & tcdm.gnt : 1'b0;
   
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 8 ) // only 2 significant
@@ -233,7 +233,7 @@ module hci_core_source
   ) addr_misaligned_pop (
     .clk ( clk_i )
   );
-  assign addr_misaligned_push.data  = {6'b0, addr_fifo.data[1:0]};
+  assign addr_misaligned_push.data  = {6'b0, addr_pop.data[1:0]};
   assign addr_misaligned_push.strb  = '1;
   assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
   assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & stream.ready;
