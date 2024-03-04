@@ -252,6 +252,26 @@ module hci_core_split #(
   end
 
 /*
+ * ECC Handshake signals
+ */
+  if(EHW > 0) begin : ecc_handshake_gen
+    assign tcdm_target.egnt     = {(EHW){tcdm_target.gnt}};
+    assign tcdm_target.r_evalid = {(EHW){tcdm_target.r_evalid}};
+    for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
+      assign tcdm_initiator[ii].ereq     = {(EHW){tcdm_initiator[ii].req}};
+      assign tcdm_initiator[ii].r_eready = {(EHW){tcdm_initiator[ii].r_ready}};
+    end
+  end
+  else begin : no_ecc_handshake_gen
+    assign tcdm_target.egnt     = '1;
+    assign tcdm_target.r_evalid = '0;
+    for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
+      assign tcdm_initiator[ii].ereq     = '0;
+      assign tcdm_initiator[ii].r_eready = '1;
+    end
+  end
+
+/*
  * Interface size asserts
  */
 `ifndef SYNTHESIS

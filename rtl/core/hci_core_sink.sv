@@ -102,9 +102,10 @@ module hci_core_sink
   // control plane
   input  hci_streamer_ctrl_t  ctrl_i,
   output hci_streamer_flags_t flags_o
-)
+);
 
   localparam int unsigned DATA_WIDTH = tcdm.DW;
+  localparam int unsigned EHW        = tcdm.EHW;
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -315,6 +316,18 @@ module hci_core_sink
       address_cnt_q <= address_cnt_d;
   end
   assign address_cnt_d = address_cnt_q + 1;
+
+/*
+ * ECC Handshake signals
+ */
+  if(EHW > 0) begin : ecc_handshake_gen
+    assign tcdm.ereq     = {(EHW){tcdm.req}};
+    assign tcdm.r_eready = {(EHW){tcdm.r_ready}};
+  end
+  else begin : no_ecc_handshake_gen
+    assign tcdm.ereq     = '0;
+    assign tcdm.r_eready = '1; // assign all gnt's to 1 
+  end
 
 /*
  * Interface size asserts

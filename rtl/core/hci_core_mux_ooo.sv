@@ -129,6 +129,26 @@ module hci_core_mux_ooo
   assign out.ecc     = in_ecc   [winner_d];
 
 /*
+ * ECC Handshake signals
+ */
+  if(EHW > 0) begin : ecc_handshake_gen
+    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+      assign in[ii].egnt     = {(EHW){in[ii].gnt}};
+      assign in[ii].r_evalid = {(EHW){in[ii].r_evalid}};
+    end
+    assign out.ereq     = {(EHW){out.req}};
+    assign out.r_eready = {(EHW){out.r_ready}};
+  end
+  else begin : no_ecc_handshake_gen
+    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+      assign in[ii].egnt     = '1;
+      assign in[ii].r_evalid = '0;
+    end
+    assign out.ereq     = '0;
+    assign out.r_eready = '1;
+  end
+
+/*
  * Interface size asserts
  */
 `ifndef SYNTHESIS
