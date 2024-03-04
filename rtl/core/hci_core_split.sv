@@ -2,7 +2,7 @@
  * hci_core_split.sv
  * Francesco Conti <f.conti@unibo.it>
  *
- * Copyright (C) 2020 ETH Zurich, University of Bologna
+ * Copyright (C) 2020-2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -11,6 +11,31 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ */
+
+/**
+ * The **hci_core_split** module uses FIFOs to enqueue a split version of the
+ * HCI transactions. The FIFO queues evolve in a synchronized fashion on the
+ * accelerator side and evolve freely on the TCDM side.
+ * In this way, split transactions that can not be immediately brought back
+ * to the accelerator do not need to be repeated, massively reducing TCDM
+ * traffic.
+ * The hci_core_split requires to be followed (not preceded!) by any
+ * hci_core_r_user_filter that is used, for example, to implement HCI IDs for
+ * the purpose of supporting out-of-order access from a hci_core_mux.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_core_split_params:
+ * .. table:: **hci_core_split** design-time parameters.
+ *
+ *   +---------------------+-------------+-----------------------------------+
+ *   | **Name**            | **Default** | **Description**                   |
+ *   +---------------------+-------------+-----------------------------------+
+ *   | *NB_OUT_CHAN*       | 2           | Number of output channels.        |
+ *   +---------------------+-------------+-----------------------------------+
+ *   | *FIFO_DEPTH*        | 0           | Depth of internal HCI Core FIFOs. |
+ *   +---------------------+-------------+-----------------------------------+
+ *
  */
 
 import hwpe_stream_package::*;
