@@ -80,12 +80,6 @@ import hci_package::*;
 
 module hci_core_fifo #(
   parameter int unsigned FIFO_DEPTH = 8,
-  parameter int unsigned DW = hci_package::DEFAULT_DW,
-  parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned AW = hci_package::DEFAULT_AW, /// addr width
-  parameter int unsigned UW = hci_package::DEFAULT_UW,
-  parameter int unsigned EW = hci_package::DEFAULT_EW,
-  parameter int unsigned EHW = hci_package::DEFAULT_EHW,
   parameter int unsigned LATCH_FIFO = 0
 )
 (
@@ -98,6 +92,13 @@ module hci_core_fifo #(
   hci_core_intf.target    tcdm_target,
   hci_core_intf.initiator tcdm_initiator
 );
+
+  localparam int unsigned DW  = tcdm_initiator.DW;
+  localparam int unsigned BW  = tcdm_initiator.BW;
+  localparam int unsigned AW  = tcdm_initiator.AW;
+  localparam int unsigned UW  = tcdm_initiator.UW;
+  localparam int unsigned EW  = tcdm_initiator.EW;
+  localparam int unsigned EHW = tcdm_initiator.EHW;
 
   flags_fifo_t flags_incoming, flags_outgoing;
 
@@ -279,6 +280,31 @@ module hci_core_fifo #(
     .pop_o   ( stream_outgoing_pop.source )
   );
 
-  assign flags_o.empty = flags_incoming.empty & flags_outgoing.empty;
+  assign flags_o.empty = flags_incoming.empty & flags_outgoing.empty
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  initial
+    dw : assert(tcdm_target.DW == tcdm_initiator.DW);
+
+  initial
+    bw : assert(tcdm_target.BW == tcdm_initiator.BW);
+
+  initial
+    aw : assert(tcdm_target.AW == tcdm_initiator.AW);
+
+  initial
+    uw : assert(tcdm_target.UW == tcdm_initiator.UW);
+
+  initial
+    ew : assert(tcdm_target.EW == tcdm_initiator.EW);
+
+  initial
+    ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
+`endif
+`endif;
 
 endmodule // hci_core_fifo

@@ -30,12 +30,7 @@
 module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
-  parameter int unsigned NB_OUT_CHAN = 8,
-  parameter int unsigned DWH = hci_package::DEFAULT_DW,
-  parameter int unsigned AWH = hci_package::DEFAULT_AW,
-  parameter int unsigned BWH = hci_package::DEFAULT_BW,
-  parameter int unsigned UWH = hci_package::DEFAULT_UW, // User Width not yet implemented
-  parameter int unsigned AWM = 12
+  parameter int unsigned NB_OUT_CHAN = 8
 )
 (
   input  logic clk_i,
@@ -45,6 +40,12 @@ module hci_router
   hci_core_intf.target   in,
   hci_mem_intf.initiator out [NB_OUT_CHAN-1:0]
 );
+
+  localparam int unsigned DWH = in.DW;
+  localparam int unsigned AWH = in.AW;
+  localparam int unsigned BWH = in.BW;
+  localparam int unsigned UWH = in.UW;
+  localparam int unsigned AWM = out.AW;
 
   //There is only one input port, but with variable data width.
   //NB_IN_CHAN states, to how many standard (32-bit) ports the input port is equivalent

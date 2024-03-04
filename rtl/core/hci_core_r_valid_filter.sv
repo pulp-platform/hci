@@ -54,5 +54,30 @@ module hci_core_r_valid_filter
       wen_q <= tcdm_target.wen;
     end
   end
+  
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  initial
+    dw : assert(tcdm_target.DW == tcdm_initiator.DW);
+
+  initial
+    bw : assert(tcdm_target.BW == tcdm_initiator.BW);
+
+  initial
+    aw : assert(tcdm_target.AW == tcdm_initiator.AW);
+
+  initial
+    uw : assert(tcdm_target.UW == tcdm_initiator.UW);
+
+  initial
+    ew : assert(tcdm_target.EW == tcdm_initiator.EW);
+
+  initial
+    ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
+`endif
+`endif;
 
 endmodule // hci_core_r_valid_filter

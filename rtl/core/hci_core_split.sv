@@ -244,4 +244,22 @@ module hci_core_split #(
 
   end
 
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  for(genvar i=0; i<NB_OUT_CHAN; i++) begin
+    initial
+      aw :  assert(tcdm_initiator[i].AW  == tcdm_target.AW);
+    initial
+      uw :  assert(tcdm_initiator[i].UW  == tcdm_target.UW);
+    initial
+      ew :  assert(tcdm_initiator[i].EW  == tcdm_target.EW);
+    initial
+      ehw : assert(tcdm_initiator[i].EHW == tcdm_target.EHW);
+  end
+`endif
+`endif;
+
 endmodule // hci_core_split

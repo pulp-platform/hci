@@ -92,9 +92,6 @@ import hci_package::*;
 module hci_core_source
 #(
   // Stream interface params
-  parameter int unsigned DATA_WIDTH = 32,
-  // parameter int unsigned USER_WIDTH = hci_package::DEFAULT_UW, // User signals not implemented
-  // parameter int unsigned USER_WIDTH = hci_package::DEFAULT_EW, // ECC signals not implemented
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16,
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
@@ -115,6 +112,8 @@ module hci_core_source
   input  hci_streamer_ctrl_t   ctrl_i,
   output hci_streamer_flags_t  flags_o
 );
+
+  localparam int unsigned DATA_WIDTH = tcdm.DW;
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -340,5 +339,23 @@ module hci_core_source
       stream_cnt_q <= stream_cnt_d;
   end
   assign stream_cnt_d = stream_cnt_q + 1;
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  for(genvar i=0; i<NB_OUT_CHAN; i++) begin
+    if(MISALIGNED_ACCESSES == 0) begin
+      initial
+        dw :  assert(stream.DATA_WIDTH == tcdm.DW);
+    end
+    else begin
+      initial
+        dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
+    end
+  end
+`endif
+`endif
 
 endmodule // hci_core_source
