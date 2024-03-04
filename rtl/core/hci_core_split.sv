@@ -78,8 +78,12 @@ module hci_core_split #(
   logic [NB_OUT_CHAN-1:0]             tcdm_req_masked_d, tcdm_req_masked_q;
   logic [NB_OUT_CHAN-1:0]             tcdm_initiator_req;
   logic [NB_OUT_CHAN-1:0]             tcdm_initiator_lrdy_masked_d, tcdm_initiator_lrdy_masked_q;
-  logic cs_gnt, ns_gnt;       // 0=gnt, 1=no-gnt
-  logic cs_rvalid, ns_rvalid; // 0=rvalid, 1=no-rvalid
+
+  typedef enum logic { GNT,    NO_GNT }    gnt_state_t;
+  typedef enum logic { RVALID, NO_RVALID } rvalid_state_t;
+
+  gnt_state_t    cs_gnt, ns_gnt;
+  rvalid_state_t cs_rvalid, ns_rvalid;
 
   // Signal binding
   for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin: tcdm_binding
@@ -89,12 +93,12 @@ module hci_core_split #(
     assign tcdm[ii].data    = tcdm_target.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
     assign tcdm[ii].user    = tcdm_target.user;
     assign tcdm[ii].ecc     = tcdm_target.ecc;
-    assign tcdm[ii].r_ready = ~cs_rvalid ?  tcdm_target.r_ready :         // if state is RVALID, propagate load-ready directly
-                                           &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their r_ready
+    assign tcdm[ii].r_ready = cs_rvalid==RVALID ?  tcdm_target.r_ready :         // if state is RVALID, propagate load-ready directly
+                                                  &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their r_ready
 
     assign tcdm_r_data [ii] = tcdm[ii].r_data;
-    assign tcdm_r_valid[ii] = ~cs_rvalid ?  tcdm[ii].r_valid :            // if state is RVALID, propagate r_valid directly
-                                           &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop streamers by lowering their r_valid
+    assign tcdm_r_valid[ii] = cs_rvalid==RVALID ?  tcdm[ii].r_valid :            // if state is RVALID, propagate r_valid directly
+                                                  &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop streamers by lowering their r_valid
     assign tcdm_gnt    [ii] = tcdm[ii].gnt;
     assign tcdm_add    [ii] = tcdm[ii].add;
     assign tcdm_req    [ii] = tcdm[ii].req;
@@ -118,8 +122,8 @@ module hci_core_split #(
   end
   else begin : fifo_gen
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : fifo_loop_gen
-      assign tcdm[ii].req = ~cs_gnt ?  tcdm_target.req :       // if state is GNT, propagate requests directly
-                                      ~tcdm_req_masked_q[ii]; // if state is NO-GNT, only propagate request that were not granted before
+      assign tcdm[ii].req = cs_gnt==GNT ?  tcdm_target.req :      // if state is GNT, propagate requests directly
+                                          ~tcdm_req_masked_q[ii]; // if state is NO-GNT, only propagate request that were not granted before
       hci_core_fifo #(
         .FIFO_DEPTH ( FIFO_DEPTH ),
         .DW         ( DW_OUT     ),
@@ -140,10 +144,10 @@ module hci_core_split #(
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
       if(~rst_ni) begin
-        cs_gnt <= '0;
+        cs_gnt <= GNT;
       end
       else if (clear_i) begin
-        cs_gnt <= '0;
+        cs_gnt <= GNT;
       end
       else begin
         cs_gnt <= ns_gnt;
@@ -153,18 +157,18 @@ module hci_core_split #(
     always_comb
     begin
       ns_gnt = cs_gnt;
-      if(cs_gnt == 1'b0) begin // gnt
+      if(cs_gnt == GNT) begin
         if(tcdm_target.req & ~(&tcdm_gnt))
-          ns_gnt = 1'b1;
+          ns_gnt = NO_GNT;
       end
-      else begin // no-gnt
+      else begin
         if(&(tcdm_gnt | tcdm_req_masked_q))
-          ns_gnt = 1'b0;
+          ns_gnt = GNT;
       end
     end
 
     // REQ masking
-    assign tcdm_req_masked_d = cs_gnt ? tcdm_req_masked_q | tcdm_gnt : tcdm_gnt;
+    assign tcdm_req_masked_d = cs_gnt==NO_GNT ? tcdm_req_masked_q | tcdm_gnt : tcdm_gnt;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
       if(~rst_ni) begin
@@ -197,18 +201,18 @@ module hci_core_split #(
     always_comb
     begin
       ns_rvalid = cs_rvalid;
-      if(cs_rvalid == 1'b0) begin // rvalid
+      if(cs_rvalid == RVALID) begin
         if(|tcdm_initiator_r_valid & ~(&tcdm_initiator_r_valid)) // if there is some valid response, but not all
-          ns_rvalid = 1'b1;
+          ns_rvalid = NO_RVALID;
       end
-      else begin // no-gnt
+      else begin
         if(&(tcdm_initiator_r_valid | tcdm_initiator_lrdy_masked_q))
-          ns_rvalid = 1'b0;
+          ns_rvalid = RVALID;
       end
     end
 
     // r_ready masking
-    assign tcdm_initiator_lrdy_masked_d = cs_rvalid ? tcdm_initiator_lrdy_masked_q | tcdm_initiator_r_valid | ~tcdm_initiator_req : tcdm_initiator_r_valid | ~tcdm_initiator_req;
+    assign tcdm_initiator_lrdy_masked_d = cs_rvalid==NO_RVALID ? tcdm_initiator_lrdy_masked_q | tcdm_initiator_r_valid | ~tcdm_initiator_req : tcdm_initiator_r_valid | ~tcdm_initiator_req;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
       if(~rst_ni) begin
