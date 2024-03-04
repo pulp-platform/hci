@@ -35,7 +35,7 @@ interface hci_core_intf (
   parameter int unsigned UW  = hci_package::DEFAULT_UW;  /// User Width
   parameter int unsigned IW  = hci_package::DEFAULT_IW;  /// ID Width
   parameter int unsigned EW  = hci_package::DEFAULT_EW;  /// ECC Width
-  parameter int unsigned EHW = hci_package::DEFAULT_EHW; /// ECC Width
+  parameter int unsigned EHW = hci_package::DEFAULT_EHW; /// Handshake ECC Width
 
   // handshake signals
   logic req;
