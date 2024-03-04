@@ -206,4 +206,17 @@ module hci_router
     .out     ( virt_out      )
   );
 
+/*
+ * ECC Handshake signals
+ */
+  localparam int unsigned EHW = in.EHW;
+  if(EHW > 0) begin : ecc_handshake_gen
+    assign in.egnt     = {(EHW){in.gnt}};
+    assign in.r_evalid = {(EHW){in.r_evalid}};
+  end
+  else begin : no_ecc_handshake_gen
+    assign in.egnt     = '1;
+    assign in.r_evalid = '0;
+  end
+
 endmodule // hci_router

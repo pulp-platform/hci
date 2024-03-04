@@ -56,6 +56,22 @@ module hci_core_r_valid_filter
       wen_q <= tcdm_target.wen;
     end
   end
+
+/*
+ * ECC Handshake signals
+ */
+  if(EHW > 0) begin : ecc_handshake_gen
+    assign tcdm_initiator.ereq     = {(EHW){tcdm_initiator.req}};
+    assign tcdm_target.egnt        = {(EHW){tcdm_target.gnt}};
+    assign tcdm_target.r_evalid    = {(EHW){tcdm_target.r_valid}};
+    assign tcdm_initiator.r_eready = {(EHW){tcdm_initiator.r_ready}};
+  end
+  else begin : no_ecc_handshake_gen
+    assign tcdm_initiator.ereq     = '0;
+    assign tcdm_target.egnt        = '1; // assign all gnt's to 1
+    assign tcdm_target.r_evalid    = '0;
+    assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1 
+  end
   
 /*
  * Interface size asserts

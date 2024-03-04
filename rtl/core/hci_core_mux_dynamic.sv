@@ -240,6 +240,30 @@ module hci_core_mux_dynamic
   endgenerate
 
 /*
+ * ECC Handshake signals
+ */
+  if(EHW > 0) begin : ecc_handshake_gen
+    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+      assign in[ii].egnt     = {(EHW){in[ii].gnt}};
+      assign in[ii].r_evalid = {(EHW){in[ii].r_evalid}};
+    end
+    for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
+      assign out[ii].ereq     = {(EHW){out[ii].req}};
+      assign out[ii].r_eready = {(EHW){out[ii].r_ready}};
+    end
+  end
+  else begin : no_ecc_handshake_gen
+    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+      assign in[ii].egnt     = '1;
+      assign in[ii].r_evalid = '0;
+    end
+    for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
+      assign out[ii].ereq     = '0;
+      assign out[ii].r_eready = '1;
+    end
+  end
+
+/*
  * Interface size asserts
  */
 `ifndef SYNTHESIS
