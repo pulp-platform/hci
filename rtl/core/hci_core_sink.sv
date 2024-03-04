@@ -85,7 +85,6 @@ import hci_package::*;
 module hci_core_sink
 #(
   // Stream interface params
-  parameter int unsigned DATA_WIDTH      = 32, //hci_package::DEFAULT_DW,
   parameter int unsigned TCDM_FIFO_DEPTH = 0,
   parameter int unsigned TRANS_CNT       = 16,
   parameter int unsigned MISALIGNED_ACCESSES = 1
@@ -103,7 +102,9 @@ module hci_core_sink
   // control plane
   input  hci_streamer_ctrl_t  ctrl_i,
   output hci_streamer_flags_t flags_o
-);
+)
+
+  localparam int unsigned DATA_WIDTH = tcdm.DW;
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -311,5 +312,23 @@ module hci_core_sink
       address_cnt_q <= address_cnt_d;
   end
   assign address_cnt_d = address_cnt_q + 1;
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  for(genvar i=0; i<NB_OUT_CHAN; i++) begin
+    if(MISALIGNED_ACCESSES == 0) begin
+      initial
+        dw :  assert(stream.DATA_WIDTH == tcdm.DW);
+    end
+    else begin
+      initial
+        dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
+    end
+  end
+`endif
+`endif
 
 endmodule // hci_core_sink

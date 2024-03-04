@@ -31,6 +31,8 @@ module hci_core_r_user_filter #(
   hci_core_intf.initiator tcdm_initiator
 );
 
+  localparam int unsigned UW = tcdm_target.UW;
+
   logic [UW-1:0] user_q;
 
   assign tcdm_initiator.add     = tcdm_target.add;
@@ -87,5 +89,30 @@ module hci_core_r_user_filter #(
     else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_user` filter is at the 1-cycle latency boundary?");
 `endif
 `endif
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  initial
+    dw : assert(tcdm_target.DW == tcdm_initiator.DW);
+
+  initial
+    bw : assert(tcdm_target.BW == tcdm_initiator.BW);
+
+  initial
+    aw : assert(tcdm_target.AW == tcdm_initiator.AW);
+
+  initial
+    uw : assert(tcdm_target.UW == tcdm_initiator.UW);
+
+  initial
+    ew : assert(tcdm_target.EW == tcdm_initiator.EW);
+
+  initial
+    ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
+`endif
+`endif;
 
 endmodule // hci_core_r_user_filter

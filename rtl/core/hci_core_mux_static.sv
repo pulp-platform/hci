@@ -21,12 +21,7 @@ import hwpe_stream_package::*;
 
 module hci_core_mux_static
 #(
-  parameter int unsigned NB_CHAN = 2,
-  parameter int unsigned DW = hci_package::DEFAULT_DW,
-  parameter int unsigned AW = hci_package::DEFAULT_AW,
-  parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned UW = hci_package::DEFAULT_UW,
-  parameter int unsigned EW = hci_package::DEFAULT_EW
+  parameter int unsigned NB_CHAN = 2
 )
 (
   input  logic                       clk_i,
@@ -38,6 +33,12 @@ module hci_core_mux_static
   hci_core_intf.target               in  [NB_CHAN-1:0],
   hci_core_intf.initiator            out
 );
+
+  localparam int unsigned DW = in[0].DW;
+  localparam int unsigned AW = in[0].AW;
+  localparam int unsigned BW = in[0].BW;
+  localparam int unsigned UW = in[0].UW;
+  localparam int unsigned EW = in[0].EW;
 
   // tcdm ports binding
   generate
@@ -78,5 +79,27 @@ module hci_core_mux_static
     assign out.user    = in_user  [sel_i];
 
   endgenerate
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  for(genvar i=0; i<NB_CHAN; i++) begin
+    initial
+      dw :  assert(in[i].DW  == out.DW);
+    initial
+      bw :  assert(in[i].BW  == out.BW);
+    initial
+      aw :  assert(in[i].AW  == out.AW);
+    initial
+      uw :  assert(in[i].UW  == out.UW);
+    initial
+      ew :  assert(in[i].EW  == out.EW);
+    initial
+      ehw : assert(in[i].EHW == out.EHW);
+  end
+`endif
+`endif;
 
 endmodule // hci_core_mux_static

@@ -50,12 +50,7 @@ import hci_package::*;
 module hci_core_mux_dynamic
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
-  parameter int unsigned NB_OUT_CHAN = 1,
-  parameter int unsigned DW = hci_package::DEFAULT_DW,
-  parameter int unsigned AW = hci_package::DEFAULT_AW,
-  parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned UW = hci_package::DEFAULT_UW,
-  parameter int unsigned EW = hci_package::DEFAULT_EW
+  parameter int unsigned NB_OUT_CHAN = 1
 )
 (
   input  logic            clk_i,
@@ -65,6 +60,12 @@ module hci_core_mux_dynamic
   hci_core_intf.target    in  [NB_IN_CHAN-1:0],
   hci_core_intf.initiator out [NB_OUT_CHAN-1:0]
 );
+
+  localparam int unsigned DW = in[0].DW;
+  localparam int unsigned AW = in[0].AW;
+  localparam int unsigned BW = in[0].BW;
+  localparam int unsigned UW = in[0].UW;
+  localparam int unsigned EW = in[0].EW;
 
   // based on MUX2Req.sv from LIC
   logic [NB_IN_CHAN-1:0]                     in_req;
@@ -224,5 +225,41 @@ module hci_core_mux_dynamic
     end
 
   endgenerate
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  for(genvar i=1; i<NB_IN_CHAN; i++) begin
+    initial
+      dw :  assert(in[i].DW  == in[0].DW);
+    initial
+      bw :  assert(in[i].BW  == in[0].BW);
+    initial
+      aw :  assert(in[i].AW  == in[0].AW);
+    initial
+      uw :  assert(in[i].UW  == in[0].UW);
+    initial
+      ew :  assert(in[i].EW  == in[0].EW);
+    initial
+      ehw : assert(in[i].EHW == in[0].EHW);
+  end
+  for(genvar i=0; i<NB_OUT_CHAN; i++) begin
+    initial
+      dw :  assert(out[i].DW  == in[0].DW);
+    initial
+      bw :  assert(out[i].BW  == in[0].BW);
+    initial
+      aw :  assert(out[i].AW  == in[0].AW);
+    initial
+      uw :  assert(out[i].UW  == in[0].UW);
+    initial
+      ew :  assert(out[i].EW  == in[0].EW);
+    initial
+      ehw : assert(out[i].EHW == in[0].EHW);
+  end
+`endif
+`endif;
 
 endmodule // hci_core_mux
