@@ -208,7 +208,10 @@ module hci_core_sink
   assign addr_pop.ready  =  stream.valid & stream.ready;
 
   // unimplemented user bits = 0
-  assign tcdm_target.user = '0;
+  assign tcdm_target.user = '0
+
+  // unimplemented id bits = 0
+  assign tcdm_target.id = '0;
 
   // FIXME unimplemented ECC bits
   assign tcdm_target.ecc = '0;

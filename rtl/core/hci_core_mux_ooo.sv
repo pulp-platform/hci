@@ -15,9 +15,9 @@
  * The TCDM dynamic OoO N-to-1 multiplexer enables to funnel multiple HCI ports
  * into a single one. It supports out-of-order responses by means of ID.
  * As the ID is implemented as user signal, any FIFO coming after (i.e., 
- * nearer to memory side) with respect to this block must respect user
+ * nearer to memory side) with respect to this block must respect id
  * signals - specifically it must return them identical in the response.
- * At the end of the chain, there will typically be a `hci_core_r_user_filter`
+ * At the end of the chain, there will typically be a `hci_core_r_id_filter`
  * block reflecting back all the IDs. This must be placed at the 0-latency 
  * boundary with the memory system.
  * Priority is normally round-robin but can also be forced from the outside.
@@ -45,6 +45,7 @@ module hci_core_mux_ooo
   localparam int unsigned AW = out.AW;
   localparam int unsigned BW = out.BW;
   localparam int unsigned UW = out.UW;
+  localparam int unsigned IW = out.IW;
   localparam int unsigned EW = out.EW;
 
   // tcdm ports binding
@@ -54,7 +55,8 @@ module hci_core_mux_ooo
   logic        [NB_CHAN-1:0]                    in_wen;
   logic        [NB_CHAN-1:0][DW-1:0]            in_data;
   logic        [NB_CHAN-1:0][DW/BW-1:0]         in_be;
-  logic        [NB_CHAN-1:0][UW-1:0]            in_user; // used as id
+  logic        [NB_CHAN-1:0][UW-1:0]            in_user;
+  logic        [NB_CHAN-1:0][IW-1:0]            in_id;
   logic        [NB_CHAN-1:0][EW-1:0]            in_ecc;
 
   logic [$clog2(NB_CHAN)-1:0]              rr_counter_q;
@@ -89,13 +91,15 @@ module hci_core_mux_ooo
     assign in_wen     [ii] = in[ii].wen;
     assign in_data    [ii] = in[ii].data;
     assign in_be      [ii] = in[ii].be;
-    assign in_user    [ii] = ii;
+    assign in_user    [ii] = in[ii].user;
+    assign in_id      [ii] = ii;
     assign in_ecc     [ii] = in[ii].ecc;
 
     // out.r_user used as an ID signal
     assign in[ii].gnt     = (winner_d == ii)   ? in[ii].req & out.gnt : 1'b0;
-    assign in[ii].r_valid = (out.r_user == ii) ? out.r_valid : 1'b0;
+    assign in[ii].r_valid = (out.r_id == ii) ? out.r_valid : 1'b0;
     assign in[ii].r_data  = out.r_data;
+    assign in[ii].r_user  = out.r_user;
     assign in[ii].r_ecc   = out.r_ecc;
 
     // assign priorities to each port depending on round-robin counter
@@ -119,8 +123,9 @@ module hci_core_mux_ooo
   assign out.wen     = in_wen   [winner_d];
   assign out.be      = in_be    [winner_d];
   assign out.data    = in_data  [winner_d];
-  assign out.r_ready = in_lrdy  [out.r_user];
+  assign out.r_ready = in_lrdy  [out.r_id];
   assign out.user    = in_user  [winner_d];
+  assign out.id      = in_id    [winner_d];
   assign out.ecc     = in_ecc   [winner_d];
 
 /*
@@ -137,6 +142,10 @@ module hci_core_mux_ooo
       aw :  assert(in[i].AW  == out.AW);
     initial
       uw :  assert(in[i].UW  == out.UW);
+    initial
+      iw_in :  assert(in[i].IW  == 0);
+    initial
+      iw_in :  assert(out.IW  == $clog2(NB_CHAN));
     initial
       ew :  assert(in[i].EW  == out.EW);
     initial

@@ -21,7 +21,7 @@
  * to the accelerator do not need to be repeated, massively reducing TCDM
  * traffic.
  * The hci_core_split requires to be followed (not preceded!) by any
- * hci_core_r_user_filter that is used, for example, to implement HCI IDs for
+ * hci_core_r_id_filter that is used, for example, to implement HCI IDs for
  * the purpose of supporting out-of-order access from a hci_core_mux.
  *
  * .. tabularcolumns:: |l|l|J|
@@ -92,6 +92,7 @@ module hci_core_split #(
     assign tcdm[ii].be      = tcdm_target.be[(ii+1)*BW_OUT-1:ii*BW_OUT];
     assign tcdm[ii].data    = tcdm_target.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
     assign tcdm[ii].user    = tcdm_target.user;
+    assign tcdm[ii].id      = tcdm_target.id;
     assign tcdm[ii].ecc     = tcdm_target.ecc;
     assign tcdm[ii].r_ready = cs_rvalid==RVALID ?  tcdm_target.r_ready :         // if state is RVALID, propagate load-ready directly
                                                   &tcdm_initiator_lrdy_masked_q; // if state is NO-RVALID, stop HCI FIFOs by lowering their r_ready
@@ -109,6 +110,7 @@ module hci_core_split #(
   assign tcdm_target.r_valid = &(tcdm_r_valid);
   assign tcdm_target.r_data  = { >> {tcdm_r_data} };
   assign tcdm_target.r_user  = tcdm[0].r_user; // we assume they are identical at this stage (if not, it's broken!)
+  assign tcdm_target.r_id    = tcdm[0].r_id;   // we assume they are identical at this stage (if not, it's broken!)
   assign tcdm_target.r_ecc   = tcdm[0].r_ecc;  // we assume they are identical at this stage (if not, it's broken!)
 
   if(FIFO_DEPTH == 0) begin : no_fifo_gen
@@ -234,6 +236,7 @@ module hci_core_split #(
       assign tcdm_initiator[ii].be      = tcdm_fifo[ii].be;
       assign tcdm_initiator[ii].data    = tcdm_fifo[ii].data;
       assign tcdm_initiator[ii].user    = tcdm_fifo[ii].user;
+      assign tcdm_initiator[ii].id      = tcdm_fifo[ii].id;
       assign tcdm_initiator[ii].ecc     = tcdm_fifo[ii].ecc;
       assign tcdm_initiator[ii].r_ready = tcdm_fifo[ii].r_ready;
 
@@ -242,7 +245,7 @@ module hci_core_split #(
       assign tcdm_fifo[ii].gnt     = tcdm_initiator[ii].gnt;
       assign tcdm_fifo[ii].r_valid = tcdm_initiator[ii].r_valid;
       assign tcdm_fifo[ii].r_data  = tcdm_initiator[ii].r_data;
-      assign tcdm_fifo[ii].r_user  = tcdm_initiator[ii].r_user;
+      assign tcdm_fifo[ii].r_id    = tcdm_initiator[ii].r_id;
       assign tcdm_fifo[ii].r_ecc   = tcdm_initiator[ii].r_ecc;
     end
 

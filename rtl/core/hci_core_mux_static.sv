@@ -38,6 +38,7 @@ module hci_core_mux_static
   localparam int unsigned AW = in[0].AW;
   localparam int unsigned BW = in[0].BW;
   localparam int unsigned UW = in[0].UW;
+  localparam int unsigned IW = in[0].IW;
   localparam int unsigned EW = in[0].EW;
 
   // tcdm ports binding
@@ -50,6 +51,7 @@ module hci_core_mux_static
     logic        [NB_CHAN-1:0][DW-1:0]            in_data;
     logic        [NB_CHAN-1:0][DW/BW-1:0]         in_be;
     logic        [NB_CHAN-1:0][UW-1:0]            in_user;
+    logic        [NB_CHAN-1:0][IW-1:0]            in_id;
     logic        [NB_CHAN-1:0][EW-1:0]            in_ecc;
 
     for(genvar ii=0; ii<NB_CHAN; ii++) begin: tcdm_binding
@@ -61,12 +63,14 @@ module hci_core_mux_static
       assign in_data    [ii] = in[ii].data;
       assign in_be      [ii] = in[ii].be;
       assign in_user    [ii] = in[ii].user;
+      assign in_id      [ii] = in[ii].id;
       assign in_ecc     [ii] = in[ii].ecc;
 
       assign in[ii].gnt     = (sel_i == ii) ? out.gnt     : 1'b0;
       assign in[ii].r_valid = (sel_i == ii) ? out.r_valid : 1'b0;
       assign in[ii].r_data  = out.r_data;
       assign in[ii].r_user  = out.r_user;
+      assign in[ii].r_id    = out.r_id;
       assign in[ii].r_ecc   = out.r_ecc;
     end
 
@@ -77,6 +81,7 @@ module hci_core_mux_static
     assign out.data    = in_data  [sel_i];
     assign out.r_ready = in_lrdy  [sel_i];
     assign out.user    = in_user  [sel_i];
+    assign out.id      = in_id    [sel_i];
 
   endgenerate
 
