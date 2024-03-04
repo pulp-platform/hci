@@ -26,6 +26,8 @@ module hci_core_r_valid_filter
   hci_core_intf.initiator tcdm_initiator
 );
 
+  localparam int unsigned EHW = tcdm_target.EHW;
+
   logic wen_q;
 
   assign tcdm_initiator.add     = tcdm_target.add;

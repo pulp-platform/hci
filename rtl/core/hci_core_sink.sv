@@ -209,7 +209,7 @@ module hci_core_sink
   assign addr_pop.ready  =  stream.valid & stream.ready;
 
   // unimplemented user bits = 0
-  assign tcdm_target.user = '0
+  assign tcdm_target.user = '0;
 
   // unimplemented id bits = 0
   assign tcdm_target.id = '0;
@@ -334,15 +334,13 @@ module hci_core_sink
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
-  for(genvar i=0; i<NB_OUT_CHAN; i++) begin
-    if(MISALIGNED_ACCESSES == 0) begin
-      initial
-        dw :  assert(stream.DATA_WIDTH == tcdm.DW);
-    end
-    else begin
-      initial
-        dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
-    end
+  if(MISALIGNED_ACCESSES == 0) begin
+    initial
+      dw :  assert(stream.DATA_WIDTH == tcdm.DW);
+  end
+  else begin
+    initial
+      dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
   end
 `endif
 `endif

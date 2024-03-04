@@ -47,6 +47,7 @@ module hci_core_mux_ooo
   localparam int unsigned UW = out.UW;
   localparam int unsigned IW = out.IW;
   localparam int unsigned EW = out.EW;
+  localparam int unsigned EHW = out.EHW;
 
   // tcdm ports binding
   logic        [NB_CHAN-1:0]                    in_req;
@@ -132,7 +133,7 @@ module hci_core_mux_ooo
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+    for(genvar ii=0; ii<NB_CHAN; ii++) begin : in_chan_gen
       assign in[ii].egnt     = {(EHW){in[ii].gnt}};
       assign in[ii].r_evalid = {(EHW){in[ii].r_evalid}};
     end
@@ -140,7 +141,7 @@ module hci_core_mux_ooo
     assign out.r_eready = {(EHW){out.r_ready}};
   end
   else begin : no_ecc_handshake_gen
-    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+    for(genvar ii=0; ii<NB_CHAN; ii++) begin : in_chan_gen
       assign in[ii].egnt     = '1;
       assign in[ii].r_evalid = '0;
     end
@@ -165,7 +166,7 @@ module hci_core_mux_ooo
     initial
       iw_in :  assert(in[i].IW  == 0);
     initial
-      iw_in :  assert(out.IW  == $clog2(NB_CHAN));
+      iw_out :  assert(out.IW  == $clog2(NB_CHAN));
     initial
       ew :  assert(in[i].EW  == out.EW);
     initial

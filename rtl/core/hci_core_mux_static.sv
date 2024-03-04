@@ -40,6 +40,7 @@ module hci_core_mux_static
   localparam int unsigned UW = in[0].UW;
   localparam int unsigned IW = in[0].IW;
   localparam int unsigned EW = in[0].EW;
+  localparam int unsigned EHW = in[0].EHW;
 
   // tcdm ports binding
   generate
@@ -89,7 +90,7 @@ module hci_core_mux_static
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+    for(genvar ii=0; ii<NB_CHAN; ii++) begin : in_chan_gen
       assign in[ii].egnt     = {(EHW){in[ii].gnt}};
       assign in[ii].r_evalid = {(EHW){in[ii].r_evalid}};
     end
@@ -97,7 +98,7 @@ module hci_core_mux_static
     assign out.r_eready = {(EHW){out.r_ready}};
   end
   else begin : no_ecc_handshake_gen
-    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+    for(genvar ii=0; ii<NB_CHAN; ii++) begin : in_chan_gen
       assign in[ii].egnt     = '1;
       assign in[ii].r_evalid = '0;
     end
