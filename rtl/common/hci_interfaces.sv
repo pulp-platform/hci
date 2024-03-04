@@ -53,7 +53,6 @@ interface hci_core_intf (
 
   // response phase payload
   logic [DW-1:0] r_data;
-  logic          r_valid;
   logic [UW-1:0] r_user;
   logic [IW-1:0] r_id;
 
@@ -198,6 +197,7 @@ interface hci_mem_intf (
   parameter int unsigned IW = hci_package::DEFAULT_IW; /// width of ID
   parameter int unsigned UW = hci_package::DEFAULT_UW;  /// User Width
   parameter int unsigned EW = hci_package::DEFAULT_EW; /// ECC Width
+  parameter int unsigned EHW = hci_package::DEFAULT_EHW; /// ECC Handshake Width
 
   // handshake signals
   logic req;

@@ -359,15 +359,13 @@ module hci_core_source
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
-  for(genvar i=0; i<NB_OUT_CHAN; i++) begin
-    if(MISALIGNED_ACCESSES == 0) begin
-      initial
-        dw :  assert(stream.DATA_WIDTH == tcdm.DW);
-    end
-    else begin
-      initial
-        dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
-    end
+  if(MISALIGNED_ACCESSES == 0) begin
+    initial
+      dw :  assert(stream.DATA_WIDTH == tcdm.DW);
+  end
+  else begin
+    initial
+      dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
   end
 `endif
 `endif

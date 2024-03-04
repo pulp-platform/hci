@@ -54,8 +54,9 @@ module hci_core_split #(
   hci_core_intf.initiator tcdm_initiator [NB_OUT_CHAN-1:0]
 );
 
-  localparam DW_OUT = DW/NB_OUT_CHAN;
-  localparam BW_OUT = DW_OUT/8; 
+  localparam int unsigned DW_OUT = DW/NB_OUT_CHAN;
+  localparam int unsigned BW_OUT = DW_OUT/8; 
+  localparam int unsigned EHW = tcdm_target.EHW; 
 
   hci_core_intf #(
     .DW ( DW_OUT )
@@ -190,10 +191,10 @@ module hci_core_split #(
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
       if(~rst_ni) begin
-        cs_rvalid <= '0;
+        cs_rvalid <= RVALID;
       end
       else if (clear_i) begin
-        cs_rvalid <= '0;
+        cs_rvalid <= RVALID;
       end
       else begin
         cs_rvalid <= ns_rvalid;

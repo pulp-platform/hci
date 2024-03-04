@@ -16,7 +16,7 @@
  * The shallow interconnect multiplexes two sets of TCDM channels
  * with a fixed-priority scheme: the high priority port is always granted.
  * It is designed to be deployed directly at the boundary with embedded
- * memories (SRAMs or SCMs).
+ * memories (SRAMs or SCMs). It will not wprk if used in another condition!
  */
  
 import hci_package::*;
@@ -31,9 +31,9 @@ module hci_arbiter
   input  logic                   clear_i,
   input  hci_interconnect_ctrl_t ctrl_i,
 
-  hci_mem_intf.target    in_high    [NB_CHAN-1:0],
-  hci_mem_intf.target    in_low     [NB_CHAN-1:0],
-  hci_mem_intf.initiator out        [NB_CHAN-1:0]
+  hci_core_intf.target    in_high    [NB_CHAN-1:0],
+  hci_core_intf.target    in_low     [NB_CHAN-1:0],
+  hci_core_intf.initiator out        [NB_CHAN-1:0]
 );
 
   logic [NB_CHAN-1:0] hs_req_in;
@@ -138,6 +138,11 @@ module hci_arbiter
         in_low [ii].r_user = out[ii].r_user;
         in_high[ii].r_ecc  = out[ii].r_ecc;
         in_low [ii].r_ecc  = out[ii].r_ecc;
+        // r_valid signals are NOT propagated by the arbiter, they are generated at
+        // routing stage. In previous HCI versions, we used a r_valid-less version
+        // of the protocol here.
+        in_high[ii].r_valid = '0;
+        in_low [ii].r_valid = '0;
       end
     end // tcdm_binding
   endgenerate

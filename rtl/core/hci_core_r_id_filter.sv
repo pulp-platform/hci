@@ -30,6 +30,7 @@ module hci_core_r_id_filter
 );
 
   localparam int unsigned IW = tcdm_target.IW;
+  localparam int unsigned EHW = tcdm_target.EHW;
 
   logic [IW-1:0] id_q;
 

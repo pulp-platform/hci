@@ -67,6 +67,7 @@ module hci_core_mux_dynamic
   localparam int unsigned UW = in[0].UW;
   localparam int unsigned IW = in[0].IW;
   localparam int unsigned EW = in[0].EW;
+  localparam int unsigned EHW = in[0].EHW;
 
   // based on MUX2Req.sv from LIC
   logic [NB_IN_CHAN-1:0]                     in_req;
