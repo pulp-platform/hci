@@ -28,8 +28,8 @@ module hci_router_reorder
 
   input  logic [$clog2(NB_OUT_CHAN)-1:0] order_i,
 
-  hwpe_stream_intf_tcdm.slave  in  [NB_IN_CHAN-1:0],
-  hwpe_stream_intf_tcdm.master out [NB_OUT_CHAN-1:0]
+  hci_core_intf.target    in  [NB_IN_CHAN-1:0],
+  hci_core_intf.initiator out [NB_OUT_CHAN-1:0]
 
 );
 
@@ -121,6 +121,12 @@ module hci_router_reorder
       assign in[i].gnt     = in_gnt     [i];
       assign in[i].r_data  = in_r_data  [i];
       assign in[i].r_valid = in_req_q[0]; // fixed latency = 1
+      // tie unused/unsupported signals
+      assign in[i].r_user   = '0;
+      assign in[i].r_id     = '0;
+      assign in[i].r_ecc    = '0;
+      assign in[i].egnt     = '1;
+      assign in[i].r_evalid = '0;
 
     end
 
@@ -150,6 +156,14 @@ module hci_router_reorder
       assign out[i].data = out_data [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
+      // tie r_ready to '1;
+      assign out[i].r_ready = '1;
+      // tie unused/unsupported signals
+      assign out[i].user     = '0;
+      assign out[i].id       = '0;
+      assign out[i].ecc      = '0;
+      assign out[i].ereq     = '0;
+      assign out[i].r_eready = '1;
 
     end // out_chan_gen
 

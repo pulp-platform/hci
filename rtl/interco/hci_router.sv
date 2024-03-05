@@ -72,10 +72,26 @@ module hci_router
   );
 
   // using the interface from hwpe-stream here
-  hwpe_stream_intf_tcdm virt_in  [NB_IN_CHAN-1:0] (
+  hci_core_intf #(
+    .DW  ( 32 ),
+    .AW  ( 32 ),
+    .BW  ( 4  ),
+    .UW  ( 0  ),
+    .IW  ( 0  ),
+    .EW  ( 0  ),
+    .EHW ( 0  )
+  ) virt_in  [NB_IN_CHAN-1:0] (
     .clk ( clk_i )
   );
-  hwpe_stream_intf_tcdm virt_out [NB_OUT_CHAN-1:0] (
+  hci_core_intf #(
+    .DW  ( 32 ),
+    .AW  ( 32 ),
+    .BW  ( 4  ),
+    .UW  ( 0  ),
+    .IW  ( 0  ),
+    .EW  ( 0  ),
+    .EHW ( 0  )
+  ) virt_out [NB_OUT_CHAN-1:0] (
     .clk ( clk_i )
   );
 
