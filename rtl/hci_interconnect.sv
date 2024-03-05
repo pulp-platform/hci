@@ -46,7 +46,7 @@ module hci_interconnect #(
   hci_core_intf.target           cores   [N_CORE-1:0],
   hci_core_intf.target           dma     [N_DMA-1:0] ,
   hci_core_intf.target           ext     [N_EXT-1:0] ,
-  hci_mem_intf.initiator         mems    [N_MEM-1:0] ,
+  hci_core_intf.initiator        mems    [N_MEM-1:0] ,
   hci_core_intf.target           hwpe
 );
 
@@ -56,14 +56,14 @@ module hci_interconnect #(
     .clk ( clk_i )
   );
 
-  hci_mem_intf #(
+  hci_core_intf #(
     .IW ( IW     ),
     .UW ( UW_LIC )
   ) all_except_hwpe_mem [N_MEM-1:0] (
     .clk ( clk_i )
   );
 
-  hci_mem_intf #(
+  hci_core_intf #(
     .IW ( IW     ),
     .UW ( UW_LIC )
   ) hwpe_mem [N_MEM-1:0] (
@@ -168,7 +168,7 @@ module hci_interconnect #(
     else begin: no_hwpe_branch_gen
 
       for(genvar ii=0; ii<N_MEM; ii++) begin: no_hwpe_mem_binding
-        hci_mem_assign i_mem_assign (
+        hci_core_assign i_mem_assign (
           .tcdm_target    ( all_except_hwpe_mem [ii] ),
           .tcdm_initiator ( mems                [ii] )
         );

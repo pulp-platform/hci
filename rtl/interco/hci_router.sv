@@ -37,8 +37,8 @@ module hci_router
   input  logic rst_ni,
   input  logic clear_i,
 
-  hci_core_intf.target   in,
-  hci_mem_intf.initiator out [NB_OUT_CHAN-1:0]
+  hci_core_intf.target    in,
+  hci_core_intf.initiator out [NB_OUT_CHAN-1:0]
 );
 
   localparam int unsigned DWH = in.DW;
@@ -49,19 +49,13 @@ module hci_router
 
   //There is only one input port, but with variable data width.
   //NB_IN_CHAN states, to how many standard (32-bit) ports the input port is equivalent
-  localparam NB_IN_CHAN  = DWH / 32;
+  localparam int unsigned NB_IN_CHAN  = DWH / 32;
   //Word-interleaved scheme:
   // - First bits of requested address are shared
   // - Lowest 2 bits are byte offset within a DWORD -> ignored
   // - The bits inbetween designate the selected bank
-  localparam LSB_COMMON_ADDR = $clog2(NB_OUT_CHAN) + 2;
-  localparam AWC = AWM+$clog2(NB_OUT_CHAN);
-
-`ifndef SYNTHESIS
-  initial assert (NB_IN_CHAN <= NB_OUT_CHAN)  else  $fatal("NB_IN_CHAN > NB_OUT_CHAN!");
-  initial assert (AWC+2 <= 32)                else  $fatal("AWM+$clog2(NB_OUT_CHAN)+2 > 32!");
-`endif
-
+  localparam int unsigned LSB_COMMON_ADDR = $clog2(NB_OUT_CHAN) + 2;
+  localparam int unsigned AWC = AWM+$clog2(NB_OUT_CHAN);
 
   logic [$clog2(NB_OUT_CHAN)-1:0] bank_offset_s;
   logic [NB_IN_CHAN-1:0] virt_in_gnt;
@@ -218,5 +212,23 @@ module hci_router
     assign in.egnt     = '1;
     assign in.r_evalid = '0;
   end
+
+/*
+ * Asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+
+  initial
+    assert (NB_IN_CHAN <= NB_OUT_CHAN)  else  $fatal("NB_IN_CHAN > NB_OUT_CHAN!");
+  initial
+    assert (AWC+2 <= 32)                else  $fatal("AWM+$clog2(NB_OUT_CHAN)+2 > 32!");
+
+  for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin
+    initial
+      r_valid_tied_high : assert(out[ii].r_valid == 1'b1);
+  end
+`endif
+`endif;
 
 endmodule // hci_router

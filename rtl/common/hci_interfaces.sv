@@ -187,6 +187,7 @@ interface hci_core_intf (
 
 endinterface // hci_core_intf
 
+`ifdef BUILD_DEPRECATED
 interface hci_mem_intf (
   input logic clk
 );
@@ -224,7 +225,7 @@ interface hci_mem_intf (
   logic [EHW-1:0] ereq;
   logic [EHW-1:0] egnt;
   logic [EHW-1:0] r_evalid;
-  logic [EHW-1:0] r_eready;;
+  logic [EHW-1:0] r_eready;
 
   modport initiator (
     output req,
@@ -285,5 +286,6 @@ interface hci_mem_intf (
     input r_evalid,
     input r_eready
   );
+`endif BUILD_DEPRECATED
 
 endinterface // hci_mem_intf
