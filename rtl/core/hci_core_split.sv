@@ -55,7 +55,7 @@ module hci_core_split #(
 );
 
   localparam int unsigned DW_OUT = DW/NB_OUT_CHAN;
-  localparam int unsigned BW_OUT = DW_OUT/8; 
+  localparam int unsigned BW_OUT = 8; 
   localparam int unsigned EHW = tcdm_target.EHW; 
 
   hci_core_intf #(
@@ -88,9 +88,9 @@ module hci_core_split #(
 
   // Signal binding
   for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin: tcdm_binding
-    assign tcdm[ii].add     = tcdm_target.add + ii*BW_OUT;
+    assign tcdm[ii].add     = tcdm_target.add + ii*DW_OUT/BW_OUT;
     assign tcdm[ii].wen     = tcdm_target.wen;
-    assign tcdm[ii].be      = tcdm_target.be[(ii+1)*BW_OUT-1:ii*BW_OUT];
+    assign tcdm[ii].be      = tcdm_target.be[(ii+1)*DW_OUT/BW_OUT-1:ii*DW_OUT/BW_OUT];
     assign tcdm[ii].data    = tcdm_target.data[(ii+1)*DW_OUT-1:ii*DW_OUT];
     assign tcdm[ii].user    = tcdm_target.user;
     assign tcdm[ii].id      = tcdm_target.id;
