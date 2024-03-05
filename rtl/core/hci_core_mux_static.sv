@@ -30,7 +30,7 @@ module hci_core_mux_static
 
   input  logic [$clog2(NB_CHAN-1):0] sel_i,
 
-  hci_core_intf.target               in  [NB_CHAN-1:0],
+  hci_core_intf.target               in  [0:NB_CHAN-1],
   hci_core_intf.initiator            out
 );
 

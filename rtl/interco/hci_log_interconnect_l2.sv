@@ -31,8 +31,8 @@ module hci_log_interconnect_l2 #(
   input  logic                   clk_i,
   input  logic                   rst_ni,
   input  hci_interconnect_ctrl_t ctrl_i,
-  hci_core_intf.target           cores [N_CH0+N_CH1-1:0],
-  hci_core_intf.initiator        mems  [N_MEM-1:0]
+  hci_core_intf.target           cores [0:N_CH0+N_CH1-1],
+  hci_core_intf.initiator        mems  [0:N_MEM-1]
 );
 
   // initiator side

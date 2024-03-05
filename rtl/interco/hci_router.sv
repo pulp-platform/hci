@@ -38,7 +38,7 @@ module hci_router
   input  logic clear_i,
 
   hci_core_intf.target    in,
-  hci_core_intf.initiator out [NB_OUT_CHAN-1:0]
+  hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 );
 
   localparam int unsigned DWH = in.DW;
@@ -80,7 +80,7 @@ module hci_router
     .IW  ( 0  ),
     .EW  ( 0  ),
     .EHW ( 0  )
-  ) virt_in  [NB_IN_CHAN-1:0] (
+  ) virt_in  [0:NB_IN_CHAN-1] (
     .clk ( clk_i )
   );
   hci_core_intf #(
@@ -91,7 +91,7 @@ module hci_router
     .IW  ( 0  ),
     .EW  ( 0  ),
     .EHW ( 0  )
-  ) virt_out [NB_OUT_CHAN-1:0] (
+  ) virt_out [0:NB_OUT_CHAN-1] (
     .clk ( clk_i )
   );
 

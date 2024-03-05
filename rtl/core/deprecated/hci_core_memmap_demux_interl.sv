@@ -32,7 +32,7 @@ module hci_core_memmap_demux_interl #(
   input  logic [NB_REGION-1:0][AW-1:0] region_end_addr_i,
 
   hci_core_intf.target    target,
-  hci_core_intf.initiator initiator [NB_REGION-1:0]
+  hci_core_intf.initiator initiator [0:NB_REGION-1]
 );
 
     enum logic [1:0] {IDLE, RESPONSE } state_q, state_d;

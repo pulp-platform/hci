@@ -57,8 +57,8 @@ module hci_core_mux_dynamic
   input  logic            rst_ni,
   input  logic            clear_i,
 
-  hci_core_intf.target    in  [NB_IN_CHAN-1:0],
-  hci_core_intf.initiator out [NB_OUT_CHAN-1:0]
+  hci_core_intf.target    in  [0:NB_IN_CHAN-1],
+  hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 );
 
   localparam int unsigned DW = in[0].DW;
