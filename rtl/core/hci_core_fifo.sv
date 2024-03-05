@@ -211,6 +211,8 @@ module hci_core_fifo #(
     end
   end
 
+  // through this buffer, the HCI Core FIFO actually tolerates mismatches with the
+  // HCI protocol (rule RSP-5)
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
     if(~rst_ni)

@@ -365,7 +365,7 @@ module hci_core_source
   end
   else begin
     initial
-      dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
+      dw :  assert(stream.DATA_WIDTH >= tcdm.DW);
   end
 `endif
 `endif

@@ -82,6 +82,7 @@ module hci_core_mux_static
     assign out.data    = in_data  [sel_i];
     assign out.r_ready = in_lrdy  [sel_i];
     assign out.user    = in_user  [sel_i];
+    assign out.ecc     = in_ecc   [sel_i];
     assign out.id      = in_id    [sel_i];
 
   endgenerate
