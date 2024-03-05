@@ -286,6 +286,6 @@ interface hci_mem_intf (
     input r_evalid,
     input r_eready
   );
-`endif BUILD_DEPRECATED
 
 endinterface // hci_mem_intf
+`endif /* BUILD_DEPRECATED */
