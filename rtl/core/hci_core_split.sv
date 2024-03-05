@@ -51,7 +51,7 @@ module hci_core_split #(
   input logic rst_ni,
   input logic clear_i,
   hci_core_intf.target    tcdm_target,
-  hci_core_intf.initiator tcdm_initiator [NB_OUT_CHAN-1:0]
+  hci_core_intf.initiator tcdm_initiator [0:NB_OUT_CHAN-1]
 );
 
   localparam int unsigned DW_OUT = DW/NB_OUT_CHAN;
@@ -60,13 +60,13 @@ module hci_core_split #(
 
   hci_core_intf #(
     .DW ( DW_OUT )
-  ) tcdm [NB_OUT_CHAN-1:0] (
+  ) tcdm [0:NB_OUT_CHAN-1] (
     .clk ( clk_i )
   );
 
   hci_core_intf #(
     .DW ( DW_OUT )
-  ) tcdm_fifo [NB_OUT_CHAN-1:0] (
+  ) tcdm_fifo [0:NB_OUT_CHAN-1] (
     .clk ( clk_i )
   );
 

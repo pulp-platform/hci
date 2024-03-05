@@ -31,9 +31,9 @@ module hci_arbiter
   input  logic                   clear_i,
   input  hci_interconnect_ctrl_t ctrl_i,
 
-  hci_core_intf.target    in_high    [NB_CHAN-1:0],
-  hci_core_intf.target    in_low     [NB_CHAN-1:0],
-  hci_core_intf.initiator out        [NB_CHAN-1:0]
+  hci_core_intf.target    in_high    [0:NB_CHAN-1],
+  hci_core_intf.target    in_low     [0:NB_CHAN-1],
+  hci_core_intf.initiator out        [0:NB_CHAN-1]
 );
 
   logic [NB_CHAN-1:0] hs_req_in;

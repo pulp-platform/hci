@@ -43,30 +43,30 @@ module hci_interconnect #(
   input logic                   rst_ni              ,
   input logic                   clear_i             ,
   input hci_interconnect_ctrl_t ctrl_i              ,
-  hci_core_intf.target           cores   [N_CORE-1:0],
-  hci_core_intf.target           dma     [N_DMA-1:0] ,
-  hci_core_intf.target           ext     [N_EXT-1:0] ,
-  hci_core_intf.initiator        mems    [N_MEM-1:0] ,
+  hci_core_intf.target           cores   [0:N_CORE-1],
+  hci_core_intf.target           dma     [0:N_DMA-1] ,
+  hci_core_intf.target           ext     [0:N_EXT-1] ,
+  hci_core_intf.initiator        mems    [0:N_MEM-1] ,
   hci_core_intf.target           hwpe
 );
 
   hci_core_intf #(
     .UW ( UW_LIC )
-  ) all_except_hwpe [N_CORE+N_DMA+N_EXT-1:0] (
+  ) all_except_hwpe [0:N_CORE+N_DMA+N_EXT-1] (
     .clk ( clk_i )
   );
 
   hci_core_intf #(
     .IW ( IW     ),
     .UW ( UW_LIC )
-  ) all_except_hwpe_mem [N_MEM-1:0] (
+  ) all_except_hwpe_mem [0:N_MEM-1] (
     .clk ( clk_i )
   );
 
   hci_core_intf #(
     .IW ( IW     ),
     .UW ( UW_LIC )
-  ) hwpe_mem [N_MEM-1:0] (
+  ) hwpe_mem [0:N_MEM-1] (
     .clk ( clk_i )
   );
 
