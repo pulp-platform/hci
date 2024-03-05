@@ -32,7 +32,7 @@ module hci_log_interconnect_l2 #(
   input  logic                   rst_ni,
   input  hci_interconnect_ctrl_t ctrl_i,
   hci_core_intf.target           cores [N_CH0+N_CH1-1:0],
-  hci_mem_intf.initiator         mems  [N_MEM-1:0]
+  hci_core_intf.initiator        mems  [N_MEM-1:0]
 );
 
   // initiator side
@@ -138,5 +138,17 @@ module hci_log_interconnect_l2 #(
     .data_r_valid_i    ( mems_r_valid      ),
     .data_r_ID_i       ( mems_r_ID         )
   );
+
+/*
+ * Asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  for(genvar ii=0; ii<N_MEM; ii++) begin
+    initial
+      r_valid_tied_high : assert(mems[ii].r_valid == 1'b1);
+  end
+`endif
+`endif;
 
 endmodule // hci_log_interconnect_l2

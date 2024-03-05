@@ -35,7 +35,6 @@ sources:
       - rtl/interco/hci_log_interconnect_l2.sv
       - rtl/interco/hci_new_log_interconnect.sv # `new_XBAR_TCDM` dep. is a private repo
       - rtl/interco/hci_arbiter.sv
-      - rtl/mem/hci_mem_assign.sv
       - rtl/interco/hci_router_reorder.sv
       # Level 3
       - rtl/core/hci_core_sink.sv
