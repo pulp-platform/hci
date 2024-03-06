@@ -65,7 +65,8 @@ module hci_interconnect #(
 
   hci_core_intf #(
     .IW ( IW     ),
-    .UW ( UW_LIC )
+    .UW ( UW_LIC ),
+    .AW ( AWM    )
   ) hwpe_mem [0:N_MEM-1] (
     .clk ( clk_i )
   );
@@ -138,12 +139,7 @@ module hci_interconnect #(
 
       hci_router #(
         .FIFO_DEPTH  ( EXPFIFO ),
-        .NB_OUT_CHAN ( N_MEM   ),
-        .AWM         ( AWM     ),
-        .DWH         ( DWH     ),
-        .AWH         ( AWH     ),
-        .BWH         ( BWH     ),
-        .UWH         ( UWH     )
+        .NB_OUT_CHAN ( N_MEM   )
       ) i_router (
         .clk_i   ( clk_i    ),
         .rst_ni  ( rst_ni   ),

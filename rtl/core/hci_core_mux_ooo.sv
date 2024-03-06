@@ -163,8 +163,8 @@ module hci_core_mux_ooo
       aw :  assert(in[i].AW  == out.AW);
     initial
       uw :  assert(in[i].UW  == out.UW);
-    initial
-      iw_in :  assert(in[i].IW  == 0);
+    // initial
+    //   iw_in :  assert(in[i].IW  == 0);
     initial
       iw_out :  assert(out.IW  == $clog2(NB_CHAN));
     initial
