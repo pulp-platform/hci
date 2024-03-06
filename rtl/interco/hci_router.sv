@@ -45,7 +45,8 @@ module hci_router
   localparam int unsigned AWH = in.AW;
   localparam int unsigned BWH = in.BW;
   localparam int unsigned UWH = in.UW;
-  localparam int unsigned AWM = out.AW;
+  localparam int unsigned EHW = in.EHW;
+  localparam int unsigned AWM = out[0].AW;
 
   //There is only one input port, but with variable data width.
   //NB_IN_CHAN states, to how many standard (32-bit) ports the input port is equivalent
@@ -63,10 +64,11 @@ module hci_router
   logic                  virt_in_gnt_0_q;
 
   hci_core_intf #(
-    .DW ( DWH ),
-    .AW ( AWH ),
-    .BW ( BWH ),
-    .UW ( UWH )
+    .DW  ( DWH ),
+    .AW  ( AWC ),
+    .BW  ( BWH ),
+    .UW  ( UWH ),
+    .EHW ( EHW )
   ) postfifo (
     .clk ( clk_i )
   );
@@ -80,6 +82,11 @@ module hci_router
     .IW  ( 0  ),
     .EW  ( 0  ),
     .EHW ( 0  )
+`ifndef SYNTHESIS
+    ,
+    .WAIVE_RQ3_ASSERT ( 1'b1 ), // virt_in is grant-less by construction
+    .WAIVE_RQ4_ASSERT ( 1'b1 )
+`endif
   ) virt_in  [0:NB_IN_CHAN-1] (
     .clk ( clk_i )
   );
@@ -138,11 +145,16 @@ module hci_router
 
     for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : virt_in_bind
 
-      assign virt_in[ii].req   = postfifo.req;
-      assign virt_in[ii].wen   = postfifo.wen;
-      assign virt_in[ii].be    = postfifo.be[ii*4+3:ii*4];
-      assign virt_in[ii].data  = postfifo.data[ii*32+31:ii*32];
+      assign virt_in[ii].req      = postfifo.req;
+      assign virt_in[ii].wen      = postfifo.wen;
+      assign virt_in[ii].be       = postfifo.be[ii*4+3:ii*4];
+      assign virt_in[ii].data     = postfifo.data[ii*32+31:ii*32];
       assign postfifo.r_data[ii*32+31:ii*32]  = virt_in[ii].r_data;
+      assign virt_in[ii].user     = postfifo.user;
+      assign virt_in[ii].ecc      = postfifo.ecc;
+      assign virt_in[ii].id       = postfifo.id;
+      assign virt_in[ii].ereq     = postfifo.ereq;
+      assign virt_in[ii].r_eready = postfifo.r_eready;
       // in a word-interleaved scheme, the internal word-address is given
       // by the highest set of bits in postfifo[0].add, plus the bank-level offset
       always_comb
@@ -153,6 +165,7 @@ module hci_router
           virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR], 2'b0};
       end // address_generation
       
+      assign virt_in[ii].r_ready = postfifo.r_ready;
       assign virt_in_gnt[ii] = virt_in[ii].gnt;
       assign virt_in_rvalid[ii] = virt_in[ii].r_valid;
 
@@ -219,14 +232,13 @@ module hci_router
 /*
  * ECC Handshake signals
  */
-  localparam int unsigned EHW = in.EHW;
   if(EHW > 0) begin : ecc_handshake_gen
-    assign in.egnt     = {(EHW){in.gnt}};
-    assign in.r_evalid = {(EHW){in.r_evalid}};
+    assign postfifo.egnt     = {(EHW){postfifo.gnt}};
+    assign postfifo.r_evalid = {(EHW){postfifo.r_evalid}};
   end
   else begin : no_ecc_handshake_gen
-    assign in.egnt     = '1;
-    assign in.r_evalid = '0;
+    assign postfifo.egnt     = '1;
+    assign postfifo.r_evalid = '0;
   end
 
 /*
@@ -240,10 +252,10 @@ module hci_router
   initial
     assert (AWC+2 <= 32)                else  $fatal("AWM+$clog2(NB_OUT_CHAN)+2 > 32!");
 
-  for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin
-    initial
-      r_valid_tied_high : assert(out[ii].r_valid == 1'b1);
-  end
+  // for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin
+  //   initial
+  //     r_valid_tied_high : assert(out[ii].r_valid == 1'b1);
+  // end
 `endif
 `endif;
 

@@ -19,6 +19,10 @@
 `define HCI_ASSERT_SEVERITY $warning
 `endif
 
+`ifndef HCI_ASSERT_DELAY
+`define HCI_ASSERT_DELAY #1ps
+`endif
+
 interface hci_core_intf (
   input logic clk
 );
@@ -55,6 +59,7 @@ interface hci_core_intf (
   logic [DW-1:0] r_data;
   logic [UW-1:0] r_user;
   logic [IW-1:0] r_id;
+  logic          r_opc;
 
   // data ECC signals
   logic [EW-1:0] ecc;
@@ -80,6 +85,7 @@ interface hci_core_intf (
     input  r_valid,
     input  r_user,
     input  r_id,
+    input  r_opc,
     output ecc,
     input  r_ecc,
     output ereq,
@@ -102,6 +108,7 @@ interface hci_core_intf (
     output r_valid,
     output r_user,
     output r_id,
+    output r_opc,
     output ecc,
     input  r_ecc,
     input  ereq,
@@ -124,6 +131,7 @@ interface hci_core_intf (
     input r_valid,
     input r_user,
     input r_id,
+    input r_opc,
     input ecc,
     input r_ecc,
     input ereq,
@@ -134,9 +142,16 @@ interface hci_core_intf (
 
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+
+  logic clk_assert;
+  always @(clk)
+  begin
+    `HCI_ASSERT_DELAY clk_assert = clk;
+  end
+
   // RQ-3 STABILITY
   property hci_rq3_stability_rule;
-    @(posedge clk)
+    @(posedge clk_assert)
     ($past(req) & ~($past(req) & $past(gnt))) |-> (
       (data == $past(data)) && 
       (add  == $past(add))  &&
@@ -150,13 +165,13 @@ interface hci_core_intf (
 
   // RQ-4 NORETIRE
   property hci_rq4_noretire_rule;
-    @(posedge clk)
+    @(posedge clk_assert)
     ($past(req) & ~req) |-> ($past(req) & $past(gnt)) | WAIVE_RQ4_ASSERT;
   endproperty;
 
   // RSP-3 STABILITY
   property hci_rsp3_stability_rule;
-    @(posedge clk)
+    @(posedge clk_assert)
     ($past(r_valid) & ~($past(r_valid) & $past(r_ready))) |-> (
       (r_data == $past(r_data)) && 
       (r_user == $past(r_user)) &&
@@ -167,21 +182,21 @@ interface hci_core_intf (
 
   // RSP-5 NORETIRE
   property hci_rsp5_noretire_rule;
-    @(posedge clk)
+    @(posedge clk_assert)
     ($past(r_valid) & ~r_valid) |-> ($past(r_valid) & $past(r_ready)) | WAIVE_RSP5_ASSERT;
   endproperty;
 
   HCI_RQ3: assert property(hci_rq3_stability_rule)
-    else `HCI_ASSERT_SEVERITY("RQ-3 STABILITY failure", 1);
+    else `HCI_ASSERT_SEVERITY("HCI RQ-3 STABILITY protocol violation!", 1);
 
   HCI_RQ4: assert property(hci_rq4_noretire_rule)
-    else `HCI_ASSERT_SEVERITY("RQ-4 NORETIRE failure", 1);
+    else `HCI_ASSERT_SEVERITY("HCI RQ-4 NORETIRE protocol violation!", 1);
 
   HCI_RSP3: assert property(hci_rsp3_stability_rule)
-    else `HCI_ASSERT_SEVERITY("RSP-3 STABILITY failure", 1);
+    else `HCI_ASSERT_SEVERITY("HCI RSP-3 STABILITY protocol violation!", 1);
 
   HCI_RSP5: assert property(hci_rsp5_noretire_rule)
-    else `HCI_ASSERT_SEVERITY("RSP-5 NORETIRE failure", 1);
+    else `HCI_ASSERT_SEVERITY("HCI RSP-5 NORETIRE protocol violation!", 1);
 `endif
 `endif
 
