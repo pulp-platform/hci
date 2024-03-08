@@ -43,6 +43,7 @@ module hci_core_r_valid_filter
   assign tcdm_target.r_data     = tcdm_initiator.r_data;
   assign tcdm_target.r_user     = tcdm_initiator.r_user;
   assign tcdm_target.r_id       = tcdm_initiator.r_id;
+  assign tcdm_target.r_opc      = tcdm_initiator.r_opc;
   assign tcdm_target.r_ecc      = tcdm_initiator.r_ecc;
   assign tcdm_target.r_valid    = enable_i ? tcdm_initiator.r_valid & wen_q : tcdm_initiator.r_valid;
 

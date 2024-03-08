@@ -124,6 +124,7 @@ module hci_router_reorder
       // tie unused/unsupported signals
       assign in[i].r_user   = '0;
       assign in[i].r_id     = '0;
+      assign in[i].r_opc    = '0;
       assign in[i].r_ecc    = '0;
       assign in[i].egnt     = '1;
       assign in[i].r_evalid = '0;

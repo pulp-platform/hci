@@ -47,6 +47,7 @@ module hci_core_r_id_filter
   assign tcdm_target.r_data     = tcdm_initiator.r_data;
   assign tcdm_target.r_user     = tcdm_initiator.r_user;
   assign tcdm_target.r_id       = id_q;
+  assign tcdm_target.r_opc      = tcdm_initiator.r_opc;
   assign tcdm_target.r_ecc      = tcdm_initiator.r_ecc;
   assign tcdm_target.r_valid    = tcdm_initiator.r_valid;
 

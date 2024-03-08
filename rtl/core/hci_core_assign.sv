@@ -40,6 +40,7 @@ module hci_core_assign
   assign tcdm_target.r_valid = tcdm_initiator.r_valid;
   assign tcdm_target.r_user  = tcdm_initiator.r_user;
   assign tcdm_target.r_id    = tcdm_initiator.r_id;
+  assign tcdm_target.r_opc   = tcdm_initiator.r_opc;
 
   // ECC signals
   assign tcdm_initiator.ereq     = tcdm_target.ereq;

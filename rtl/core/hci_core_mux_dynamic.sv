@@ -84,6 +84,7 @@ module hci_core_mux_dynamic
   logic [NB_IN_CHAN-1:0]                     in_r_valid;
   logic [NB_IN_CHAN-1:0][UW-1:0]             in_r_user;
   logic [NB_IN_CHAN-1:0][IW-1:0]             in_r_id;
+  logic [NB_IN_CHAN-1:0]                     in_r_opc;
   logic [NB_IN_CHAN-1:0][EW-1:0]             in_r_ecc;
 
   logic [NB_OUT_CHAN-1:0]                    out_req;
@@ -100,6 +101,7 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0]                    out_r_valid;
   logic [NB_OUT_CHAN-1:0][UW-1:0]            out_r_user;
   logic [NB_OUT_CHAN-1:0][IW-1:0]            out_r_id;
+  logic [NB_OUT_CHAN-1:0]                    out_r_opc;
   logic [NB_OUT_CHAN-1:0][EW-1:0]            out_r_ecc;
 
   logic [$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                                              rr_counter;
@@ -144,6 +146,7 @@ module hci_core_mux_dynamic
       assign in[j].r_valid = in_r_valid [j];
       assign in[j].r_user  = in_r_user  [j];
       assign in[j].r_id    = in_r_id    [j];
+      assign in[j].r_opc   = in_r_opc   [j];
       assign in[j].r_ecc   = in_r_ecc   [j];
 
     end // in_chan_binding
@@ -163,6 +166,7 @@ module hci_core_mux_dynamic
       assign out_r_data  [i] = out[i].r_data;
       assign out_r_valid [i] = out[i].r_valid;
       assign out_r_id    [i] = out[i].r_id;
+      assign out_r_opc   [i] = out[i].r_opc;
       assign out_r_user  [i] = out[i].r_user;
       assign out_r_ecc   [i] = out[i].r_ecc;
 
@@ -227,6 +231,7 @@ module hci_core_mux_dynamic
           in_gnt     [j*NB_OUT_CHAN+i] = 1'b0;
           in_r_user  [j*NB_OUT_CHAN+i] = '0;
           in_r_id    [j*NB_OUT_CHAN+i] = '0;
+          in_r_opc   [j*NB_OUT_CHAN+i] = '0;
           in_r_ecc   [j*NB_OUT_CHAN+i] = '0;
         end
         in_r_data  [winner_q[i]*NB_OUT_CHAN+i] = out_r_data[i];
@@ -234,6 +239,7 @@ module hci_core_mux_dynamic
         in_gnt     [winner_d[i]*NB_OUT_CHAN+i] = out_gnt[i];
         in_r_user  [winner_d[i]*NB_OUT_CHAN+i] = out_r_user[i];
         in_r_id    [winner_d[i]*NB_OUT_CHAN+i] = out_r_id[i];
+        in_r_opc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_opc[i];
         in_r_ecc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_ecc[i];
       end
     end
