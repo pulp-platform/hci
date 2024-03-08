@@ -134,6 +134,8 @@ module hci_arbiter
         in_low [ii].r_data = out[ii].r_data;
         in_high[ii].r_id   = out[ii].r_id;
         in_low [ii].r_id   = out[ii].r_id;
+        in_high[ii].r_opc  = out[ii].r_opc;
+        in_low [ii].r_opc  = out[ii].r_opc;
         in_high[ii].r_user = out[ii].r_user;
         in_low [ii].r_user = out[ii].r_user;
         in_high[ii].r_ecc  = out[ii].r_ecc;

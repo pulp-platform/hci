@@ -112,6 +112,7 @@ module hci_core_split #(
   assign tcdm_target.r_data  = { >> {tcdm_r_data} };
   assign tcdm_target.r_user  = tcdm[0].r_user; // we assume they are identical at this stage (if not, it's broken!)
   assign tcdm_target.r_id    = tcdm[0].r_id;   // we assume they are identical at this stage (if not, it's broken!)
+  assign tcdm_target.r_opc   = tcdm[0].r_opc;  // we assume they are identical at this stage (if not, it's broken!)
   assign tcdm_target.r_ecc   = tcdm[0].r_ecc;  // we assume they are identical at this stage (if not, it's broken!)
 
   if(FIFO_DEPTH == 0) begin : no_fifo_gen
@@ -247,6 +248,7 @@ module hci_core_split #(
       assign tcdm_fifo[ii].r_valid = tcdm_initiator[ii].r_valid;
       assign tcdm_fifo[ii].r_data  = tcdm_initiator[ii].r_data;
       assign tcdm_fifo[ii].r_id    = tcdm_initiator[ii].r_id;
+      assign tcdm_fifo[ii].r_opc   = tcdm_initiator[ii].r_opc;
       assign tcdm_fifo[ii].r_ecc   = tcdm_initiator[ii].r_ecc;
     end
 

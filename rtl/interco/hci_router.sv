@@ -140,6 +140,9 @@ module hci_router
 
     // unimplemented ECC bits = 0
     assign postfifo.r_ecc = '0;
+
+    // unimplemented operation code = 0
+    assign postfifo.r_opc = '0;
     
     assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:2];
 

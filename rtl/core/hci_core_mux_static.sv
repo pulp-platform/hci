@@ -72,6 +72,7 @@ module hci_core_mux_static
       assign in[ii].r_data  = out.r_data;
       assign in[ii].r_user  = out.r_user;
       assign in[ii].r_id    = out.r_id;
+      assign in[ii].r_opc   = out.r_opc;
       assign in[ii].r_ecc   = out.r_ecc;
     end
 

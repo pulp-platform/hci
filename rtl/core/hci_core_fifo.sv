@@ -173,6 +173,7 @@ module hci_core_fifo #(
   end else begin
     assign tcdm_target.r_ecc = '0;
   end
+  assign tcdm_target.r_opc = '0; // ignore r_opc in FIFO
   assign tcdm_target.r_valid  = stream_incoming_pop.valid;
   assign stream_incoming_pop.ready = tcdm_target.r_ready;
 
