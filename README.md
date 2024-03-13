@@ -8,6 +8,9 @@ The `hci` repository contains the definition of the Heterogeneous Cluster Interc
  - https://github.com/pulp-platform/neureka
  - https://github.com/pulp-platform/redmule
 
+# Style guide
+These IPs use a slightly different style than other PULP IPs. Refer to `STYLE.md` for some indications.
+
 # References
 If you are using HCI IPs for an academic publication, we recommend citing one or more of the following papers, which describe several aspects of the HCI system:
 ```
