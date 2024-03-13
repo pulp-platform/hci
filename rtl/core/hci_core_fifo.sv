@@ -105,8 +105,8 @@ module hci_core_fifo #(
 
   logic incoming_fifo_not_full;
 
-  logic                tcdm_initiator_r_valid_d, tcdm_initiator_r_valid_q;
-  logic [EW+UW+DW-1:0] tcdm_initiator_r_data_d, tcdm_initiator_r_data_q;
+  logic                   tcdm_initiator_r_valid_d, tcdm_initiator_r_valid_q;
+  logic [EW+UW+IW+DW-1:0] tcdm_initiator_r_data_d, tcdm_initiator_r_data_q;
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( AW+UW+IW+DW+DW/BW+EW+1 )
