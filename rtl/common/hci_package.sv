@@ -25,8 +25,7 @@ package hci_package;
   parameter int unsigned DEFAULT_EHW = 0; // Default ECC for Handhshake Width
 
   typedef struct packed {
-    logic [1:0] arb_policy;
-    logic       hwpe_prio;
+    logic       invert_prio;
     logic [7:0] low_prio_max_stall;
   } hci_interconnect_ctrl_t;
 
