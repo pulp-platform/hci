@@ -3,7 +3,7 @@
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
  *
- * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
+ * Copyright (C) 2019-2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -12,11 +12,46 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ */
+
+/**
+ * The `hci_arbiter` is a specialized arbiter used to build interconnects in a
+ * heterogeneous PULP cluster, and in particular to arbitrate between two 
+ * sets of `NB_CHAN` input channels, one with "default high" (`in_high`) and
+ * the other with "default low" priority (`in_low`).
+ * The arbitration is meant to be performed generally at the direct boundary
+ * between the interconnect and the tightly-coupled memory banks.
+ * The arbiter uses a starvation-free unbalanced-priority scheme where one of
+ * the input channels has by default access to most of the bandwidth guaranteed
+ * by the output channels. To prevent starvation effects, depending on the control
+ * settings, the other input channel is always granted after a given number
+ * of stall cycles.
+ * For more details, see:
+ *  - https://ieeexplore.ieee.org/document/9903915, Sec. II-A (open-access);
+ *  - https://ieeexplore.ieee.org/document/10247945 , Sec. II-A, III-B, and III-C.
  *
- * The shallow interconnect multiplexes two sets of TCDM channels
- * with a fixed-priority scheme: the high priority port is always granted.
- * It is designed to be deployed directly at the boundary with embedded
- * memories (SRAMs or SCMs). It will not wprk if used in another condition!
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_arbiter_params:
+ * .. table:: **hci_arbiter** design-time parameters.
+ *
+ *   +-----------------+-------------+-------------------------+
+ *   | **Name**        | **Default** | **Description**         |
+ *   +-----------------+-------------+-------------------------+
+ *   | *NB_CHAN*       | 2           | Number of HCI channels. |
+ *   +-----------------+-------------+-------------------------+
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_arbiter_ctrl:
+ * .. table:: **hci_arbiter** input control signals.
+ *
+ *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   | **Name**             | **Type**               | **Description**                                               |
+ *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   | *hwpe_prio*          | `logic`                | When 1, invert priorities between `in_high` and `in_low`.     |
+ *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   | *low_prio_max_stall* | `logic[7:0]`           | Maximum number of consecutive stalls on low-priority channel. |
+ *   +----------------------+------------------------+---------------------------------------------------------------+
+ *
  */
  
 import hci_package::*;

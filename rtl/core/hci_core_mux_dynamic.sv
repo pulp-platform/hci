@@ -14,8 +14,8 @@
  */
 
 /**
- * The **TCDM multiplexer** can be used to funnel more input "virtual"
- * TCDM channels `in` into a smaller set of initiator ports `out`.
+ * The **HCI multiplexer** can be used to funnel more input "virtual"
+ * HCI channels `in` into a smaller set of initiator ports `out`.
  * It uses a round robin counter to avoid starvation, and differs
  * from the modules used within the logarithmic interconnect in
  * that arbitration is performed depending on the round robin
@@ -27,8 +27,9 @@
  * that there is no reorder buffer, so transactions cannot be swapped
  * in-flight to optimally fill the downstream available bandwidth.
  * However, in real accelerators many systematic issues with bandwidth
- * sharing can be solved by upstream TCDM FIFOs and by clever reordering
+ * sharing can be solved by upstream HCI FIFOs and by clever reordering
  * of channels, since the dataflow schedule is known.
+ * For a multiplexer with reorder buffer, see **hci_core_mux_ooo**.
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_mux_params:
