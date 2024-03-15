@@ -47,7 +47,7 @@
  *   +----------------------+------------------------+---------------------------------------------------------------+
  *   | **Name**             | **Type**               | **Description**                                               |
  *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | *hwpe_prio*          | `logic`                | When 1, invert priorities between `in_high` and `in_low`.     |
+ *   | *invert_prio*        | `logic`                | When 1, invert priorities between `in_high` and `in_low`.     |
  *   +----------------------+------------------------+---------------------------------------------------------------+
  *   | *low_prio_max_stall* | `logic[7:0]`           | Maximum number of consecutive stalls on low-priority channel. |
  *   +----------------------+------------------------+---------------------------------------------------------------+
@@ -104,7 +104,7 @@ module hci_arbiter
 			ls_stall_ctr_d <= 0;
 	end
   
-  assign switch_channels_d = ctrl_i.hwpe_prio;
+  assign switch_channels_d = ctrl_i.invert_prio;
 
   // Req mapping
   generate
