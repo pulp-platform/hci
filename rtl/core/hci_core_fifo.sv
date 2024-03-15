@@ -15,8 +15,8 @@
 
 /**
  * The **hci_core_fifo** module implements a hardware FIFO queue for
- * HCI-Core interfaces, used to withstand data scarcity (`req`=0) or
- * backpressure (`gnt`=0), decoupling two architectural domains.
+ * HCI-Core interfaces, used to withstand data scarcity (`req=0`) or
+ * backpressure (`gnt=0`), decoupling two architectural domains.
  * This FIFO is single-clock and therefore cannot be used to cross two
  * distinct clock domains.
  * The FIFO treats a HCI-Core load stream as a combination of two
@@ -35,12 +35,6 @@
  * outgoing stream `ready` signal.
  * The `r_valid` is mapped on `valid` in the incoming stream.
  * :numref:`_hci_core_fifo_mapping` shows this mapping.
- *
- * .. _hci_core_fifo_mapping:
- * .. figure:: img/hci_core_fifo.*
- *   :figwidth: 90%
- *   :width: 90%
- *   :align: center
  *
  *   Mapping of HCI-Core and HWPE-Stream signals inside the load FIFO.
  *
