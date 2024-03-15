@@ -12,31 +12,52 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ */
+
+/**
+ * Convenience top-level for the PULP heterogeneous cluster interconnect. It
+ * wraps both a logarithmic interconnect (LIC) and an (optional) HCI router meant 
+ * to realize a LIC and a HWPE branch of the interconnect, respectively.
+ * The two branches are (optionally) arbitrated via a HCI arbiter.
  *
- * Top level for the TCDM heterogeneous interconnect.
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_interconnect_params:
+ * .. table:: **hci_interconnect** design-time parameters.
+ *
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | **Name**            | **Default**                 | **Description**                                                                  |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_HWPE*            | 1                           | Number of HWPEs attached as initiator to the interconnect (LIC or HWPE branch).  |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_CORE*            | 8                           | Number of cores attached as initiator to the interconnect (LIC branch).          |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_DMA*             | 4                           | Number of DMA ports attached as initiator to the interconnect (LIC branch).      |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_EXT*             | 4                           | Number of external ports attached as initiator to the interconnect (LIC branch). |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_MEM*             | 16                          | Number of memory banks attached as target to the interconnect.                   |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *TS_BIT*            | 21                          | Bit passed to LIC to define test&set aliased memory region.                      |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *IW*                | `N_HWPE+N_CORE+N_DMA+N_EXT` | ID Width.                                                                        |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *EXPFIFO*           | 0                           | Depth of HCI router FIFO.                                                        |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *SEL_LIC*           | 0                           | Kind of LIC to instantiate (0=regular L1, 1=L2).                                 |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  */
 
 import hci_package::*;
 
 module hci_interconnect #(
-  parameter int unsigned N_HWPE  = 4                        , // Number of HWPEs attached to the port
+  parameter int unsigned N_HWPE  = 1                        , // Number of HWPEs attached to the port
   parameter int unsigned N_CORE  = 8                        , // Number of Core ports
   parameter int unsigned N_DMA   = 4                        , // Number of DMA ports
   parameter int unsigned N_EXT   = 4                        , // Number of External ports
   parameter int unsigned N_MEM   = 16                       , // Number of Memory banks
-  parameter int unsigned AWC     = hci_package::DEFAULT_AW  , // Address Width Core   (target ports)
-  parameter int unsigned AWM     = hci_package::DEFAULT_AW  , // Address width memory (initiator ports)
-  parameter int unsigned DW_LIC  = hci_package::DEFAULT_DW  , // Data Width for Log Interconnect
-  parameter int unsigned BW_LIC  = hci_package::DEFAULT_BW  , // Byte Width for Log Interconnect
-  parameter int unsigned UW_LIC  = hci_package::DEFAULT_UW  , // User Width for Log Interconnect
-  parameter int unsigned DW_SIC  = 128                      , // UNUSED!!!
   parameter int unsigned TS_BIT  = 21                       , // TEST_SET_BIT (for Log Interconnect)
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
-  parameter int unsigned DWH     = hci_package::DEFAULT_DW  , // Data Width for HWPE Interconnect
-  parameter int unsigned AWH     = hci_package::DEFAULT_AW  , // Address Width for HWPE Interconnect
-  parameter int unsigned BWH     = hci_package::DEFAULT_BW  , // Byte Width for HWPE Interconnect
-  parameter int unsigned UWH     = hci_package::DEFAULT_UW  , // User Width for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                          // Log interconnect type selector
 ) (
   input logic                   clk_i               ,
@@ -49,6 +70,16 @@ module hci_interconnect #(
   hci_core_intf.initiator        mems    [0:N_MEM-1] ,
   hci_core_intf.target           hwpe
 );
+
+  localparam int unsigned AWC = cores[0].AW;
+  localparam int unsigned AWM = mems[0].AW;
+  localparam int unsigned DW_LIC = cores[0].DW;
+  localparam int unsigned BW_LIC = cores[0].BW;
+  localparam int unsigned UW_LIC = cores[0].UW;
+  localparam int unsigned DWH = hwpe.DW;
+  localparam int unsigned AWH = hwpe.AW;
+  localparam int unsigned BWH = hwpe.BW;
+  localparam int unsigned UWH = hwpe.UW;
 
   hci_core_intf #(
     .UW ( UW_LIC )
