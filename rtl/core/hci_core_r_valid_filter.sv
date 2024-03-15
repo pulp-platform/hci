@@ -13,6 +13,15 @@
  * specific language governing permissions and limitations under the License.
  */
 
+/**
+ * This block filters the `r_valid` field of the TCDM response: when `enable_i`
+ * is 1, only responses with `r_valid=1` in case of a read transaction.
+ * The block is currently **only** working at the zero-latency boundary
+ * between core and memory (it expects that the latency between `gnt` and `r_valid`
+ * is exactly one cycle).
+ *
+ */
+
 import hwpe_stream_package::*;
 import hci_package::*;
 

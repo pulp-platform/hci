@@ -3,7 +3,7 @@
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
  *
- * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
+ * Copyright (C) 2019-2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -12,19 +12,38 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ */
+
+/**
+ * The `hci_router` is a specialized router used to build interconnects in a
+ * heterogeneous PULP cluster.
+ * It takes as input a single `in` HCI channel of width `DWH` (typically "wide",
+ * i.e., greater than 32 bits) that gets routed *without arbitration* to `DWH/32`
+ * adjacent `out` targets from a set of `NB_OUT_CHAN` `out` channels
+ * (typically, one per memory bank).
+ * Routing is performed by splitting the address of the `DWH`-bit wide word in an
+ * *index* (bits `[$clog2(DWH)+2-1:2]`) and an *offset* part (bits `[AWH:$clog2(DWH)+2]`).
+ * The index is used to select which `out` targets need to propagate the request,
+ * while the offset is used to compute the target-level address for each `out` channel
+ * -- since word interleaving is assumed, the same address is generally propagated
+ * to all targeted `out` channels.
+ * However, if `index > NB_OUT_CHAN-DWH/32`, then the set of selected targets
+ * "wraps around": the first `NB_OUT_CHAN-DWH/32-index` `out` channels are 
+ * activated, propagating as address the offset+4.
+ * See https://ieeexplore.ieee.org/document/9903915 Sec. II-A (open-access) for details
+ * (the router is called a *shallow* router).
  *
- * The accelerator port expander has the purpose to "expand" the range of
- * the input accelerator ports (NB_IN_CHAN) to a set of output memory ports
- * (NB_OUT_CHAN >= NB_IN_CHAN).
- * It makes several assumptions:
- *  1. All input ports are synchronous. Therefore req, add, wen are taken
- *     only from in[0]. be, wdata are taken from all in ports.
- *     Similarly, all gnt and r_valid signals are propagated from the 
- *     first "internal virtual port" (see 3).
- *  2. Required ports on the output are decoded by a proper rotation of the
- *     input ports (virtually expanded with nil ports if NB_OUT_CHAN is 
- *     strictly greater than NB_IN_CHAN). This is performed using a 
- *     hwpe_stream_tcdm_reorder block.
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_router_params:
+ * .. table:: **hci_router** design-time parameters.
+ *
+ *   +---------------------+-------------+-------------------------------------------------------------------+
+ *   | **Name**            | **Default** | **Description**                                                   |
+ *   +---------------------+-------------+-------------------------------------------------------------------+
+ *   | *FIFO_DEPTH*        | 0           | If > 0, insert a HCI FIFO of this depth after the input channel.  |
+ *   +---------------------+-------------+-------------------------------------------------------------------+
+ *   | *NB_OUT_CHAN*       | 8           | Number of output HCI channel                                      |
+ *   +---------------------+-------------+-------------------------------------------------------------------+
  */
 
 module hci_router
@@ -255,10 +274,6 @@ module hci_router
   initial
     assert (AWC+2 <= 32)                else  $fatal("AWM+$clog2(NB_OUT_CHAN)+2 > 32!");
 
-  // for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin
-  //   initial
-  //     r_valid_tied_high : assert(out[ii].r_valid == 1'b1);
-  // end
 `endif
 `endif;
 

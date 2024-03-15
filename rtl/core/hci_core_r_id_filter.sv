@@ -12,8 +12,12 @@
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  *
+ */
+
+/**
  * This block filters the id field of the TCDM request, and forwards it to
  * the r_id field of the TCDM response.
+ *
  */
 
 import hwpe_stream_package::*;

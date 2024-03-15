@@ -11,8 +11,10 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
- *
- * The TCDM dynamic OoO N-to-1 multiplexer enables to funnel multiple HCI ports
+ */
+
+/**
+ * The **HCI dynamic OoO N-to-1 multiplexer** enables to funnel multiple HCI ports
  * into a single one. It supports out-of-order responses by means of ID.
  * As the ID is implemented as user signal, any FIFO coming after (i.e., 
  * nearer to memory side) with respect to this block must respect id
@@ -20,7 +22,20 @@
  * At the end of the chain, there will typically be a `hci_core_r_id_filter`
  * block reflecting back all the IDs. This must be placed at the 0-latency 
  * boundary with the memory system.
- * Priority is normally round-robin but can also be forced from the outside.
+ * Priority is normally round-robin but can also be forced from the outside
+ * by setting `priority_force_i` to 1 and driving the `priority_i` array
+ * to the desired priority values.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_core_mux_ooo_params:
+ * .. table:: **hci_core_mux_ooo** design-time parameters.
+ *
+ *   +------------+-------------+--------------------------------+
+ *   | **Name**   | **Default** | **Description**                |
+ *   +------------+-------------+--------------------------------+
+ *   | *NB_CHAN*  | 2           | Number of input HCI channels.  |
+ *   +------------+-------------+--------------------------------+
+ *
  */
 
 import hwpe_stream_package::*;

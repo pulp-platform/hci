@@ -11,10 +11,23 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
- *
- * The TCDM static multiplexer is used in place of the dynamic one
+ */
+
+/**
+ * The HCI static multiplexer can be used in place of the dynamic ones
  * when two sets of ports are guaranteed to be used in a strictly
  * alternative fashion.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_core_mux_static_params:
+ * .. table:: **hci_core_mux_static** design-time parameters.
+ *
+ *   +------------+-------------+--------------------------------+
+ *   | **Name**   | **Default** | **Description**                |
+ *   +------------+-------------+--------------------------------+
+ *   | *NB_CHAN*  | 2           | Number of input HCI channels.  |
+ *   +------------+-------------+--------------------------------+
+ *
  */
 
 import hwpe_stream_package::*;
