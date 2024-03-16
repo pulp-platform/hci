@@ -87,13 +87,13 @@ module hci_core_fifo #(
   hci_core_intf.initiator tcdm_initiator
 );
 
-  localparam int unsigned DW  = tcdm_initiator.DW;
-  localparam int unsigned BW  = tcdm_initiator.BW;
-  localparam int unsigned AW  = tcdm_initiator.AW;
-  localparam int unsigned UW  = tcdm_initiator.UW;
-  localparam int unsigned IW  = tcdm_initiator.IW;
-  localparam int unsigned EW  = tcdm_initiator.EW;
-  localparam int unsigned EHW = tcdm_initiator.EHW;
+  localparam int unsigned DW  = $bits(tcdm_initiator.data);
+  localparam int unsigned BW  = $bits(tcdm_initiator.be);
+  localparam int unsigned AW  = $bits(tcdm_initiator.add);
+  localparam int unsigned UW  = $bits(tcdm_initiator.user);
+  localparam int unsigned IW  = $bits(tcdm_initiator.id);
+  localparam int unsigned EW  = $bits(tcdm_initiator.ecc);
+  localparam int unsigned EHW = $bits(tcdm_initiator.ereq);
 
   flags_fifo_t flags_incoming, flags_outgoing;
 
@@ -332,10 +332,10 @@ module hci_core_fifo #(
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    assign tcdm_initiator.ereq     = {(EHW){tcdm_initiator.req}};
-    assign tcdm_target.egnt        = {(EHW){tcdm_target.gnt}};
-    assign tcdm_target.r_evalid    = {(EHW){tcdm_target.r_valid}};
-    assign tcdm_initiator.r_eready = {(EHW){tcdm_initiator.r_ready}};
+    assign tcdm_initiator.ereq     = '{default: {tcdm_initiator.req}};
+    assign tcdm_target.egnt        = '{default: {tcdm_target.gnt}};
+    assign tcdm_target.r_evalid    = '{default: {tcdm_target.r_valid}};
+    assign tcdm_initiator.r_eready = '{default: {tcdm_initiator.r_ready}};
   end
   else begin : no_ecc_handshake_gen
     assign tcdm_initiator.ereq     = '0;

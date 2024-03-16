@@ -111,8 +111,8 @@ module hci_core_source
   output hci_streamer_flags_t  flags_o
 );
 
-  localparam int unsigned DATA_WIDTH = tcdm.DW;
-  localparam int unsigned EHW = tcdm.EHW;
+  localparam int unsigned DATA_WIDTH = $bits(tcdm.data);
+  localparam int unsigned EHW        = $bits(tcdm.ereq);
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -344,8 +344,8 @@ module hci_core_source
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    assign tcdm.ereq     = {(EHW){tcdm.req}};
-    assign tcdm.r_eready = {(EHW){tcdm.r_ready}};
+    assign tcdm.ereq     = '{default: {tcdm.req}};
+    assign tcdm.r_eready = '{default: {tcdm.r_ready}};
   end
   else begin : no_ecc_handshake_gen
     assign tcdm.ereq     = '0;
