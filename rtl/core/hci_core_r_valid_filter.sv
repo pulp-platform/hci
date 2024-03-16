@@ -35,7 +35,7 @@ module hci_core_r_valid_filter
   hci_core_intf.initiator tcdm_initiator
 );
 
-  localparam int unsigned EHW = tcdm_target.EHW;
+  localparam int unsigned EHW = $bits(tcdm_target.ereq);
 
   logic wen_q;
 

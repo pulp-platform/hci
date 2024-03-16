@@ -71,15 +71,15 @@ module hci_interconnect #(
   hci_core_intf.target           hwpe
 );
 
-  localparam int unsigned AWC = cores[0].AW;
-  localparam int unsigned AWM = mems[0].AW;
-  localparam int unsigned DW_LIC = cores[0].DW;
-  localparam int unsigned BW_LIC = cores[0].BW;
-  localparam int unsigned UW_LIC = cores[0].UW;
-  localparam int unsigned DWH = hwpe.DW;
-  localparam int unsigned AWH = hwpe.AW;
-  localparam int unsigned BWH = hwpe.BW;
-  localparam int unsigned UWH = hwpe.UW;
+  localparam int unsigned AWC = $bits(cores[0].add);
+  localparam int unsigned AWM = $bits(mems[0].add);
+  localparam int unsigned DW_LIC = $bits(cores[0].data);
+  localparam int unsigned BW_LIC = $bits(cores[0].be);
+  localparam int unsigned UW_LIC = $bits(cores[0].user);
+  localparam int unsigned DWH = $bits(hwpe.data);
+  localparam int unsigned AWH = $bits(hwpe.add);
+  localparam int unsigned BWH = $bits(hwpe.be);
+  localparam int unsigned UWH = $bits(hwpe.user);
 
   hci_core_intf #(
     .UW ( UW_LIC )

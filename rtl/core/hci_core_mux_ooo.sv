@@ -56,13 +56,13 @@ module hci_core_mux_ooo
   hci_core_intf.initiator                         out
 );
 
-  localparam int unsigned DW = out.DW;
-  localparam int unsigned AW = out.AW;
-  localparam int unsigned BW = out.BW;
-  localparam int unsigned UW = out.UW;
-  localparam int unsigned IW = out.IW;
-  localparam int unsigned EW = out.EW;
-  localparam int unsigned EHW = out.EHW;
+  localparam int unsigned DW  = $bits(out.data);
+  localparam int unsigned BW  = $bits(out.be);
+  localparam int unsigned AW  = $bits(out.add);
+  localparam int unsigned UW  = $bits(out.user);
+  localparam int unsigned IW  = $bits(out.id);
+  localparam int unsigned EW  = $bits(out.ecc);
+  localparam int unsigned EHW = $bits(out.ereq);
 
   // tcdm ports binding
   logic        [NB_CHAN-1:0]                    in_req;

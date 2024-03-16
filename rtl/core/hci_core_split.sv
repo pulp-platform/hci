@@ -56,7 +56,7 @@ module hci_core_split #(
 
   localparam int unsigned DW_OUT = DW/NB_OUT_CHAN;
   localparam int unsigned BW_OUT = 8; 
-  localparam int unsigned EHW = tcdm_target.EHW; 
+  localparam int unsigned EHW = $bits(tcdm_target.ereq);
 
   hci_core_intf #(
     .DW ( DW_OUT )

@@ -47,13 +47,13 @@ module hci_core_mux_static
   hci_core_intf.initiator            out
 );
 
-  localparam int unsigned DW = in[0].DW;
-  localparam int unsigned AW = in[0].AW;
-  localparam int unsigned BW = in[0].BW;
-  localparam int unsigned UW = in[0].UW;
-  localparam int unsigned IW = in[0].IW;
-  localparam int unsigned EW = in[0].EW;
-  localparam int unsigned EHW = in[0].EHW;
+  localparam int unsigned DW  = $bits(in[0].data);
+  localparam int unsigned BW  = $bits(in[0].be);
+  localparam int unsigned AW  = $bits(in[0].add);
+  localparam int unsigned UW  = $bits(in[0].user);
+  localparam int unsigned IW  = $bits(in[0].id);
+  localparam int unsigned EW  = $bits(in[0].ecc);
+  localparam int unsigned EHW = $bits(in[0].ereq);
 
   // tcdm ports binding
   generate

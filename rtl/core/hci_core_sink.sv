@@ -102,8 +102,8 @@ module hci_core_sink
   output hci_streamer_flags_t flags_o
 );
 
-  localparam int unsigned DATA_WIDTH = tcdm.DW;
-  localparam int unsigned EHW        = tcdm.EHW;
+  localparam int unsigned DATA_WIDTH = $bits(tcdm.data);
+  localparam int unsigned EHW        = $bits(tcdm.ereq);
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;

@@ -60,12 +60,12 @@ module hci_router
   hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 );
 
-  localparam int unsigned DWH = in.DW;
-  localparam int unsigned AWH = in.AW;
-  localparam int unsigned BWH = in.BW;
-  localparam int unsigned UWH = in.UW;
-  localparam int unsigned EHW = in.EHW;
-  localparam int unsigned AWM = out[0].AW;
+  localparam int unsigned DWH = $bits(in.data);
+  localparam int unsigned AWH = $bits(in.add);
+  localparam int unsigned BWH = $bits(in.be);
+  localparam int unsigned UWH = $bits(in.user);
+  localparam int unsigned EHW = $bits(in.ereq);
+  localparam int unsigned AWM = $bits(out[0].add);
 
   //There is only one input port, but with variable data width.
   //NB_IN_CHAN states, to how many standard (32-bit) ports the input port is equivalent

@@ -33,8 +33,8 @@ module hci_core_r_id_filter
   hci_core_intf.initiator tcdm_initiator
 );
 
-  localparam int unsigned IW = tcdm_target.IW;
-  localparam int unsigned EHW = tcdm_target.EHW;
+  localparam int unsigned IW  = $bits(tcdm_target.id);
+  localparam int unsigned EHW = $bits(tcdm_target.ereq);
 
   logic [IW-1:0] id_q;
 
