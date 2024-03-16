@@ -62,13 +62,13 @@ module hci_core_mux_dynamic
   hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 );
 
-  localparam int unsigned DW = in[0].DW;
-  localparam int unsigned AW = in[0].AW;
-  localparam int unsigned BW = in[0].BW;
-  localparam int unsigned UW = in[0].UW;
-  localparam int unsigned IW = in[0].IW;
-  localparam int unsigned EW = in[0].EW;
-  localparam int unsigned EHW = in[0].EHW;
+  localparam int unsigned DW  = $bits(in[0].data);
+  localparam int unsigned BW  = $bits(in[0].be);
+  localparam int unsigned AW  = $bits(in[0].add);
+  localparam int unsigned UW  = $bits(in[0].user);
+  localparam int unsigned IW  = $bits(in[0].id);
+  localparam int unsigned EW  = $bits(in[0].ecc);
+  localparam int unsigned EHW = $bits(in[0].ereq);
 
   // based on MUX2Req.sv from LIC
   logic [NB_IN_CHAN-1:0]                     in_req;
@@ -87,6 +87,8 @@ module hci_core_mux_dynamic
   logic [NB_IN_CHAN-1:0][IW-1:0]             in_r_id;
   logic [NB_IN_CHAN-1:0]                     in_r_opc;
   logic [NB_IN_CHAN-1:0][EW-1:0]             in_r_ecc;
+  logic [NB_IN_CHAN-1:0][EHW-1:0]            in_egnt;
+  logic [NB_IN_CHAN-1:0][EHW-1:0]            in_r_evalid;
 
   logic [NB_OUT_CHAN-1:0]                    out_req;
   logic [NB_OUT_CHAN-1:0]                    out_gnt;
@@ -104,6 +106,8 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0][IW-1:0]            out_r_id;
   logic [NB_OUT_CHAN-1:0]                    out_r_opc;
   logic [NB_OUT_CHAN-1:0][EW-1:0]            out_r_ecc;
+  logic [NB_OUT_CHAN-1:0]                    out_ereq;
+  logic [NB_OUT_CHAN-1:0]                    out_r_eready;
 
   logic [$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                                              rr_counter;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN/NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0] rr_priority;
@@ -142,27 +146,31 @@ module hci_core_mux_dynamic
       assign in_user  [j] = in[j].user;
       assign in_id    [j] = in[j].id;
       assign in_ecc   [j] = in[j].ecc;
-      assign in[j].gnt     = in_gnt     [j];
-      assign in[j].r_data  = in_r_data  [j];
-      assign in[j].r_valid = in_r_valid [j];
-      assign in[j].r_user  = in_r_user  [j];
-      assign in[j].r_id    = in_r_id    [j];
-      assign in[j].r_opc   = in_r_opc   [j];
-      assign in[j].r_ecc   = in_r_ecc   [j];
+      assign in[j].gnt      = in_gnt      [j];
+      assign in[j].r_data   = in_r_data   [j];
+      assign in[j].r_valid  = in_r_valid  [j];
+      assign in[j].r_user   = in_r_user   [j];
+      assign in[j].r_id     = in_r_id     [j];
+      assign in[j].r_opc    = in_r_opc    [j];
+      assign in[j].r_ecc    = in_r_ecc    [j];
+      assign in[j].egnt     = in_egnt     [j];
+      assign in[j].r_evalid = in_r_evalid [j];
 
     end // in_chan_binding
 
     for(i=0; i<NB_OUT_CHAN; i++) begin : out_chan_binding
 
-      assign out[i].req     = out_req  [i];
-      assign out[i].add     = out_add  [i];
-      assign out[i].wen     = out_wen  [i];
-      assign out[i].be      = out_be   [i];
-      assign out[i].data    = out_data [i];
-      assign out[i].r_ready = out_lrdy [i];
-      assign out[i].user    = out_user [i];
-      assign out[i].id      = out_id   [i];
-      assign out[i].ecc     = out_ecc  [i];
+      assign out[i].req      = out_req      [i];
+      assign out[i].add      = out_add      [i];
+      assign out[i].wen      = out_wen      [i];
+      assign out[i].be       = out_be       [i];
+      assign out[i].data     = out_data     [i];
+      assign out[i].r_ready  = out_lrdy     [i];
+      assign out[i].user     = out_user     [i];
+      assign out[i].id       = out_id       [i];
+      assign out[i].ecc      = out_ecc      [i];
+      assign out[i].ereq     = out_ereq     [i];
+      assign out[i].r_eready = out_r_eready [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
       assign out_r_valid [i] = out[i].r_valid;
@@ -252,22 +260,22 @@ module hci_core_mux_dynamic
  */
   if(EHW > 0) begin : ecc_handshake_gen
     for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
-      assign in[ii].egnt     = {(EHW){in[ii].gnt}};
-      assign in[ii].r_evalid = {(EHW){in[ii].r_evalid}};
+      assign in_egnt     = '{default: {in_gnt[ii]}};
+      assign in_r_evalid = '{default: {in_r_valid[ii]}};
     end
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
-      assign out[ii].ereq     = {(EHW){out[ii].req}};
-      assign out[ii].r_eready = {(EHW){out[ii].r_ready}};
+      assign out_ereq     [ii] = '{default: {out_req[ii]}};
+      assign out_r_eready [ii] = '{default: {out_r_ready[ii]}};
     end
   end
   else begin : no_ecc_handshake_gen
     for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
-      assign in[ii].egnt     = '1;
-      assign in[ii].r_evalid = '0;
+      assign in_egnt[ii]     = '1;
+      assign in_r_evalid[ii] = '0;
     end
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
-      assign out[ii].ereq     = '0;
-      assign out[ii].r_eready = '1;
+      assign out_ereq     [ii] = '0;
+      assign out_r_eready [ii] = '1;
     end
   end
 

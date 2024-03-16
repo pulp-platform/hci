@@ -102,8 +102,8 @@ module hci_core_sink
   output hci_streamer_flags_t flags_o
 );
 
-  localparam int unsigned DATA_WIDTH = tcdm.DW;
-  localparam int unsigned EHW        = tcdm.EHW;
+  localparam int unsigned DATA_WIDTH = $bits(tcdm.data);
+  localparam int unsigned EHW        = $bits(tcdm.ereq);
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -219,7 +219,7 @@ module hci_core_sink
 
     if(TCDM_FIFO_DEPTH != 0) begin: tcdm_fifos_gen
 
-      hwpe_stream_tcdm_fifo_store #(
+      hci_core_fifo #(
         .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
       ) i_tcdm_fifo (
         .clk_i          ( clk_i       ),
@@ -319,8 +319,8 @@ module hci_core_sink
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    assign tcdm_target.ereq     = {(EHW){tcdm_target.req}};
-    assign tcdm_target.r_eready = {(EHW){tcdm_target.r_ready}};
+    assign tcdm_target.ereq     = '{default:{tcdm_target.req}};
+    assign tcdm_target.r_eready = '{default:{tcdm_target.r_ready}};
   end
   else begin : no_ecc_handshake_gen
     assign tcdm_target.ereq     = '0;

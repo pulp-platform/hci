@@ -56,7 +56,7 @@ module hci_core_split #(
 
   localparam int unsigned DW_OUT = DW/NB_OUT_CHAN;
   localparam int unsigned BW_OUT = 8; 
-  localparam int unsigned EHW = tcdm_target.EHW; 
+  localparam int unsigned EHW = $bits(tcdm_target.ereq);
 
   hci_core_intf #(
     .DW ( DW_OUT )
@@ -78,7 +78,10 @@ module hci_core_split #(
   logic [NB_OUT_CHAN-1:0]             tcdm_initiator_r_valid;
   logic [NB_OUT_CHAN-1:0]             tcdm_req_masked_d, tcdm_req_masked_q;
   logic [NB_OUT_CHAN-1:0]             tcdm_initiator_req;
+  logic [NB_OUT_CHAN-1:0]             tcdm_initiator_r_ready;
   logic [NB_OUT_CHAN-1:0]             tcdm_initiator_lrdy_masked_d, tcdm_initiator_lrdy_masked_q;
+  logic [NB_OUT_CHAN-1:0]             tcdm_initiator_ereq;
+  logic [NB_OUT_CHAN-1:0]             tcdm_initiator_r_eready;
 
   typedef enum logic { GNT,    NO_GNT }    gnt_state_t;
   typedef enum logic { RVALID, NO_RVALID } rvalid_state_t;
@@ -241,8 +244,11 @@ module hci_core_split #(
       assign tcdm_initiator[ii].id      = tcdm_fifo[ii].id;
       assign tcdm_initiator[ii].ecc     = tcdm_fifo[ii].ecc;
       assign tcdm_initiator[ii].r_ready = tcdm_fifo[ii].r_ready;
+      assign tcdm_initiator[ii].ereq    = tcdm_initiator_ereq[ii];
+      assign tcdm_initiator[ii].r_ready = tcdm_initiator_r_eready[ii];
 
-      assign tcdm_initiator_req[ii] = tcdm_initiator[ii].req;
+      assign tcdm_initiator_req[ii] = tcdm_initiator[ii].req
+      assign tcdm_initiator_r_ready[ii] = tcdm_initiator[ii].r_ready;;
 
       assign tcdm_fifo[ii].gnt     = tcdm_initiator[ii].gnt;
       assign tcdm_fifo[ii].r_valid = tcdm_initiator[ii].r_valid;
@@ -258,19 +264,19 @@ module hci_core_split #(
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    assign tcdm_target.egnt     = {(EHW){tcdm_target.gnt}};
-    assign tcdm_target.r_evalid = {(EHW){tcdm_target.r_evalid}};
+    assign tcdm_target.egnt     = '{default: {tcdm_target.gnt}};
+    assign tcdm_target.r_evalid = '{default: {tcdm_target.r_evalid}};
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
-      assign tcdm_initiator[ii].ereq     = {(EHW){tcdm_initiator[ii].req}};
-      assign tcdm_initiator[ii].r_eready = {(EHW){tcdm_initiator[ii].r_ready}};
+      assign tcdm_initiator_ereq     [ii] = '{default: {tcdm_initiator_req[ii]}};
+      assign tcdm_initiator_r_eready [ii] = '{default: {tcdm_initiator_r_ready[ii]}};
     end
   end
   else begin : no_ecc_handshake_gen
     assign tcdm_target.egnt     = '1;
     assign tcdm_target.r_evalid = '0;
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
-      assign tcdm_initiator[ii].ereq     = '0;
-      assign tcdm_initiator[ii].r_eready = '1;
+      assign tcdm_initiator_ereq     [ii] = '0;
+      assign tcdm_initiator_r_eready [ii] = '1;
     end
   end
 
