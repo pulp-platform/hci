@@ -255,8 +255,8 @@ module hci_router
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    assign postfifo.egnt     = {(EHW){postfifo.gnt}};
-    assign postfifo.r_evalid = {(EHW){postfifo.r_evalid}};
+    assign postfifo.egnt     = '{default: {postfifo.gnt}};
+    assign postfifo.r_evalid = '{default: {postfifo.r_evalid}};
   end
   else begin : no_ecc_handshake_gen
     assign postfifo.egnt     = '1;

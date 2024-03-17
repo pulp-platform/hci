@@ -72,10 +72,10 @@ module hci_core_r_id_filter
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    assign tcdm_initiator.ereq     = {(EHW){tcdm_initiator.req}};
-    assign tcdm_target.egnt        = {(EHW){tcdm_target.gnt}};
-    assign tcdm_target.r_evalid    = {(EHW){tcdm_target.r_valid}};
-    assign tcdm_initiator.r_eready = {(EHW){tcdm_initiator.r_ready}};
+    assign tcdm_initiator.ereq     = '{default: {tcdm_initiator.req}};
+    assign tcdm_target.egnt        = '{default: {tcdm_target.gnt}};
+    assign tcdm_target.r_evalid    = '{default: {tcdm_target.r_valid}};
+    assign tcdm_initiator.r_eready = '{default: {tcdm_initiator.r_ready}};
   end
   else begin : no_ecc_handshake_gen
     assign tcdm_initiator.ereq     = '0;

@@ -344,8 +344,8 @@ module hci_core_source
  * ECC Handshake signals
  */
   if(EHW > 0) begin : ecc_handshake_gen
-    assign tcdm.ereq     = {(EHW){tcdm.req}};
-    assign tcdm.r_eready = {(EHW){tcdm.r_ready}};
+    assign tcdm.ereq     = '{default: {tcdm.req}};
+    assign tcdm.r_eready = '{default: {tcdm.r_ready}};
   end
   else begin : no_ecc_handshake_gen
     assign tcdm.ereq     = '0;
