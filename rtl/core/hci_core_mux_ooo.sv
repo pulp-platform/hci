@@ -159,7 +159,7 @@ module hci_core_mux_ooo
   if(EHW > 0) begin : ecc_handshake_gen
     for(genvar ii=0; ii<NB_CHAN; ii++) begin : in_chan_gen
       assign in_egnt[ii]     = '{default: {in_gnt[ii]}};
-      assign in_r_evalid[ii] = '{default: {in_r_evalid[ii]}};
+      assign in_r_evalid[ii] = '{default: {in_r_valid[ii]}};
     end
     assign out.ereq     = '{default: {out.req}};
     assign out.r_eready = '{default: {out.r_ready}};

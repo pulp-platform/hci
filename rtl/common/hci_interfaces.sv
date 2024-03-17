@@ -109,7 +109,7 @@ interface hci_core_intf (
     output r_user,
     output r_id,
     output r_opc,
-    output ecc,
+    input  ecc,
     output r_ecc,
     input  ereq,
     output egnt,

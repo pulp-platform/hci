@@ -219,7 +219,7 @@ module hci_core_sink
 
     if(TCDM_FIFO_DEPTH != 0) begin: tcdm_fifos_gen
 
-      hwpe_stream_tcdm_fifo_store #(
+      hci_core_fifo #(
         .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
       ) i_tcdm_fifo (
         .clk_i          ( clk_i       ),
