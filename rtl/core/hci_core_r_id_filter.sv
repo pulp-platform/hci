@@ -23,6 +23,8 @@
 import hwpe_stream_package::*;
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_r_id_filter 
 (
   input  logic clk_i,
@@ -33,8 +35,8 @@ module hci_core_r_id_filter
   hci_core_intf.initiator tcdm_initiator
 );
 
-  localparam int unsigned IW  = $bits(tcdm_target.id);
-  localparam int unsigned EHW = $bits(tcdm_target.ereq);
+  localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm_target);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
 
   logic [IW-1:0] id_q;
 

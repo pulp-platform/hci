@@ -18,13 +18,13 @@ package hci_package;
   parameter int unsigned DEFAULT_DW = 32; // Default Data Width
   parameter int unsigned DEFAULT_AW = 32; // Default Address Width
   parameter int unsigned DEFAULT_BW = 8;  // Default Byte Width
-  parameter int unsigned DEFAULT_WW = 32; // Default Word Width
   parameter int unsigned DEFAULT_UW = 0;  // Default User Width
   parameter int unsigned DEFAULT_IW = 8;  // Default ID Width
   parameter int unsigned DEFAULT_EW = 0;  // Default ECC for Data Width
   parameter int unsigned DEFAULT_EHW = 0; // Default ECC for Handhshake Width
 
   typedef struct packed {
+    logic [1:0] arb_policy; // used only in some systems
     logic       invert_prio;
     logic [7:0] low_prio_max_stall;
   } hci_interconnect_ctrl_t;

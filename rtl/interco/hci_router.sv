@@ -46,6 +46,8 @@
  *   +---------------------+-------------+-------------------------------------------------------------------+
  */
 
+`include "hci_helpers.svh"
+
 module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
@@ -60,12 +62,12 @@ module hci_router
   hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 );
 
-  localparam int unsigned DWH = $bits(in.data);
-  localparam int unsigned AWH = $bits(in.add);
-  localparam int unsigned BWH = $bits(in.be);
-  localparam int unsigned UWH = $bits(in.user);
-  localparam int unsigned EHW = $bits(in.ereq);
-  localparam int unsigned AWM = $bits(out[0].add);
+  localparam int unsigned DWH = `HCI_SIZE_GET_DW(in);
+  localparam int unsigned AWH = `HCI_SIZE_GET_AW(in);
+  localparam int unsigned BWH = `HCI_SIZE_GET_BW(in);
+  localparam int unsigned UWH = `HCI_SIZE_GET_UW(in);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in);
+  localparam int unsigned AWM = `HCI_SIZE_GET_AW(out[0]);
 
   //There is only one input port, but with variable data width.
   //NB_IN_CHAN states, to how many standard (32-bit) ports the input port is equivalent

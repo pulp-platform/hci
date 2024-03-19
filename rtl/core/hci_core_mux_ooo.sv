@@ -40,6 +40,8 @@
 
 import hwpe_stream_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_mux_ooo
 #(
   parameter int unsigned NB_CHAN = 2
@@ -56,13 +58,13 @@ module hci_core_mux_ooo
   hci_core_intf.initiator                         out
 );
 
-  localparam int unsigned DW  = $bits(out.data);
-  localparam int unsigned BW  = $bits(out.be);
-  localparam int unsigned AW  = $bits(out.add);
-  localparam int unsigned UW  = $bits(out.user);
-  localparam int unsigned IW  = $bits(out.id);
-  localparam int unsigned EW  = $bits(out.ecc);
-  localparam int unsigned EHW = $bits(out.ereq);
+  localparam int unsigned DW  = `HCI_SIZE_GET_DW(out);
+  localparam int unsigned BW  = `HCI_SIZE_GET_BW(out);
+  localparam int unsigned AW  = `HCI_SIZE_GET_AW(out);
+  localparam int unsigned UW  = `HCI_SIZE_GET_UW(out);
+  localparam int unsigned IW  = `HCI_SIZE_GET_IW(out);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(out);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(out);
 
   // tcdm ports binding
   logic        [NB_CHAN-1:0]                    in_req;
