@@ -48,6 +48,8 @@
 import hwpe_stream_package::*;
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_mux_dynamic
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
@@ -62,13 +64,13 @@ module hci_core_mux_dynamic
   hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 );
 
-  localparam int unsigned DW  = $bits(in[0].data);
-  localparam int unsigned BW  = $bits(in[0].be);
-  localparam int unsigned AW  = $bits(in[0].add);
-  localparam int unsigned UW  = $bits(in[0].user);
-  localparam int unsigned IW  = $bits(in[0].id);
-  localparam int unsigned EW  = $bits(in[0].ecc);
-  localparam int unsigned EHW = $bits(in[0].ereq);
+  localparam int unsigned DW  = `HCI_SIZE_GET_DW(in[0]);
+  localparam int unsigned BW  = `HCI_SIZE_GET_BW(in[0]);
+  localparam int unsigned AW  = `HCI_SIZE_GET_AW(in[0]);
+  localparam int unsigned UW  = `HCI_SIZE_GET_UW(in[0]);
+  localparam int unsigned IW  = `HCI_SIZE_GET_IW(in[0]);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(in[0]);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in[0]);
 
   // based on MUX2Req.sv from LIC
   logic [NB_IN_CHAN-1:0]                     in_req;
@@ -106,8 +108,8 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0][IW-1:0]            out_r_id;
   logic [NB_OUT_CHAN-1:0]                    out_r_opc;
   logic [NB_OUT_CHAN-1:0][EW-1:0]            out_r_ecc;
-  logic [NB_OUT_CHAN-1:0]                    out_ereq;
-  logic [NB_OUT_CHAN-1:0]                    out_r_eready;
+  logic [NB_OUT_CHAN-1:0][EHW-1:0]           out_ereq;
+  logic [NB_OUT_CHAN-1:0][EHW-1:0]           out_r_eready;
 
   logic [$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                                              rr_counter;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN/NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0] rr_priority;
@@ -265,7 +267,7 @@ module hci_core_mux_dynamic
     end
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
       assign out_ereq     [ii] = '{default: {out_req[ii]}};
-      assign out_r_eready [ii] = '{default: {out_r_ready[ii]}};
+      assign out_r_eready [ii] = '{default: {out_lrdy[ii]}};
     end
   end
   else begin : no_ecc_handshake_gen

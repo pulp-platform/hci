@@ -40,6 +40,8 @@
 
 import hwpe_stream_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_split #(
   parameter int unsigned DW          = 64, // DW_IN
   parameter int unsigned BW          = 8,
@@ -56,7 +58,7 @@ module hci_core_split #(
 
   localparam int unsigned DW_OUT = DW/NB_OUT_CHAN;
   localparam int unsigned BW_OUT = 8; 
-  localparam int unsigned EHW = $bits(tcdm_target.ereq);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
 
   hci_core_intf #(
     .DW ( DW_OUT )
@@ -247,8 +249,8 @@ module hci_core_split #(
       assign tcdm_initiator[ii].ereq    = tcdm_initiator_ereq[ii];
       assign tcdm_initiator[ii].r_ready = tcdm_initiator_r_eready[ii];
 
-      assign tcdm_initiator_req[ii] = tcdm_initiator[ii].req
-      assign tcdm_initiator_r_ready[ii] = tcdm_initiator[ii].r_ready;;
+      assign tcdm_initiator_req[ii] = tcdm_initiator[ii].req;
+      assign tcdm_initiator_r_ready[ii] = tcdm_initiator[ii].r_ready;
 
       assign tcdm_fifo[ii].gnt     = tcdm_initiator[ii].gnt;
       assign tcdm_fifo[ii].r_valid = tcdm_initiator[ii].r_valid;

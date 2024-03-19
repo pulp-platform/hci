@@ -25,6 +25,8 @@
 import hwpe_stream_package::*;
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_r_valid_filter
 (
   input  logic clk_i,
@@ -35,7 +37,7 @@ module hci_core_r_valid_filter
   hci_core_intf.initiator tcdm_initiator
 );
 
-  localparam int unsigned EHW = $bits(tcdm_target.ereq);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
 
   logic wen_q;
 

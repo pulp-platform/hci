@@ -72,6 +72,8 @@
 import hwpe_stream_package::*;
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_fifo #(
   parameter int unsigned FIFO_DEPTH = 8,
   parameter int unsigned LATCH_FIFO = 0
@@ -87,13 +89,13 @@ module hci_core_fifo #(
   hci_core_intf.initiator tcdm_initiator
 );
 
-  localparam int unsigned DW  = $bits(tcdm_initiator.data);
-  localparam int unsigned BW  = $bits(tcdm_initiator.be);
-  localparam int unsigned AW  = $bits(tcdm_initiator.add);
-  localparam int unsigned UW  = $bits(tcdm_initiator.user);
-  localparam int unsigned IW  = $bits(tcdm_initiator.id);
-  localparam int unsigned EW  = $bits(tcdm_initiator.ecc);
-  localparam int unsigned EHW = $bits(tcdm_initiator.ereq);
+  localparam int unsigned DW  = `HCI_SIZE_GET_DW(tcdm_initiator);
+  localparam int unsigned BW  = `HCI_SIZE_GET_BW(tcdm_initiator);
+  localparam int unsigned AW  = `HCI_SIZE_GET_AW(tcdm_initiator);
+  localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm_initiator);
+  localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm_initiator);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_initiator);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_initiator);
 
   flags_fifo_t flags_incoming, flags_outgoing;
 

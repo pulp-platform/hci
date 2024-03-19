@@ -49,6 +49,8 @@
 
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_interconnect #(
   parameter int unsigned N_HWPE  = 1                        , // Number of HWPEs attached to the port
   parameter int unsigned N_CORE  = 8                        , // Number of Core ports
@@ -71,15 +73,15 @@ module hci_interconnect #(
   hci_core_intf.target           hwpe
 );
 
-  localparam int unsigned AWC = $bits(cores[0].add);
-  localparam int unsigned AWM = $bits(mems[0].add);
-  localparam int unsigned DW_LIC = $bits(cores[0].data);
-  localparam int unsigned BW_LIC = $bits(cores[0].be);
-  localparam int unsigned UW_LIC = $bits(cores[0].user);
-  localparam int unsigned DWH = $bits(hwpe.data);
-  localparam int unsigned AWH = $bits(hwpe.add);
-  localparam int unsigned BWH = $bits(hwpe.be);
-  localparam int unsigned UWH = $bits(hwpe.user);
+  localparam int unsigned AWC = `HCI_SIZE_GET_AW(cores[0]);
+  localparam int unsigned AWM = `HCI_SIZE_GET_AW(mems[0]);
+  localparam int unsigned DW_LIC = `HCI_SIZE_GET_DW(cores[0]);
+  localparam int unsigned BW_LIC = `HCI_SIZE_GET_BW(cores[0]);
+  localparam int unsigned UW_LIC = `HCI_SIZE_GET_UW(cores[0]);
+  localparam int unsigned DWH = `HCI_SIZE_GET_DW(hwpe);
+  localparam int unsigned AWH = `HCI_SIZE_GET_AW(hwpe);
+  localparam int unsigned BWH = `HCI_SIZE_GET_BW(hwpe);
+  localparam int unsigned UWH = `HCI_SIZE_GET_UW(hwpe);
 
   hci_core_intf #(
     .UW ( UW_LIC )
