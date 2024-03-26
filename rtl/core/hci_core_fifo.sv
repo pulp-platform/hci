@@ -100,6 +100,7 @@ module hci_core_fifo #(
   flags_fifo_t flags_incoming, flags_outgoing;
 
   logic incoming_fifo_not_full;
+  logic incoming_fifo_almost_full;
 
   logic                   tcdm_initiator_r_valid_d, tcdm_initiator_r_valid_q;
   logic [EW+UW+IW+DW-1:0] tcdm_initiator_r_data_d, tcdm_initiator_r_data_q;
@@ -152,6 +153,7 @@ module hci_core_fifo #(
   assign stream_incoming_push.strb = '1;
 
   assign incoming_fifo_not_full = stream_incoming_push.ready;
+  assign incoming_fifo_almost_full = flags_incoming.almost_full;
 
   assign tcdm_target.r_data = stream_incoming_pop.data[DW-1:0];
   if (UW > 0) begin
@@ -311,7 +313,7 @@ module hci_core_fifo #(
   // FIXME: if incoming_fifo_not_full makes a 1->0 transition in the cycle after a non-granted request (req=1, gnt=0),
   //        tcdm_initiator.req will go down, causing a RQ-4 protocol violation.
   //        This should be harmless, but should still be fixed in a future commit.
-  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full;
+  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full & ~(incoming_fifo_almost_full & tcdm_initiator.r_valid & tcdm_initiator.r_ready);
   assign tcdm_initiator.r_ready = incoming_fifo_not_full;
   assign stream_outgoing_pop.ready = tcdm_initiator.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0
 
