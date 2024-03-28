@@ -272,9 +272,11 @@ module hci_router
 `ifndef VERILATOR
 
   initial
-    assert (NB_IN_CHAN <= NB_OUT_CHAN)  else  $fatal("NB_IN_CHAN > NB_OUT_CHAN!");
+    assert (NB_IN_CHAN <= NB_OUT_CHAN)             else  $fatal("NB_IN_CHAN > NB_OUT_CHAN!");
   initial
-    assert (AWC+2 <= 32)                else  $fatal("AWM+$clog2(NB_OUT_CHAN)+2 > 32!");
+    assert (AWC+2 <= 32)                           else  $fatal("AWM+$clog2(NB_OUT_CHAN)+2 > 32!");
+  initial
+    assert (2**$clog2(NB_OUT_CHAN) == NB_OUT_CHAN) else  $fatal("NB_OUT_CHAN is not a power-of-2!");
 
 `endif
 `endif;
