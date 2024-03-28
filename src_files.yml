@@ -8,6 +8,9 @@ hci:
   jg_inclibs: [
     hwpe-stream,
   ]
+  incdirs: [
+    rtl/common,
+  ]
   files:
     # Level 0
     - rtl/common/hci_package.sv
