@@ -47,11 +47,11 @@
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  */
 
-import hci_package::*;
-
 `include "hci_helpers.svh"
 
-module hci_interconnect #(
+module hci_interconnect
+  import hci_package::*;
+#(
   parameter int unsigned N_HWPE  = 1                        , // Number of HWPEs attached to the port
   parameter int unsigned N_CORE  = 8                        , // Number of Core ports
   parameter int unsigned N_DMA   = 4                        , // Number of DMA ports

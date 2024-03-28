@@ -84,12 +84,9 @@
  *
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
-
-`include "hci_helpers.svh"
-
 module hci_core_source
+  import hwpe_stream_package::*;
+  import hci_package::*;
 #(
   // Stream interface params
   parameter int unsigned LATCH_FIFO  = 0,

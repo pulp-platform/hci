@@ -38,11 +38,10 @@
  *
  */
 
-import hwpe_stream_package::*;
-
 `include "hci_helpers.svh"
 
 module hci_core_mux_ooo
+  import hwpe_stream_package::*;
 #(
   parameter int unsigned NB_CHAN = 2
 )

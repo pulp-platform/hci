@@ -19,9 +19,8 @@
  *
  */
 
-import hwpe_stream_package::*;
-
 module hci_core_assign 
+  import hwpe_stream_package::*;
 (
   hci_core_intf.target    tcdm_target,
   hci_core_intf.initiator tcdm_initiator

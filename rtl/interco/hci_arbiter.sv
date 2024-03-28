@@ -54,9 +54,8 @@
  *
  */
  
-import hci_package::*;
-
 module hci_arbiter
+  import hci_package::*;
 #(
   parameter int unsigned NB_CHAN = 2
 )

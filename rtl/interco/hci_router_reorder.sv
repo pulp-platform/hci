@@ -17,9 +17,8 @@
  * See `hci_router` - this block contains the actual routing.
  */
 
-import hwpe_stream_package::*;
-
 module hci_router_reorder
+  import hwpe_stream_package::*;
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 2,

@@ -14,9 +14,9 @@
  * specific language governing permissions and limitations under the License.
  */
 
-import hwpe_stream_package::*;
-
-module hci_core_memmap_filter #(
+module hci_core_memmap_filter
+  import hwpe_stream_package::*;
+#(
   parameter int unsigned NB_REGION = 2,
   parameter int unsigned NB_INTERLEAVED_REGION = 1,
   parameter int unsigned AW = hci_package::DEFAULT_AW /// addr width

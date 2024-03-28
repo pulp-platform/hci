@@ -22,12 +22,11 @@
  *
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
-
 `include "hci_helpers.svh"
 
 module hci_core_r_valid_filter
+  import hwpe_stream_package::*;
+  import hci_package::*;
 (
   input  logic clk_i,
   input  logic rst_ni,
