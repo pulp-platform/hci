@@ -13,9 +13,8 @@
  * specific language governing permissions and limitations under the License.
  */
 
-import hwpe_stream_package::*;
-
 module hci_mem_assign
+  import hwpe_stream_package::*;
 (
   hci_mem_intf.target    tcdm_target,
   hci_mem_intf.initiator tcdm_initiator

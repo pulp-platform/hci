@@ -15,11 +15,10 @@
  * Top level for the log interconnect, wrapped with HCI interfaces.
  */
 
-import hci_package::*;
-
 module hci_log_interconnect
- import tcdm_interconnect_pkg::topo_e;
- #(
+  import hci_package::*;
+  import tcdm_interconnect_pkg::topo_e;
+#(
   parameter int unsigned N_CH0  = 16,
   parameter int unsigned N_CH1  = 4,
   parameter int unsigned N_MEM  = 32,

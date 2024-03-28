@@ -13,10 +13,9 @@
  * specific language governing permissions and limitations under the License.
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
-
 module hci_core_cmd_queue
+  import hwpe_stream_package::*;
+  import hci_package::*;
 #(
   // Stream interface params
   parameter int unsigned DEPTH = 2

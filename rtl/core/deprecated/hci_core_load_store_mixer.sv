@@ -13,10 +13,9 @@
  * specific language governing permissions and limitations under the License.
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
-
 module hci_core_load_store_mixer
+  import hwpe_stream_package::*;
+  import hci_package::*;
 #(
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned AW = hci_package::DEFAULT_AW,

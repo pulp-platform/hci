@@ -38,11 +38,11 @@
  *
  */
 
-import hwpe_stream_package::*;
-
 `include "hci_helpers.svh"
 
-module hci_core_split #(
+module hci_core_split
+  import hwpe_stream_package::*;
+#(
   parameter int unsigned DW          = 64, // DW_IN
   parameter int unsigned BW          = 8,
   parameter int unsigned UW          = 2,

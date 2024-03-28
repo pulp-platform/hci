@@ -15,9 +15,9 @@
  * Top level for the log interconnect, wrapped with HCI interfaces.
  */
 
-import hci_package::*;
-
-module hci_new_log_interconnect #(
+module hci_new_log_interconnect
+  import hci_package::*;
+#(
   parameter int unsigned N_CH0  = 16,
   parameter int unsigned N_CH1  = 4,
   parameter int unsigned N_MEM  = 32,
