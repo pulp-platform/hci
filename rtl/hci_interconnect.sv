@@ -12,63 +12,95 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ */
+
+/**
+ * Convenience top-level for the PULP heterogeneous cluster interconnect. It
+ * wraps both a logarithmic interconnect (LIC) and an (optional) HCI router meant 
+ * to realize a LIC and a HWPE branch of the interconnect, respectively.
+ * The two branches are (optionally) arbitrated via a HCI arbiter.
  *
- * Top level for the TCDM heterogeneous interconnect.
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_interconnect_params:
+ * .. table:: **hci_interconnect** design-time parameters.
+ *
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | **Name**            | **Default**                 | **Description**                                                                  |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_HWPE*            | 1                           | Number of HWPEs attached as initiator to the interconnect (LIC or HWPE branch).  |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_CORE*            | 8                           | Number of cores attached as initiator to the interconnect (LIC branch).          |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_DMA*             | 4                           | Number of DMA ports attached as initiator to the interconnect (LIC branch).      |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_EXT*             | 4                           | Number of external ports attached as initiator to the interconnect (LIC branch). |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *N_MEM*             | 16                          | Number of memory banks attached as target to the interconnect.                   |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *TS_BIT*            | 21                          | Bit passed to LIC to define test&set aliased memory region.                      |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *IW*                | `N_HWPE+N_CORE+N_DMA+N_EXT` | ID Width.                                                                        |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *EXPFIFO*           | 0                           | Depth of HCI router FIFO.                                                        |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
+ *   | *SEL_LIC*           | 0                           | Kind of LIC to instantiate (0=regular L1, 1=L2).                                 |
+ *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  */
 
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_interconnect #(
-  parameter int unsigned N_HWPE  = 4                        , // Number of HWPEs attached to the port
+  parameter int unsigned N_HWPE  = 1                        , // Number of HWPEs attached to the port
   parameter int unsigned N_CORE  = 8                        , // Number of Core ports
   parameter int unsigned N_DMA   = 4                        , // Number of DMA ports
   parameter int unsigned N_EXT   = 4                        , // Number of External ports
   parameter int unsigned N_MEM   = 16                       , // Number of Memory banks
-  parameter int unsigned AWC     = hci_package::DEFAULT_AW  , // Address Width Core   (slave ports)
-  parameter int unsigned AWM     = hci_package::DEFAULT_AW  , // Address width memory (master ports)
-  parameter int unsigned DW_LIC  = hci_package::DEFAULT_DW  , // Data Width for Log Interconnect
-  parameter int unsigned BW_LIC  = hci_package::DEFAULT_BW  , // Byte Width for Log Interconnect
-  parameter int unsigned UW_LIC  = hci_package::DEFAULT_UW  , // User Width for Log Interconnect
-  parameter int unsigned DW_SIC  = 128                      , // UNUSED!!!
   parameter int unsigned TS_BIT  = 21                       , // TEST_SET_BIT (for Log Interconnect)
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
-  parameter int unsigned DWH     = hci_package::DEFAULT_DW  , // Data Width for HWPE Interconnect
-  parameter int unsigned AWH     = hci_package::DEFAULT_AW  , // Address Width for HWPE Interconnect
-  parameter int unsigned BWH     = hci_package::DEFAULT_BW  , // Byte Width for HWPE Interconnect
-  parameter int unsigned WWH     = hci_package::DEFAULT_WW  , // Word Width for HWPE Interconnect
-  parameter int unsigned OWH     = AWH                      , // Offset Width for HWPE Interconnect
-  parameter int unsigned UWH     = hci_package::DEFAULT_UW  , // User Width for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                          // Log interconnect type selector
 ) (
   input logic                   clk_i               ,
   input logic                   rst_ni              ,
   input logic                   clear_i             ,
   input hci_interconnect_ctrl_t ctrl_i              ,
-  hci_core_intf.slave           cores   [N_CORE-1:0],
-  hci_core_intf.slave           dma     [N_DMA-1:0] ,
-  hci_core_intf.slave           ext     [N_EXT-1:0] ,
-  hci_mem_intf.master           mems    [N_MEM-1:0] ,
-  hci_core_intf.slave           hwpe
+  hci_core_intf.target           cores   [0:N_CORE-1],
+  hci_core_intf.target           dma     [0:N_DMA-1] ,
+  hci_core_intf.target           ext     [0:N_EXT-1] ,
+  hci_core_intf.initiator        mems    [0:N_MEM-1] ,
+  hci_core_intf.target           hwpe
 );
+
+  localparam int unsigned AWC = `HCI_SIZE_GET_AW(cores[0]);
+  localparam int unsigned AWM = `HCI_SIZE_GET_AW(mems[0]);
+  localparam int unsigned DW_LIC = `HCI_SIZE_GET_DW(cores[0]);
+  localparam int unsigned BW_LIC = `HCI_SIZE_GET_BW(cores[0]);
+  localparam int unsigned UW_LIC = `HCI_SIZE_GET_UW(cores[0]);
+  localparam int unsigned DWH = `HCI_SIZE_GET_DW(hwpe);
+  localparam int unsigned AWH = `HCI_SIZE_GET_AW(hwpe);
+  localparam int unsigned BWH = `HCI_SIZE_GET_BW(hwpe);
+  localparam int unsigned UWH = `HCI_SIZE_GET_UW(hwpe);
 
   hci_core_intf #(
     .UW ( UW_LIC )
-  ) all_except_hwpe [N_CORE+N_DMA+N_EXT-1:0] (
+  ) all_except_hwpe [0:N_CORE+N_DMA+N_EXT-1] (
     .clk ( clk_i )
   );
 
-  hci_mem_intf #(
+  hci_core_intf #(
     .IW ( IW     ),
     .UW ( UW_LIC )
-  ) all_except_hwpe_mem [N_MEM-1:0] (
+  ) all_except_hwpe_mem [0:N_MEM-1] (
     .clk ( clk_i )
   );
 
-  hci_mem_intf #(
+  hci_core_intf #(
     .IW ( IW     ),
-    .UW ( UW_LIC )
-  ) hwpe_mem [N_MEM-1:0] (
+    .UW ( UW_LIC ),
+    .AW ( AWM    )
+  ) hwpe_mem [0:N_MEM-1] (
     .clk ( clk_i )
   );
 
@@ -136,19 +168,12 @@ module hci_interconnect #(
   endgenerate
 
   generate
-    if(N_HWPE > 0) begin: hwpe_interconnect_gen
+    if(N_HWPE > 0) begin: hwpe_branch_gen
 
-      hci_hwpe_interconnect #(
+      hci_router #(
         .FIFO_DEPTH  ( EXPFIFO ),
-        .NB_OUT_CHAN ( N_MEM   ),
-        .AWM         ( AWM     ),
-        .DWH         ( DWH     ),
-        .AWH         ( AWH     ),
-        .BWH         ( BWH     ),
-        .WWH         ( WWH     ),
-        .OWH         ( OWH     ),
-        .UWH         ( UWH     )
-      ) i_hwpe_interconnect (
+        .NB_OUT_CHAN ( N_MEM   )
+      ) i_router (
         .clk_i   ( clk_i    ),
         .rst_ni  ( rst_ni   ),
         .clear_i ( clear_i  ),
@@ -156,9 +181,9 @@ module hci_interconnect #(
         .out     ( hwpe_mem )
       );
 
-      hci_shallow_interconnect #(
+      hci_arbiter #(
         .NB_CHAN ( N_MEM )
-      ) i_shallow_interconnect (
+      ) i_arbiter (
         .clk_i   ( clk_i               ),
         .rst_ni  ( rst_ni              ),
         .clear_i ( clear_i             ),
@@ -169,12 +194,12 @@ module hci_interconnect #(
       );
 
     end
-    else begin: no_hwpe_interconnect_gen
+    else begin: no_hwpe_branch_gen
 
       for(genvar ii=0; ii<N_MEM; ii++) begin: no_hwpe_mem_binding
-        hci_mem_assign i_mem_assign (
-          .tcdm_slave  ( all_except_hwpe_mem [ii] ),
-          .tcdm_master ( mems                [ii] )
+        hci_core_assign i_mem_assign (
+          .tcdm_target    ( all_except_hwpe_mem [ii] ),
+          .tcdm_initiator ( mems                [ii] )
         );
       end
 
@@ -184,20 +209,20 @@ module hci_interconnect #(
   generate
     for(genvar ii=0; ii<N_CORE; ii++) begin: cores_binding
       hci_core_assign i_cores_assign (
-        .tcdm_slave  ( cores           [ii] ),
-        .tcdm_master ( all_except_hwpe [ii] )
+        .tcdm_target    ( cores           [ii] ),
+        .tcdm_initiator ( all_except_hwpe [ii] )
       );
     end // cores_binding
     for(genvar ii=0; ii<N_EXT; ii++) begin: ext_binding
       hci_core_assign i_ext_assign (
-        .tcdm_slave  ( ext             [ii]        ),
-        .tcdm_master ( all_except_hwpe [N_CORE+ii] )
+        .tcdm_target    ( ext             [ii]        ),
+        .tcdm_initiator ( all_except_hwpe [N_CORE+ii] )
       );
     end // ext_binding
     for(genvar ii=0; ii<N_DMA; ii++) begin: dma_binding
       hci_core_assign i_dma_assign (
-        .tcdm_slave  ( dma             [ii]              ),
-        .tcdm_master ( all_except_hwpe [N_CORE+N_EXT+ii] )
+        .tcdm_target    ( dma             [ii]              ),
+        .tcdm_initiator ( all_except_hwpe [N_CORE+N_EXT+ii] )
       );
     end // dma_binding
   endgenerate

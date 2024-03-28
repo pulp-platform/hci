@@ -1,9 +1,9 @@
 /*
- * hci_shallow_interconnect.sv
+ * hci_arbiter.sv
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
  *
- * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
+ * Copyright (C) 2019-2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -12,16 +12,51 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ */
+
+/**
+ * The `hci_arbiter` is a specialized arbiter used to build interconnects in a
+ * heterogeneous PULP cluster, and in particular to arbitrate between two 
+ * sets of `NB_CHAN` input channels, one with "default high" (`in_high`) and
+ * the other with "default low" priority (`in_low`).
+ * The arbitration is meant to be performed generally at the direct boundary
+ * between the interconnect and the tightly-coupled memory banks.
+ * The arbiter uses a starvation-free unbalanced-priority scheme where one of
+ * the input channels has by default access to most of the bandwidth guaranteed
+ * by the output channels. To prevent starvation effects, depending on the control
+ * settings, the other input channel is always granted after a given number
+ * of stall cycles.
+ * For more details, see:
+ *  - https://ieeexplore.ieee.org/document/9903915, Sec. II-A (open-access);
+ *  - https://ieeexplore.ieee.org/document/10247945 , Sec. II-A, III-B, and III-C.
  *
- * The shallow interconnect multiplexes two sets of TCDM channels
- * with a fixed-priority scheme: the high priority port is always granted.
- * It is designed to be deployed directly at the boundary with embedded
- * memories (SRAMs or SCMs).
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_arbiter_params:
+ * .. table:: **hci_arbiter** design-time parameters.
+ *
+ *   +-----------------+-------------+-------------------------+
+ *   | **Name**        | **Default** | **Description**         |
+ *   +-----------------+-------------+-------------------------+
+ *   | *NB_CHAN*       | 2           | Number of HCI channels. |
+ *   +-----------------+-------------+-------------------------+
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_arbiter_ctrl:
+ * .. table:: **hci_arbiter** input control signals.
+ *
+ *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   | **Name**             | **Type**               | **Description**                                               |
+ *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   | *invert_prio*        | `logic`                | When 1, invert priorities between `in_high` and `in_low`.     |
+ *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   | *low_prio_max_stall* | `logic[7:0]`           | Maximum number of consecutive stalls on low-priority channel. |
+ *   +----------------------+------------------------+---------------------------------------------------------------+
+ *
  */
  
 import hci_package::*;
 
-module hci_shallow_interconnect
+module hci_arbiter
 #(
   parameter int unsigned NB_CHAN = 2
 )
@@ -31,9 +66,9 @@ module hci_shallow_interconnect
   input  logic                   clear_i,
   input  hci_interconnect_ctrl_t ctrl_i,
 
-  hci_mem_intf.slave  in_high    [NB_CHAN-1:0],
-  hci_mem_intf.slave  in_low     [NB_CHAN-1:0],
-  hci_mem_intf.master out        [NB_CHAN-1:0]
+  hci_core_intf.target    in_high    [0:NB_CHAN-1],
+  hci_core_intf.target    in_low     [0:NB_CHAN-1],
+  hci_core_intf.initiator out        [0:NB_CHAN-1]
 );
 
   logic [NB_CHAN-1:0] hs_req_in;
@@ -69,7 +104,7 @@ module hci_shallow_interconnect
 			ls_stall_ctr_d <= 0;
 	end
   
-  assign switch_channels_d = ctrl_i.hwpe_prio;
+  assign switch_channels_d = ctrl_i.invert_prio;
 
   // Req mapping
   generate
@@ -115,6 +150,7 @@ module hci_shallow_interconnect
           out[ii].data    = in_high[ii].data;
           out[ii].id      = in_high[ii].id;
           out[ii].user    = in_high[ii].user;
+          out[ii].ecc     = in_high[ii].ecc;
           in_high[ii].gnt = out[ii].gnt;
         end 
         else
@@ -126,16 +162,26 @@ module hci_shallow_interconnect
           out[ii].data   = in_low[ii].data;
           out[ii].id     = in_low[ii].id;
           out[ii].user   = in_low[ii].user;
+          out[ii].ecc    = in_low[ii].ecc;
           in_low[ii].gnt = out[ii].gnt;
         end
         in_high[ii].r_data = out[ii].r_data;
         in_low [ii].r_data = out[ii].r_data;
         in_high[ii].r_id   = out[ii].r_id;
         in_low [ii].r_id   = out[ii].r_id;
+        in_high[ii].r_opc  = out[ii].r_opc;
+        in_low [ii].r_opc  = out[ii].r_opc;
         in_high[ii].r_user = out[ii].r_user;
         in_low [ii].r_user = out[ii].r_user;
+        in_high[ii].r_ecc  = out[ii].r_ecc;
+        in_low [ii].r_ecc  = out[ii].r_ecc;
+        // r_valid signals are NOT propagated by the arbiter, they are generated at
+        // routing stage. In previous HCI versions, we used a r_valid-less version
+        // of the protocol here.
+        in_high[ii].r_valid = '0;
+        in_low [ii].r_valid = '0;
       end
     end // tcdm_binding
   endgenerate
 
-endmodule // hci_shallow_interconnect
+endmodule // hci_arbiter

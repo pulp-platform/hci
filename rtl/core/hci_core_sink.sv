@@ -44,8 +44,6 @@
  *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  *   | *TCDM_FIFO_DEPTH*   | 2           | If >0, the module produces a HWPE-MemDecoupled interface and includes a TCDM FIFO of this depth.                       |
  *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
- *   | *DATA_WIDTH*        | 32          | Width of input/output streams.                                                                                         |
- *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  *   | *TRANS_CNT*         | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.   |
  *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  *   | *MISALIGNED_ACCESS* | 1           | If set to 0, the sink will not support non-word-aligned HWPE-Mem accesses.                                             |
@@ -82,10 +80,11 @@
 import hwpe_stream_package::*;
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_sink
 #(
   // Stream interface params
-  parameter int unsigned DATA_WIDTH      = 32, //hci_package::DEFAULT_DW,
   parameter int unsigned TCDM_FIFO_DEPTH = 0,
   parameter int unsigned TRANS_CNT       = 16,
   parameter int unsigned MISALIGNED_ACCESSES = 1
@@ -97,13 +96,16 @@ module hci_core_sink
   input logic clear_i,
   input logic enable_i,
 
-  hci_core_intf.master           tcdm,
-  hwpe_stream_intf_stream.sink   stream,
+  hci_core_intf.initiator      tcdm,
+  hwpe_stream_intf_stream.sink stream,
 
   // control plane
   input  hci_streamer_ctrl_t  ctrl_i,
   output hci_streamer_flags_t flags_o
 );
+
+  localparam int unsigned DATA_WIDTH = `HCI_SIZE_GET_DW(tcdm);
+  localparam int unsigned EHW        = `HCI_SIZE_GET_EHW(tcdm);
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -116,19 +118,19 @@ module hci_core_sink
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 36 )
-  ) addr (
+  ) addr_push (
     .clk ( clk_i )
   );
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 36 )
-  ) addr_fifo (
+  ) addr_pop (
     .clk ( clk_i )
   );
 
   hci_core_intf #(
     .DW ( DATA_WIDTH )
-  ) tcdm_prefifo (
+  ) tcdm_target (
     .clk ( clk_i )
   );
 
@@ -138,7 +140,7 @@ module hci_core_sink
     .enable_i    ( address_gen_en           ),
     .clear_i     ( address_gen_clr          ),
     .presample_i ( ctrl_i.req_start         ),
-    .addr_o      ( addr                     ),
+    .addr_o      ( addr_push                ),
     .ctrl_i      ( ctrl_i.addressgen_ctrl   ),
     .flags_o     ( flags_o.addressgen_flags )
   );
@@ -151,8 +153,8 @@ module hci_core_sink
     .rst_ni  ( rst_ni          ),
     .clear_i ( clear_i         ),
     .flags_o ( addr_fifo_flags ),
-    .push_i  ( addr            ),
-    .pop_o   ( addr_fifo       )
+    .push_i  ( addr_push       ),
+    .pop_o   ( addr_pop        )
   );
 
   logic address_cnt_en, address_cnt_clr;
@@ -171,7 +173,7 @@ module hci_core_sink
     begin
       stream_data_aligned = '0;
       stream_strb_aligned = '0;
-      case(addr_fifo.data[1:0])
+      case(addr_pop.data[1:0])
         2'b00: begin
           stream_data_aligned[DATA_WIDTH-32-1:0]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
           stream_strb_aligned[(DATA_WIDTH-32)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
@@ -197,40 +199,45 @@ module hci_core_sink
   end
 
   // hci port binding
-  assign tcdm_prefifo.req   = (cs != STREAMER_IDLE) ? stream.valid & addr_fifo.valid : '0;
-  assign tcdm_prefifo.add   = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
-  assign tcdm_prefifo.wen   = '0;
-  assign tcdm_prefifo.be    = (cs != STREAMER_IDLE) ? stream_strb_aligned            : '0;
-  assign tcdm_prefifo.data  = (cs != STREAMER_IDLE) ? stream_data_aligned            : '0;
-  assign tcdm_prefifo.boffs = '0;
-  assign tcdm_prefifo.lrdy  = '1;
-  assign stream.ready    = ~stream.valid | (tcdm_prefifo.gnt & addr_fifo.valid);
-  assign addr_fifo.ready =  stream.valid & stream.ready;
+  assign tcdm_target.req     = (cs != STREAMER_IDLE) ? stream.valid & addr_pop.valid : '0;
+  assign tcdm_target.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
+  assign tcdm_target.wen     = '0;
+  assign tcdm_target.be      = (cs != STREAMER_IDLE) ? stream_strb_aligned           : '0;
+  assign tcdm_target.data    = (cs != STREAMER_IDLE) ? stream_data_aligned           : '0;
+  assign tcdm_target.r_ready = '1;
+  assign stream.ready    = ~stream.valid | (tcdm_target.gnt & addr_pop.valid);
+  assign addr_pop.ready  =  stream.valid & stream.ready;
 
   // unimplemented user bits = 0
-  assign tcdm_prefifo.user = '0;
+  assign tcdm_target.user = '0;
+
+  // unimplemented id bits = 0
+  assign tcdm_target.id = '0;
+
+  // FIXME unimplemented ECC bits
+  assign tcdm_target.ecc = '0;
 
   generate
 
     if(TCDM_FIFO_DEPTH != 0) begin: tcdm_fifos_gen
 
-      hwpe_stream_tcdm_fifo_store #(
+      hci_core_fifo #(
         .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
       ) i_tcdm_fifo (
-        .clk_i       ( clk_i        ),
-        .rst_ni      ( rst_ni       ),
-        .clear_i     ( clear_i      ),
-        .tcdm_slave  ( tcdm_prefifo ),
-        .tcdm_master ( tcdm         ),
-        .flags_o     (              )
+        .clk_i          ( clk_i       ),
+        .rst_ni         ( rst_ni      ),
+        .clear_i        ( clear_i     ),
+        .tcdm_target    ( tcdm_target ),
+        .tcdm_initiator ( tcdm        ),
+        .flags_o        (             )
       );
 
     end
     else begin: no_tcdm_fifos_gen
 
       hci_core_assign i_tcdm_assign (
-        .tcdm_slave  ( tcdm_prefifo ),
-        .tcdm_master ( tcdm         )
+        .tcdm_target    ( tcdm_target ),
+        .tcdm_initiator ( tcdm        )
       );
 
     end
@@ -297,7 +304,7 @@ module hci_core_sink
     endcase
   end
 
-  assign address_cnt_en = addr_fifo.valid & addr_fifo.ready;
+  assign address_cnt_en = addr_pop.valid & addr_pop.ready;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
@@ -309,5 +316,33 @@ module hci_core_sink
       address_cnt_q <= address_cnt_d;
   end
   assign address_cnt_d = address_cnt_q + 1;
+
+/*
+ * ECC Handshake signals
+ */
+  if(EHW > 0) begin : ecc_handshake_gen
+    assign tcdm_target.ereq     = '{default:{tcdm_target.req}};
+    assign tcdm_target.r_eready = '{default:{tcdm_target.r_ready}};
+  end
+  else begin : no_ecc_handshake_gen
+    assign tcdm_target.ereq     = '0;
+    assign tcdm_target.r_eready = '1; // assign all gnt's to 1 
+  end
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  if(MISALIGNED_ACCESSES == 0) begin
+    initial
+      dw :  assert(stream.DATA_WIDTH == tcdm.DW);
+  end
+  else begin
+    initial
+      dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
+  end
+`endif
+`endif
 
 endmodule // hci_core_sink

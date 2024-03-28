@@ -31,8 +31,8 @@ module hci_core_memmap_demux_interl #(
   input  logic [NB_REGION-1:0][AW-1:0] region_start_addr_i,
   input  logic [NB_REGION-1:0][AW-1:0] region_end_addr_i,
 
-  hci_core_intf.slave  slave,
-  hci_core_intf.master master [NB_REGION-1:0]
+  hci_core_intf.target    target,
+  hci_core_intf.initiator initiator [0:NB_REGION-1]
 );
 
     enum logic [1:0] {IDLE, RESPONSE } state_q, state_d;
@@ -40,11 +40,10 @@ module hci_core_memmap_demux_interl #(
     logic [$clog2(NB_REGION)-1:0] region_d, region_q;
     logic region_sample;
 
-    logic [NB_REGION-1:0]         master_req_aux, master_gnt_aux;
-    logic [NB_REGION-1:0]         master_r_valid_aux;
-    logic [NB_REGION-1:0][DW-1:0] master_r_data_aux;
-    logic [NB_REGION-1:0]         master_r_opc_aux;
-    logic [NB_REGION-1:0][UW-1:0] master_r_user_aux;
+    logic [NB_REGION-1:0]         initiator_req_aux, initiator_gnt_aux;
+    logic [NB_REGION-1:0]         initiator_r_valid_aux;
+    logic [NB_REGION-1:0][DW-1:0] initiator_r_data_aux;
+    logic [NB_REGION-1:0][UW-1:0] initiator_r_user_aux;
 
     logic [NB_REGION-1:0] destination_map;
     logic                 destination_valid;
@@ -53,7 +52,7 @@ module hci_core_memmap_demux_interl #(
     begin 
       destination_map = '0;
       for (int unsigned i=0; i<NB_REGION; i++) begin
-        if ((slave.add >= region_start_addr_i[i]) && (slave.add < region_end_addr_i[i])) begin
+        if ((target.add >= region_start_addr_i[i]) && (target.add < region_end_addr_i[i])) begin
           destination_map[i] = 1'b1;
         end
       end
@@ -63,7 +62,7 @@ module hci_core_memmap_demux_interl #(
     begin 
       region_d = '0;
       for (int unsigned i=0; i<NB_REGION; i++) begin
-        if ((slave.add >= region_start_addr_i[i]) && (slave.add < region_end_addr_i[i])) begin
+        if ((target.add >= region_start_addr_i[i]) && (target.add < region_end_addr_i[i])) begin
           region_d = i;
         end
       end
@@ -99,8 +98,8 @@ module hci_core_memmap_demux_interl #(
     begin : fsm_comb_state
       state_d = state_q;
       region_sample = '0;
-      if (slave.req) begin
-        if(|(master_gnt_aux)) begin
+      if (target.req) begin
+        if(|(initiator_gnt_aux)) begin
           state_d = RESPONSE;
           region_sample = '1;
         end
@@ -112,46 +111,41 @@ module hci_core_memmap_demux_interl #(
 
     always_comb
     begin : fsm_comb_out
-      master_req_aux = '0;
+      initiator_req_aux = '0;
       case(state_q)
         IDLE: begin
-          slave.r_valid = '0;
-          slave.r_data  = '0;
-          slave.r_opc   = '0;
-          slave.r_user  = '0;
+          target.r_valid = '0;
+          target.r_data  = '0;
+          target.r_user  = '0;
         end
         RESPONSE: begin
-          slave.r_valid = master_r_valid_aux [region_q];
-          slave.r_data  = master_r_data_aux  [region_q];
-          slave.r_opc   = master_r_opc_aux   [region_q];
-          slave.r_user  = master_r_user_aux  [region_q];
+          target.r_valid = initiator_r_valid_aux [region_q];
+          target.r_data  = initiator_r_data_aux  [region_q];
+          target.r_user  = initiator_r_user_aux  [region_q];
         end
         default: begin
-          slave.r_valid = '0;
-          slave.r_data  = '0;
-          slave.r_opc   = '0;
-          slave.r_user  = '0;
+          target.r_valid = '0;
+          target.r_data  = '0;
+          target.r_user  = '0;
         end
       endcase
-      master_req_aux[region_d] = slave.req;
-      slave.gnt = master_gnt_aux[region_d];
+      initiator_req_aux[region_d] = target.req;
+      target.gnt = initiator_gnt_aux[region_d];
     end
     
     generate
       for(genvar ii=0; ii<NB_REGION; ii++) begin
-        assign master[ii].add[AW-1:AWC] = '0;
-        assign master[ii].add[AWC-1:0]  = slave.add[AWC-1:0] - region_start_addr_i[ii][AWC-1:0];
-        assign master[ii].wen   = slave.wen;
-        assign master[ii].data  = slave.data;
-        assign master[ii].be    = slave.be;
-        assign master[ii].boffs = slave.boffs;
-        assign master[ii].lrdy  = slave.lrdy;
-        assign master[ii].req = master_req_aux[ii];
-        assign master_gnt_aux     [ii] = master[ii].gnt;
-        assign master_r_valid_aux [ii] = master[ii].r_valid;
-        assign master_r_data_aux  [ii] = master[ii].r_data;
-        assign master_r_opc_aux   [ii] = master[ii].r_opc;
-        assign master_r_user_aux  [ii] = master[ii].r_user;
+        assign initiator[ii].add[AW-1:AWC] = '0;
+        assign initiator[ii].add[AWC-1:0]  = target.add[AWC-1:0] - region_start_addr_i[ii][AWC-1:0];
+        assign initiator[ii].wen           = target.wen;
+        assign initiator[ii].data          = target.data;
+        assign initiator[ii].be            = target.be;
+        assign initiator[ii].r_ready       = target.r_ready;
+        assign initiator[ii].req           = initiator_req_aux[ii];
+        assign initiator_gnt_aux     [ii] = initiator[ii].gnt;
+        assign initiator_r_valid_aux [ii] = initiator[ii].r_valid;
+        assign initiator_r_data_aux  [ii] = initiator[ii].r_data;
+        assign initiator_r_user_aux  [ii] = initiator[ii].r_user;
       end
     endgenerate
 

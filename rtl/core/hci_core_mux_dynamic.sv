@@ -14,12 +14,12 @@
  */
 
 /**
- * The **TCDM multiplexer** can be used to funnel more input "virtual"
- * TCDM channels `in` into a smaller set of master ports `out`.
+ * The **HCI multiplexer** can be used to funnel more input "virtual"
+ * HCI channels `in` into a smaller set of initiator ports `out`.
  * It uses a round robin counter to avoid starvation, and differs
  * from the modules used within the logarithmic interconnect in
  * that arbitration is performed depending on the round robin
- * counter and not on the slave port; in other words, its task is
+ * counter and not on the target port; in other words, its task is
  * to fill all out ports with requests from the in port, and not
  * to route in requests to a specific out port.
  *
@@ -27,8 +27,9 @@
  * that there is no reorder buffer, so transactions cannot be swapped
  * in-flight to optimally fill the downstream available bandwidth.
  * However, in real accelerators many systematic issues with bandwidth
- * sharing can be solved by upstream TCDM FIFOs and by clever reordering
+ * sharing can be solved by upstream HCI FIFOs and by clever reordering
  * of channels, since the dataflow schedule is known.
+ * For a multiplexer with reorder buffer, see **hci_core_mux_ooo**.
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_mux_params:
@@ -47,25 +48,29 @@
 import hwpe_stream_package::*;
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_mux_dynamic
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
-  parameter int unsigned NB_OUT_CHAN = 1,
-  parameter int unsigned DW = hci_package::DEFAULT_DW,
-  parameter int unsigned AW = hci_package::DEFAULT_AW,
-  parameter int unsigned BW = hci_package::DEFAULT_BW,
-  parameter int unsigned WW = hci_package::DEFAULT_WW,
-  parameter int unsigned OW = 1,
-  parameter int unsigned UW = hci_package::DEFAULT_UW
+  parameter int unsigned NB_OUT_CHAN = 1
 )
 (
-  input  logic         clk_i,
-  input  logic         rst_ni,
-  input  logic         clear_i,
+  input  logic            clk_i,
+  input  logic            rst_ni,
+  input  logic            clear_i,
 
-  hci_core_intf.slave  in  [NB_IN_CHAN-1:0],
-  hci_core_intf.master out [NB_OUT_CHAN-1:0]
+  hci_core_intf.target    in  [0:NB_IN_CHAN-1],
+  hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 );
+
+  localparam int unsigned DW  = `HCI_SIZE_GET_DW(in[0]);
+  localparam int unsigned BW  = `HCI_SIZE_GET_BW(in[0]);
+  localparam int unsigned AW  = `HCI_SIZE_GET_AW(in[0]);
+  localparam int unsigned UW  = `HCI_SIZE_GET_UW(in[0]);
+  localparam int unsigned IW  = `HCI_SIZE_GET_IW(in[0]);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(in[0]);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in[0]);
 
   // based on MUX2Req.sv from LIC
   logic [NB_IN_CHAN-1:0]                     in_req;
@@ -75,12 +80,17 @@ module hci_core_mux_dynamic
   logic [NB_IN_CHAN-1:0]                     in_wen;
   logic [NB_IN_CHAN-1:0][DW/BW-1:0]          in_be;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_data;
-  logic [NB_IN_CHAN-1:0][DW/WW-1:0][OW-1:0]  in_boffs;
   logic [NB_IN_CHAN-1:0][UW-1:0]             in_user;
+  logic [NB_IN_CHAN-1:0][IW-1:0]             in_id;
+  logic [NB_IN_CHAN-1:0][EW-1:0]             in_ecc;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_r_data;
   logic [NB_IN_CHAN-1:0]                     in_r_valid;
-  logic [NB_IN_CHAN-1:0]                     in_r_opc;
   logic [NB_IN_CHAN-1:0][UW-1:0]             in_r_user;
+  logic [NB_IN_CHAN-1:0][IW-1:0]             in_r_id;
+  logic [NB_IN_CHAN-1:0]                     in_r_opc;
+  logic [NB_IN_CHAN-1:0][EW-1:0]             in_r_ecc;
+  logic [NB_IN_CHAN-1:0][EHW-1:0]            in_egnt;
+  logic [NB_IN_CHAN-1:0][EHW-1:0]            in_r_evalid;
 
   logic [NB_OUT_CHAN-1:0]                    out_req;
   logic [NB_OUT_CHAN-1:0]                    out_gnt;
@@ -89,12 +99,17 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0]                    out_wen;
   logic [NB_OUT_CHAN-1:0][DW/BW-1:0]         out_be;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_data;
-  logic [NB_OUT_CHAN-1:0][DW/WW-1:0][OW-1:0] out_boffs;
   logic [NB_OUT_CHAN-1:0][UW-1:0]            out_user;
+  logic [NB_OUT_CHAN-1:0][IW-1:0]            out_id;
+  logic [NB_OUT_CHAN-1:0][EW-1:0]            out_ecc;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_r_data;
   logic [NB_OUT_CHAN-1:0]                    out_r_valid;
-  logic [NB_OUT_CHAN-1:0]                    out_r_opc;
   logic [NB_OUT_CHAN-1:0][UW-1:0]            out_r_user;
+  logic [NB_OUT_CHAN-1:0][IW-1:0]            out_r_id;
+  logic [NB_OUT_CHAN-1:0]                    out_r_opc;
+  logic [NB_OUT_CHAN-1:0][EW-1:0]            out_r_ecc;
+  logic [NB_OUT_CHAN-1:0][EHW-1:0]           out_ereq;
+  logic [NB_OUT_CHAN-1:0][EHW-1:0]           out_r_eready;
 
   logic [$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                                              rr_counter;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN/NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0] rr_priority;
@@ -103,7 +118,7 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0]                                                                 out_req_q;
 
   logic s_rr_counter_reg_en;
-  assign s_rr_counter_reg_en = (|out_req) & (|out_gnt);
+  assign s_rr_counter_reg_en = (|out_req) & (|out_gnt) & (|(in_req & ~in_gnt));
 
   always_ff @(posedge clk_i, negedge rst_ni)
   begin : round_robin_counter
@@ -112,7 +127,7 @@ module hci_core_mux_dynamic
     else if (clear_i == 1'b1)
       rr_counter <= '0;
     else if (s_rr_counter_reg_en) begin
-      if (rr_counter < NB_IN_CHAN)
+      if (rr_counter < NB_IN_CHAN-1)
         rr_counter <= (rr_counter + {{($clog2(NB_IN_CHAN/NB_OUT_CHAN)-1){1'b0}},1'b1}); //[$clog2(NB_IN_CHAN)-1:0];
       else
         rr_counter <= '0;
@@ -129,37 +144,47 @@ module hci_core_mux_dynamic
       assign in_wen   [j] = in[j].wen;
       assign in_be    [j] = in[j].be;
       assign in_data  [j] = in[j].data;
-      assign in_lrdy  [j] = in[j].lrdy;
-      assign in_boffs [j] = in[j].boffs;
+      assign in_lrdy  [j] = in[j].r_ready;
       assign in_user  [j] = in[j].user;
-      assign in[j].gnt     = in_gnt     [j];
-      assign in[j].r_data  = in_r_data  [j];
-      assign in[j].r_valid = in_r_valid [j];
-      assign in[j].r_opc   = in_r_opc   [j];
-      assign in[j].r_user  = in_r_user  [j];
+      assign in_id    [j] = in[j].id;
+      assign in_ecc   [j] = in[j].ecc;
+      assign in[j].gnt      = in_gnt      [j];
+      assign in[j].r_data   = in_r_data   [j];
+      assign in[j].r_valid  = in_r_valid  [j];
+      assign in[j].r_user   = in_r_user   [j];
+      assign in[j].r_id     = in_r_id     [j];
+      assign in[j].r_opc    = in_r_opc    [j];
+      assign in[j].r_ecc    = in_r_ecc    [j];
+      assign in[j].egnt     = in_egnt     [j];
+      assign in[j].r_evalid = in_r_evalid [j];
 
     end // in_chan_binding
 
     for(i=0; i<NB_OUT_CHAN; i++) begin : out_chan_binding
 
-      assign out[i].req   = out_req  [i];
-      assign out[i].add   = out_add  [i];
-      assign out[i].wen   = out_wen  [i];
-      assign out[i].be    = out_be   [i];
-      assign out[i].data  = out_data [i];
-      assign out[i].lrdy  = out_lrdy [i];
-      assign out[i].boffs = out_boffs [i];
-      assign out[i].user  = out_user [i];
+      assign out[i].req      = out_req      [i];
+      assign out[i].add      = out_add      [i];
+      assign out[i].wen      = out_wen      [i];
+      assign out[i].be       = out_be       [i];
+      assign out[i].data     = out_data     [i];
+      assign out[i].r_ready  = out_lrdy     [i];
+      assign out[i].user     = out_user     [i];
+      assign out[i].id       = out_id       [i];
+      assign out[i].ecc      = out_ecc      [i];
+      assign out[i].ereq     = out_ereq     [i];
+      assign out[i].r_eready = out_r_eready [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
       assign out_r_valid [i] = out[i].r_valid;
+      assign out_r_id    [i] = out[i].r_id;
       assign out_r_opc   [i] = out[i].r_opc;
       assign out_r_user  [i] = out[i].r_user;
+      assign out_r_ecc   [i] = out[i].r_ecc;
 
       always_comb
       begin : rotating_priority_encoder_i
         for(int j=0; j<NB_IN_CHAN/NB_OUT_CHAN; j++)
-          rr_priority[i][j] = (rr_counter + i + j < NB_IN_CHAN) ? rr_counter + i + j : rr_counter + i + j + 1;
+          rr_priority[i][j] = (rr_counter + i + j < NB_IN_CHAN) ? rr_counter + i + j : rr_counter + i + j - NB_IN_CHAN;
       end
 
       always_comb
@@ -171,7 +196,7 @@ module hci_core_mux_dynamic
 
       always_comb
       begin : wta_comb
-        winner_d[i] = rr_counter + i;
+        winner_d[i] = (rr_counter + i < NB_IN_CHAN) ? rr_counter + i : rr_counter + i - NB_IN_CHAN;
         for(int jj=0; jj<NB_IN_CHAN/NB_OUT_CHAN; jj++) begin
           if (in_req[rr_priority[i][jj]*NB_OUT_CHAN+i] == 1'b1)
             winner_d[i] = (rr_priority[i][jj] < NB_IN_CHAN) ? rr_priority[i][jj] : rr_priority[i][jj] + 1;
@@ -184,9 +209,10 @@ module hci_core_mux_dynamic
         out_wen  [i] = in_wen  [winner_d[i]*NB_OUT_CHAN+i];
         out_data [i] = in_data [winner_d[i]*NB_OUT_CHAN+i];
         out_be   [i] = in_be   [winner_d[i]*NB_OUT_CHAN+i];
-        out_boffs[i] = in_boffs[winner_d[i]*NB_OUT_CHAN+i];
         out_lrdy [i] = in_lrdy [winner_d[i]*NB_OUT_CHAN+i];
         out_user [i] = in_user [winner_d[i]*NB_OUT_CHAN+i];
+        out_id   [i] = in_id   [winner_d[i]*NB_OUT_CHAN+i];
+        out_ecc  [i] = in_ecc  [winner_d[i]*NB_OUT_CHAN+i];
       end
 
       always_ff @(posedge clk_i or negedge rst_ni)
@@ -214,17 +240,85 @@ module hci_core_mux_dynamic
           in_r_data  [j*NB_OUT_CHAN+i] = '0;
           in_r_valid [j*NB_OUT_CHAN+i] = 1'b0;
           in_gnt     [j*NB_OUT_CHAN+i] = 1'b0;
-          in_r_opc   [j*NB_OUT_CHAN+i] = 1'b0;
           in_r_user  [j*NB_OUT_CHAN+i] = '0;
+          in_r_id    [j*NB_OUT_CHAN+i] = '0;
+          in_r_opc   [j*NB_OUT_CHAN+i] = '0;
+          in_r_ecc   [j*NB_OUT_CHAN+i] = '0;
         end
         in_r_data  [winner_q[i]*NB_OUT_CHAN+i] = out_r_data[i];
         in_r_valid [winner_q[i]*NB_OUT_CHAN+i] = out_r_valid[i] & out_req_q[i];
         in_gnt     [winner_d[i]*NB_OUT_CHAN+i] = out_gnt[i];
-        in_r_opc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_opc[i];
         in_r_user  [winner_d[i]*NB_OUT_CHAN+i] = out_r_user[i];
+        in_r_id    [winner_d[i]*NB_OUT_CHAN+i] = out_r_id[i];
+        in_r_opc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_opc[i];
+        in_r_ecc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_ecc[i];
       end
     end
 
   endgenerate
+
+/*
+ * ECC Handshake signals
+ */
+  if(EHW > 0) begin : ecc_handshake_gen
+    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+      assign in_egnt     = '{default: {in_gnt[ii]}};
+      assign in_r_evalid = '{default: {in_r_valid[ii]}};
+    end
+    for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
+      assign out_ereq     [ii] = '{default: {out_req[ii]}};
+      assign out_r_eready [ii] = '{default: {out_lrdy[ii]}};
+    end
+  end
+  else begin : no_ecc_handshake_gen
+    for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
+      assign in_egnt[ii]     = '1;
+      assign in_r_evalid[ii] = '0;
+    end
+    for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
+      assign out_ereq     [ii] = '0;
+      assign out_r_eready [ii] = '1;
+    end
+  end
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  for(genvar i=1; i<NB_IN_CHAN; i++) begin
+    initial
+      dw :  assert(in[i].DW  == in[0].DW);
+    initial
+      bw :  assert(in[i].BW  == in[0].BW);
+    initial
+      aw :  assert(in[i].AW  == in[0].AW);
+    initial
+      uw :  assert(in[i].UW  == in[0].UW);
+    initial
+      iw :  assert(in[i].IW  == in[0].IW);
+    initial
+      ew :  assert(in[i].EW  == in[0].EW);
+    initial
+      ehw : assert(in[i].EHW == in[0].EHW);
+  end
+  for(genvar i=0; i<NB_OUT_CHAN; i++) begin
+    initial
+      dw :  assert(out[i].DW  == in[0].DW);
+    initial
+      bw :  assert(out[i].BW  == in[0].BW);
+    initial
+      aw :  assert(out[i].AW  == in[0].AW);
+    initial
+      uw :  assert(out[i].UW  == in[0].UW);
+    initial
+      iw :  assert(out[i].IW  == in[0].IW);
+    initial
+      ew :  assert(out[i].EW  == in[0].EW);
+    initial
+      ehw : assert(out[i].EHW == in[0].EHW);
+  end
+`endif
+`endif;
 
 endmodule // hci_core_mux

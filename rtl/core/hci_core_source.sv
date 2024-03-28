@@ -45,8 +45,6 @@
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | **Name**            | **Default** | **Description**                                                                                                          |
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | *DATA_WIDTH*        | 32          | Width of output stream.                                                                                                  |
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *LATCH_FIFO*        | 0           | If 1, use latches instead of flip-flops (requires special constraints in synthesis).                                     |
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *TRANS_CNT*         | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.     |
@@ -89,11 +87,11 @@
 import hwpe_stream_package::*;
 import hci_package::*;
 
+`include "hci_helpers.svh"
+
 module hci_core_source
 #(
   // Stream interface params
-  parameter int unsigned DATA_WIDTH = 32,
-  // parameter int unsigned USER_WIDTH = hci_package::DEFAULT_UW, // User signals not implemented
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16,
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
@@ -107,13 +105,16 @@ module hci_core_source
   input logic clear_i,
   input logic enable_i,
 
-  hci_core_intf.master           tcdm,
+  hci_core_intf.initiator        tcdm,
   hwpe_stream_intf_stream.source stream,
 
   // control plane
   input  hci_streamer_ctrl_t   ctrl_i,
   output hci_streamer_flags_t  flags_o
 );
+
+  localparam int unsigned DATA_WIDTH = `HCI_SIZE_GET_DW(tcdm);
+  localparam int unsigned EHW        = `HCI_SIZE_GET_EHW(tcdm);
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -124,13 +125,13 @@ module hci_core_source
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 32 )
-  ) addr (
+  ) addr_push (
     .clk ( clk_i )
   );
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 32 )
-  ) addr_fifo (
+  ) addr_pop (
     .clk ( clk_i )
   );
 
@@ -141,7 +142,7 @@ module hci_core_source
     .enable_i    ( address_gen_en           ),
     .clear_i     ( address_gen_clr          ),
     .presample_i ( ctrl_i.req_start         ),
-    .addr_o      ( addr                     ),
+    .addr_o      ( addr_push                ),
     .ctrl_i      ( ctrl_i.addressgen_ctrl   ),
     .flags_o     ( flags_o.addressgen_flags )
   );
@@ -155,8 +156,8 @@ module hci_core_source
       .rst_ni  ( rst_ni          ),
       .clear_i ( clear_i         ),
       .flags_o ( addr_fifo_flags ),
-      .push_i  ( addr            ),
-      .pop_o   ( addr_fifo       )
+      .push_i  ( addr_push       ),
+      .pop_o   ( addr_pop        )
     );
   end
   else begin : nopassthrough_gen
@@ -168,8 +169,8 @@ module hci_core_source
       .rst_ni  ( rst_ni          ),
       .clear_i ( clear_i         ),
       .flags_o ( addr_fifo_flags ),
-      .push_i  ( addr            ),
-      .pop_o   ( addr_fifo       )
+      .push_i  ( addr_push       ),
+      .pop_o   ( addr_pop        )
     );
   end
 
@@ -210,18 +211,19 @@ module hci_core_source
     assign stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
   end
 
-  assign tcdm.lrdy  = stream.ready;
-  assign tcdm.req   = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready : '0;
-  assign tcdm.add   = (cs != STREAMER_IDLE) ? {addr_fifo.data[31:2],2'b0}    : '0;
-  assign tcdm.wen   = 1'b1;
-  assign tcdm.be    = 4'h0;
-  assign tcdm.data  = '0;
-  assign tcdm.boffs = '0;
-  assign tcdm.user  = '0;
+  assign tcdm.r_ready = stream.ready;
+  assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready : '0;
+  assign tcdm.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
+  assign tcdm.wen     = 1'b1;
+  assign tcdm.be      = 4'h0;
+  assign tcdm.data    = '0;
+  assign tcdm.user    = '0;
+  assign tcdm.id      = '0;
+  assign tcdm.ecc     = '0;
   assign stream.strb  = '1;
   assign stream.data  = stream_data_aligned;
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
-  assign addr_fifo.ready = (cs != STREAMER_IDLE) ? addr_fifo.valid & stream.ready & tcdm.gnt : 1'b0;
+  assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready & tcdm.gnt : 1'b0;
   
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 8 ) // only 2 significant
@@ -233,7 +235,7 @@ module hci_core_source
   ) addr_misaligned_pop (
     .clk ( clk_i )
   );
-  assign addr_misaligned_push.data  = {6'b0, addr_fifo.data[1:0]};
+  assign addr_misaligned_push.data  = {6'b0, addr_pop.data[1:0]};
   assign addr_misaligned_push.strb  = '1;
   assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
   assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & stream.ready;
@@ -339,5 +341,33 @@ module hci_core_source
       stream_cnt_q <= stream_cnt_d;
   end
   assign stream_cnt_d = stream_cnt_q + 1;
+
+/*
+ * ECC Handshake signals
+ */
+  if(EHW > 0) begin : ecc_handshake_gen
+    assign tcdm.ereq     = '{default: {tcdm.req}};
+    assign tcdm.r_eready = '{default: {tcdm.r_ready}};
+  end
+  else begin : no_ecc_handshake_gen
+    assign tcdm.ereq     = '0;
+    assign tcdm.r_eready = '1; // assign all gnt's to 1 
+  end
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+  if(MISALIGNED_ACCESSES == 0) begin
+    initial
+      dw :  assert(stream.DATA_WIDTH == tcdm.DW);
+  end
+  else begin
+    initial
+      dw :  assert(stream.DATA_WIDTH <= tcdm.DW);
+  end
+`endif
+`endif
 
 endmodule // hci_core_source

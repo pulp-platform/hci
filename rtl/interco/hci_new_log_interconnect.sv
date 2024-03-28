@@ -32,11 +32,11 @@ module hci_new_log_interconnect #(
   input logic                   clk_i,
   input logic                   rst_ni,
   input hci_interconnect_ctrl_t ctrl_i,
-  hci_core_intf.slave           cores [N_CH0+N_CH1-1:0],
-  hci_mem_intf.master           mems  [N_MEM-1:0]
+  hci_core_intf.target          cores [0:N_CH0+N_CH1-1],
+  hci_core_intf.initiator       mems  [0:N_MEM-1]
 );
 
-  // master side
+  // initiator side
   logic [N_CH0+N_CH1-1:0]             cores_req;
   logic [N_CH0+N_CH1-1:0] [AWC-1:0]   cores_add;
   logic [N_CH0+N_CH1-1:0]             cores_wen;
@@ -45,7 +45,7 @@ module hci_new_log_interconnect #(
   logic [N_CH0+N_CH1-1:0]             cores_gnt;
   logic [N_CH0+N_CH1-1:0]             cores_r_valid;
   logic [N_CH0+N_CH1-1:0] [UW+DW-1:0] cores_r_rdata;
-  // slave side
+  // target side
   logic [N_MEM-1:0]             mems_req;
   logic [N_MEM-1:0] [AWM-1:0]   mems_add;
   logic [N_MEM-1:0]             mems_wen;
@@ -76,7 +76,6 @@ module hci_new_log_interconnect #(
       end
       assign cores[i].gnt      = cores_gnt     [i];
       assign cores[i].r_valid  = cores_r_valid [i];
-      assign cores[i].r_opc    = '0;
     end // cores_unrolling
     for(genvar i=0; i<N_MEM; i++) begin : mems_unrolling
       assign mems[i].req               = mems_req   [i];

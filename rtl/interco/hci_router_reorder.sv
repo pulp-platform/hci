@@ -1,8 +1,8 @@
 /*
- * hci_hwpe_reorder.sv
+ * hci_router_reorder.sv
  * Francesco Conti <f.conti@unibo.it>
  *
- * Copyright (C) 2014-2021 ETH Zurich, University of Bologna
+ * Copyright (C) 2014-2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -13,9 +13,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
+/*
+ * See `hci_router` - this block contains the actual routing.
+ */
+
 import hwpe_stream_package::*;
 
-module hci_hwpe_reorder
+module hci_router_reorder
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 2,
@@ -28,8 +32,8 @@ module hci_hwpe_reorder
 
   input  logic [$clog2(NB_OUT_CHAN)-1:0] order_i,
 
-  hwpe_stream_intf_tcdm.slave        in  [NB_IN_CHAN-1:0],
-  hwpe_stream_intf_tcdm.master       out [NB_OUT_CHAN-1:0]
+  hci_core_intf.target    in  [0:NB_IN_CHAN-1],
+  hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 
 );
 
@@ -53,7 +57,7 @@ module hci_hwpe_reorder
 
   generate
 
-    // broadcasting in_req[0] and in_gnt[0] is key to optimize area (2-3x) in hci_hwpe_reorder
+    // broadcasting in_req[0] and in_gnt[0] is key to optimize area (2-3x) in hci_router_reorder
 
     // in_gnt out of in_chan_gen because only [0] is used
     assign in_gnt[0] = &(~out_req | out_gnt);
@@ -121,6 +125,13 @@ module hci_hwpe_reorder
       assign in[i].gnt     = in_gnt     [i];
       assign in[i].r_data  = in_r_data  [i];
       assign in[i].r_valid = in_req_q[0]; // fixed latency = 1
+      // tie unused/unsupported signals
+      assign in[i].r_user   = '0;
+      assign in[i].r_id     = '0;
+      assign in[i].r_opc    = '0;
+      assign in[i].r_ecc    = '0;
+      assign in[i].egnt     = '1;
+      assign in[i].r_evalid = '0;
 
     end
 
@@ -150,9 +161,17 @@ module hci_hwpe_reorder
       assign out[i].data = out_data [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
+      // tie r_ready to '1;
+      assign out[i].r_ready = '1;
+      // tie unused/unsupported signals
+      assign out[i].user     = '0;
+      assign out[i].id       = '0;
+      assign out[i].ecc      = '0;
+      assign out[i].ereq     = '0;
+      assign out[i].r_eready = '1;
 
     end // out_chan_gen
 
   endgenerate
 
-endmodule // hci_hwpe_reorder
+endmodule // hci_router_reorder
