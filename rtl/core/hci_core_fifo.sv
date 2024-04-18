@@ -312,7 +312,10 @@ module hci_core_fifo
   // FIXME: if incoming_fifo_not_full makes a 1->0 transition in the cycle after a non-granted request (req=1, gnt=0),
   //        tcdm_initiator.req will go down, causing a RQ-4 protocol violation.
   //        This should be harmless, but should still be fixed in a future commit.
-  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full & ~(incoming_fifo_almost_full & tcdm_initiator.r_valid & tcdm_initiator.r_ready);
+  // Lower the request if
+  //  1) the incoming FIFO is already full
+  //  2) the incoming FIFO is almost full, a valid incoming response is arriving, and the incoming FIFO consumer side is not ready to receive the response
+  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full & ~(incoming_fifo_almost_full & tcdm_initiator.r_valid & ~tcdm_target.r_ready);
   assign tcdm_initiator.r_ready = incoming_fifo_not_full;
   assign stream_outgoing_pop.ready = tcdm_initiator.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0
 
