@@ -1,6 +1,6 @@
 package:
   name: hci
-  authors: 
+  authors:
     - "Francesco Conti <f.conti@unibo.it>"
     - "Gianna Paulin <pauling@iis.ee.ethz.ch"
     - "Tobias Riedener <tobiasri@student.ethz.ch>"
@@ -9,6 +9,7 @@ dependencies:
   hwpe-stream:            { git: "https://github.com/pulp-platform/hwpe-stream.git", version: 1.9.0 }
   cluster_interconnect:   { git: "https://github.com/pulp-platform/cluster_interconnect.git", rev: 1284def6c0b7f7e9355eb093d00883ad9dead1b7 }
   L2_tcdm_hybrid_interco: { git: "https://github.com/pulp-platform/L2_tcdm_hybrid_interco.git", version: 1.0.0 }
+  redundancy_cells:       { git: "https://github.com/pulp-platform/redundancy_cells.git", rev: c37bdb47339bf70e8323de8df14ea8bbeafb6583 } # branch: astral_rebase
 
 # this is necessary to expose hci_helpers.svh to dependent packages
 export_include_dirs:
@@ -35,6 +36,8 @@ sources:
       - rtl/core/hci_core_r_id_filter.sv
       - rtl/core/hci_core_source.sv
       - rtl/core/hci_core_split.sv
+      - rtl/ecc/hci_ecc_dec.sv
+      - rtl/ecc/hci_ecc_enc.sv
       - rtl/interco/hci_log_interconnect.sv
       - rtl/interco/hci_log_interconnect_l2.sv
       - rtl/interco/hci_new_log_interconnect.sv # `new_XBAR_TCDM` dep. is a private repo
