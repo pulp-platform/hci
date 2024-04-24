@@ -50,5 +50,6 @@ sources:
       - rtl/ecc/hci_ecc_source.sv
       - rtl/interco/hci_router.sv
       # Level 4
+      - rtl/ecc/hci_ecc_interconnect.sv
       - rtl/ecc/hci_ecc_sink.sv
       - rtl/hci_interconnect.sv
