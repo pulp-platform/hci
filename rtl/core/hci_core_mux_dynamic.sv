@@ -247,10 +247,10 @@ module hci_core_mux_dynamic
         in_r_data  [winner_q[i]*NB_OUT_CHAN+i] = out_r_data[i];
         in_r_valid [winner_q[i]*NB_OUT_CHAN+i] = out_r_valid[i] & out_req_q[i];
         in_gnt     [winner_d[i]*NB_OUT_CHAN+i] = out_gnt[i];
-        in_r_user  [winner_d[i]*NB_OUT_CHAN+i] = out_r_user[i];
-        in_r_id    [winner_d[i]*NB_OUT_CHAN+i] = out_r_id[i];
-        in_r_opc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_opc[i];
-        in_r_ecc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_ecc[i];
+        in_r_user  [winner_q[i]*NB_OUT_CHAN+i] = out_r_user[i];
+        in_r_id    [winner_q[i]*NB_OUT_CHAN+i] = out_r_id[i];
+        in_r_opc   [winner_q[i]*NB_OUT_CHAN+i] = out_r_opc[i];
+        in_r_ecc   [winner_q[i]*NB_OUT_CHAN+i] = out_r_ecc[i];
       end
     end
 
