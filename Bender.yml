@@ -41,6 +41,8 @@ sources:
       - rtl/interco/hci_router_reorder.sv
       # Level 3
       - rtl/core/hci_core_sink.sv
+      - rtl/ecc/hci_ecc_source.sv
       - rtl/interco/hci_router.sv
       # Level 4
+      - rtl/ecc/hci_ecc_sink.sv
       - rtl/hci_interconnect.sv
