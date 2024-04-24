@@ -250,7 +250,7 @@ module hci_core_mux_dynamic
         in_r_user  [winner_d[i]*NB_OUT_CHAN+i] = out_r_user[i];
         in_r_id    [winner_d[i]*NB_OUT_CHAN+i] = out_r_id[i];
         in_r_opc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_opc[i];
-        in_r_ecc   [winner_d[i]*NB_OUT_CHAN+i] = out_r_ecc[i];
+        in_r_ecc   [winner_q[i]*NB_OUT_CHAN+i] = out_r_ecc[i];
       end
     end
 
