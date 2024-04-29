@@ -27,7 +27,8 @@ module hci_new_log_interconnect
   parameter int unsigned BW     = hci_package::DEFAULT_BW,
   parameter int unsigned TS_BIT = 21,
   parameter int unsigned IW     = N_CH0+N_CH1,
-  parameter int unsigned UW     = hci_package::DEFAULT_UW
+  parameter int unsigned UW     = hci_package::DEFAULT_UW,
+  parameter int unsigned EW     = hci_package::DEFAULT_EW
 ) (
   input logic                   clk_i,
   input logic                   rst_ni,
@@ -40,20 +41,20 @@ module hci_new_log_interconnect
   logic [N_CH0+N_CH1-1:0]             cores_req;
   logic [N_CH0+N_CH1-1:0] [AWC-1:0]   cores_add;
   logic [N_CH0+N_CH1-1:0]             cores_wen;
-  logic [N_CH0+N_CH1-1:0] [UW+DW-1:0] cores_wdata;
+  logic [N_CH0+N_CH1-1:0] [UW+DW+EW-1:0] cores_wdata;
   logic [N_CH0+N_CH1-1:0] [DW/BW-1:0] cores_be;
   logic [N_CH0+N_CH1-1:0]             cores_gnt;
   logic [N_CH0+N_CH1-1:0]             cores_r_valid;
-  logic [N_CH0+N_CH1-1:0] [UW+DW-1:0] cores_r_rdata;
+  logic [N_CH0+N_CH1-1:0] [UW+DW+EW-1:0] cores_r_rdata;
   // target side
   logic [N_MEM-1:0]             mems_req;
   logic [N_MEM-1:0] [AWM-1:0]   mems_add;
   logic [N_MEM-1:0]             mems_wen;
-  logic [N_MEM-1:0] [UW+DW-1:0] mems_wdata;
+  logic [N_MEM-1:0] [UW+DW+EW-1:0] mems_wdata;
   logic [N_MEM-1:0] [DW/BW-1:0] mems_be;
   logic [N_MEM-1:0] [IW-1:0]    mems_ID;
   logic [N_MEM-1:0]             mems_gnt;
-  logic [N_MEM-1:0] [UW+DW-1:0] mems_r_rdata;
+  logic [N_MEM-1:0] [UW+DW+EW-1:0] mems_r_rdata;
   logic [N_MEM-1:0]             mems_r_valid;
   logic [N_MEM-1:0] [IW-1:0]    mems_r_ID;
   logic [N_MEM-1:0]             mems_ts_set_d;
@@ -67,8 +68,8 @@ module hci_new_log_interconnect
       assign cores_wen     [i] = cores[i].wen;
       assign cores_be      [i] = cores[i].be;
       if (UW > 0) begin
-        assign cores_wdata [i] = {cores[i].user, cores[i].data};
-        assign {cores[i].r_user, cores[i].r_data} = cores_r_rdata [i];
+        assign cores_wdata [i] = {cores[i].user, cores[i].data, cores[i].ecc};
+        assign {cores[i].r_user, cores[i].r_data, cores[i].r_ecc} = cores_r_rdata [i];
       end else begin
         assign cores_wdata [i] = cores[i].data;
         assign cores[i].r_data = cores_r_rdata [i];
@@ -86,8 +87,8 @@ module hci_new_log_interconnect
       assign mems[i].be                = mems_be    [i];
       assign mems[i].id                = mems_ID    [i];
       if (UW > 0) begin
-        assign {mems[i].user, mems[i].data} = mems_wdata [i];
-        assign mems_r_rdata [i] = {mems[i].r_user, mems[i].r_data};
+        assign {mems[i].user, mems[i].data, mems[i].ecc} = mems_wdata [i];
+        assign mems_r_rdata [i] = {mems[i].r_user, mems[i].r_data, mems[i].r_ecc};
       end else begin
         assign mems[i].data     = mems_wdata [i];
         assign mems[i].user     = '0;
