@@ -75,6 +75,7 @@ module hci_interconnect
 
   localparam int unsigned AWC = `HCI_SIZE_GET_AW(cores[0]);
   localparam int unsigned AWM = `HCI_SIZE_GET_AW(mems[0]);
+  localparam int unsigned EWC = `HCI_SIZE_GET_EW(cores[0]);
   localparam int unsigned DW_LIC = `HCI_SIZE_GET_DW(cores[0]);
   localparam int unsigned BW_LIC = `HCI_SIZE_GET_BW(cores[0]);
   localparam int unsigned UW_LIC = `HCI_SIZE_GET_UW(cores[0]);
@@ -117,7 +118,8 @@ module hci_interconnect
         .DW     ( DW_LIC              ),
         .BW     ( BW_LIC              ),
         .UW     ( UW_LIC              ),
-        .TS_BIT ( TS_BIT              )
+        .TS_BIT ( TS_BIT              ),
+        .EW     ( EWC                 )
       ) i_log_interconnect (
         .clk_i  ( clk_i               ),
         .rst_ni ( rst_ni              ),
