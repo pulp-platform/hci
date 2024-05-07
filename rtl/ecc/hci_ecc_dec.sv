@@ -46,6 +46,7 @@ module hci_ecc_dec
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
   localparam int unsigned EW_RQMETA = $clog2(RQMETAW)+2;
   localparam int unsigned EW_RSMETA = $clog2(RSMETAW)+2;
+  localparam int unsigned ZEROBITS  = EW_RQMETA - EW_RSMETA;
 
   logic [N_CHUNK-1][1:0]              data_err;
   logic [1:0]                         meta_err;
@@ -161,7 +162,7 @@ module hci_ecc_dec
   assign tcdm_target.egnt        = tcdm_initiator.egnt;
   assign tcdm_target.r_evalid    = tcdm_initiator.r_evalid;
   assign tcdm_initiator.r_eready = tcdm_target.r_eready;
-  assign tcdm_initiator.ecc      = tcdm_target.ecc;
-  assign tcdm_target.r_ecc       = { r_data_ecc, r_meta_ecc };
+  assign tcdm_initiator.ecc      = '0;
+  assign tcdm_target.r_ecc       = { {ZEROBITS{1'b0}}, r_data_ecc, r_meta_ecc };
 
 endmodule // hci_ecc_dec
