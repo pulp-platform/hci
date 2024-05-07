@@ -163,5 +163,6 @@ module hci_ecc_enc
   assign tcdm_target.r_evalid    = tcdm_initiator.r_evalid;
   assign tcdm_initiator.r_eready = tcdm_target.r_eready;
   assign tcdm_initiator.ecc      = { data_ecc, meta_ecc };
+  assign tcdm_target.r_ecc       = '0;
 
 endmodule // hci_ecc_enc
