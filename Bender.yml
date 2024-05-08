@@ -10,6 +10,10 @@ dependencies:
   cluster_interconnect:   { git: "https://github.com/pulp-platform/cluster_interconnect.git", version: 1.1.1 }
   L2_tcdm_hybrid_interco: { git: "https://github.com/pulp-platform/L2_tcdm_hybrid_interco.git", version: 1.0.0 }
 
+# this is necessary to expose hci_helpers.svh to dependent packages
+export_include_dirs:
+  - rtl/common
+
 sources:
   - include_dirs:
       - rtl/common
