@@ -22,14 +22,21 @@
 module hci_ecc_dec
   import hci_package::*;
 #(
-  parameter int unsigned CHUNK_SIZE  = 32
+  parameter int unsigned DW = hci_package::DEFAULT_DW,
+  parameter int unsigned CHUNK_SIZE  = 32,
+  // Dependent parameters, do not override
+  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE,
+  parameter int unsigned MAX_ERR = $clog2(N_CHUNK) + 1
 )
 (
-  hci_core_intf.target    tcdm_target,
-  hci_core_intf.initiator tcdm_initiator
+  output logic [MAX_ERR-1:0] data_single_err_o,
+  output logic [MAX_ERR-1:0] data_multi_err_o,
+  output logic               meta_single_err_o,
+  output logic               meta_multi_err_o,
+  hci_core_intf.target       tcdm_target,
+  hci_core_intf.initiator    tcdm_initiator
 );
 
-  localparam int unsigned DW  = `HCI_SIZE_GET_DW(tcdm_target);
   localparam int unsigned BW  = `HCI_SIZE_GET_BW(tcdm_target);
   localparam int unsigned AW  = `HCI_SIZE_GET_AW(tcdm_target);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm_target);
@@ -41,13 +48,14 @@ module hci_ecc_dec
   localparam int unsigned RQMETAW = AW + DW/BW + UW + 1;
   localparam int unsigned RSMETAW = UW + 1;
 
-  localparam int unsigned N_CHUNK = DW / CHUNK_SIZE;
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
   localparam int unsigned EW_RQMETA = $clog2(RQMETAW)+2;
   localparam int unsigned EW_RSMETA = $clog2(RSMETAW)+2;
   localparam int unsigned ZEROBITS  = EW_RQMETA - EW_RSMETA;
 
-  logic [N_CHUNK-1][1:0]              data_err;
+  logic [N_CHUNK-1:0][1:0]            data_err;
+  logic [N_CHUNK-1:0]                 data_single_err;
+  logic [N_CHUNK-1:0]                 data_multi_err;
   logic [1:0]                         meta_err;
 
   logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_enc;
@@ -163,5 +171,28 @@ module hci_ecc_dec
   assign tcdm_initiator.r_eready = tcdm_target.r_eready;
   assign tcdm_initiator.ecc      = '0;
   assign tcdm_target.r_ecc       = { {ZEROBITS{1'b0}}, r_data_ecc, r_meta_ecc };
+
+  // error signals
+  for(genvar ii=0; ii<N_CHUNK; ii++) begin
+    assign data_single_err[ii] = data_err[ii][0];
+    assign data_multi_err[ii]  = data_err[ii][1];
+  end
+
+  popcount #(
+    .INPUT_WIDTH   ( N_CHUNK )
+  ) i_popcount_single (
+    .data_i     ( data_single_err   ),
+    .popcount_o ( data_single_err_o )
+  );
+
+  popcount #(
+    .INPUT_WIDTH   ( N_CHUNK )
+  ) i_popcount_multi (
+    .data_i     ( data_multi_err   ),
+    .popcount_o ( data_multi_err_o )
+  );
+
+  assign meta_single_err_o = meta_err[0];
+  assign meta_multi_err_o  = meta_err[1];
 
 endmodule // hci_ecc_dec

@@ -61,16 +61,18 @@ module hci_ecc_interconnect
   parameter int unsigned TS_BIT  = 21                       , // TEST_SET_BIT (for Log Interconnect)
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
-  parameter int unsigned SEL_LIC = 0                          // Log interconnect type selector
+  parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
+  parameter int unsigned CHUNK_SIZE = 32                      // Chunk size of data to be encoded separately (HWPE branch)
 ) (
   input logic                   clk_i               ,
   input logic                   rst_ni              ,
   input logic                   clear_i             ,
   input hci_interconnect_ctrl_t ctrl_i              ,
-  hci_core_intf.target           cores   [0:N_CORE-1],
-  hci_core_intf.target           dma     [0:N_DMA-1] ,
-  hci_core_intf.target           ext     [0:N_EXT-1] ,
-  hci_core_intf.initiator        mems    [0:N_MEM-1] ,
+  XBAR_PERIPH_BUS.Slave         periph_hci_ecc      ,
+  hci_core_intf.target           cores   [0:N_CORE-1]    ,
+  hci_core_intf.target           dma     [0:N_DMA-1]     ,
+  hci_core_intf.target           ext     [0:N_EXT-1]     ,
+  hci_core_intf.initiator        mems    [0:N_MEM-1]     ,
   hci_core_intf.target           hwpe
 );
 
@@ -84,6 +86,7 @@ module hci_ecc_interconnect
   localparam int unsigned BWH = `HCI_SIZE_GET_BW(hwpe);
   localparam int unsigned UWH = `HCI_SIZE_GET_UW(hwpe);
   localparam int unsigned EWH = `HCI_SIZE_GET_EW(hwpe);
+  localparam int unsigned N_CHUNK = DWH / CHUNK_SIZE;
 
   hci_core_intf #(
     .UW ( UW_LIC )
@@ -172,6 +175,11 @@ module hci_ecc_interconnect
   generate
     if(N_HWPE > 0) begin: hwpe_branch_gen
 
+      logic [$clog2(N_CHUNK):0] data_single_err;
+      logic [$clog2(N_CHUNK):0] data_multi_err;
+      logic                     meta_single_err;
+      logic                     meta_multi_err;
+
       hci_core_intf #(
         .DW ( DWH ),
         .AW ( AWH ),
@@ -182,9 +190,16 @@ module hci_ecc_interconnect
         .clk( clk_i )
       );
 
-      hci_ecc_dec i_ecc_dec (
-        .tcdm_target    ( hwpe ),
-        .tcdm_initiator ( hwpe_dec )
+      hci_ecc_dec #(
+        .DW         ( DWH ),
+        .CHUNK_SIZE ( CHUNK_SIZE )
+      ) i_ecc_dec (
+        .data_single_err_o ( data_single_err ),
+        .data_multi_err_o  ( data_multi_err  ),
+        .meta_single_err_o ( meta_single_err ),
+        .meta_multi_err_o  ( meta_multi_err  ),
+        .tcdm_target       ( hwpe            ),
+        .tcdm_initiator    ( hwpe_dec        )
       );
 
       hci_router #(
@@ -208,6 +223,22 @@ module hci_ecc_interconnect
         .in_high ( all_except_hwpe_mem ),
         .in_low  ( hwpe_mem            ),
         .out     ( mems                )
+      );
+
+      hci_ecc_manager #(
+        .N_CHUNK       ( N_CHUNK                ),
+        .AW            ( AWC                    ),
+        .DW            ( DW_LIC                 ),
+        .BW            ( BW_LIC                 ),
+        .IW            ( N_CORE + 1             )
+      ) i_hci_ecc_manager (
+        .clk_i                        ( clk_i           ),
+        .rst_ni                       ( rst_ni          ),
+        .periph                       ( periph_hci_ecc  ),
+        .data_correctable_err_num_i   ( data_single_err ),
+        .data_uncorrectable_err_num_i ( data_multi_err  ),
+        .meta_correctable_err_i       ( meta_single_err ),
+        .meta_uncorrectable_err_i     ( meta_multi_err  )
       );
 
     end
