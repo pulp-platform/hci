@@ -65,7 +65,7 @@ module hci_interconnect
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(mems)  = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(hwpe)  = '0,
   parameter bit WAIVE_RQ3_ASSERT  = 1'b0,
-  parameter bit WAIVE_RQ3_ASSERT  = 1'b0,
+  parameter bit WAIVE_RQ4_ASSERT  = 1'b0,
   parameter bit WAIVE_RSP3_ASSERT = 1'b0,
   parameter bit WAIVE_RSP5_ASSERT = 1'b0
 ) (
