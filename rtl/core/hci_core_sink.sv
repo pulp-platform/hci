@@ -86,7 +86,7 @@ module hci_core_sink
   parameter int unsigned TCDM_FIFO_DEPTH = 0,
   parameter int unsigned TRANS_CNT       = 16,
   parameter int unsigned MISALIGNED_ACCESSES = 1,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
   input logic clk_i,

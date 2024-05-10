@@ -42,13 +42,14 @@
 
 module hci_core_split
   import hwpe_stream_package::*;
+  import hci_package::*;
 #(
   parameter int unsigned DW          = 64, // DW_IN
   parameter int unsigned BW          = 8,
   parameter int unsigned UW          = 2,
   parameter int unsigned NB_OUT_CHAN = 2,
   parameter int unsigned FIFO_DEPTH  = 0,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
 ) (
   input logic clk_i,
   input logic rst_ni,

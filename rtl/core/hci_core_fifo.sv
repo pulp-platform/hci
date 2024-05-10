@@ -76,7 +76,7 @@ module hci_core_fifo
 #(
   parameter int unsigned FIFO_DEPTH = 8,
   parameter int unsigned LATCH_FIFO = 0,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_initiator) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_initiator) = '0
 )
 (
   input  logic            clk_i,

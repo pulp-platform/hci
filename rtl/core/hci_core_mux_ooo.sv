@@ -42,9 +42,10 @@
 
 module hci_core_mux_ooo
   import hwpe_stream_package::*;
+  import hci_package::*;
 #(
   parameter int unsigned NB_CHAN = 2,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
 )
 (
   input  logic                                    clk_i,

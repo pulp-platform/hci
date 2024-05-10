@@ -49,11 +49,12 @@
 `include "hci_helpers.svh"
 
 module hci_router
+  import hci_package::*;
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
   parameter int unsigned NB_OUT_CHAN = 8,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(in) = '0,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(in)  = '0,
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
 )
 (
   input  logic clk_i,

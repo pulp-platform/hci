@@ -53,7 +53,7 @@ module hci_core_mux_dynamic
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 1,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(in) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(in) = '0
 )
 (
   input  logic            clk_i,
@@ -262,8 +262,8 @@ module hci_core_mux_dynamic
  */
   if(EHW > 0) begin : ecc_handshake_gen
     for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : in_chan_gen
-      assign in_egnt     = '{default: {in_gnt[ii]}};
-      assign in_r_evalid = '{default: {in_r_valid[ii]}};
+      assign in_egnt     [ii] = '{default: {in_gnt[ii]}};
+      assign in_r_evalid [ii] = '{default: {in_r_valid[ii]}};
     end
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
       assign out_ereq     [ii] = '{default: {out_req[ii]}};
