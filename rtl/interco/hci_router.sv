@@ -285,7 +285,9 @@ module hci_router
     assert (2**$clog2(NB_OUT_CHAN) == NB_OUT_CHAN) else  $fatal("NB_OUT_CHAN is not a power-of-2!");
 
   `HCI_SIZE_CHECK_ASSERTS(in);
-  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(out), out[0]);
+  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(out),      out[0]);
+  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(virt_in),  virt_in[0])
+  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(virt_out), virt_out[0]);
   
 `endif
 `endif;
