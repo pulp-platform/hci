@@ -30,32 +30,60 @@
 // Helper `defines to get internal sizes. Interestingly, the code for synthesis
 // does not (consistently) work in simulation, and vice versa - although they
 // have exactly the same purpose.
+
+// Convenience defines to get conventional param name from interface name
+// Example:
+//   intf:  tcdm_initiator
+//   param: HCI_SIZE_tcdm_initiator
+`define HCI_SIZE_PREFIX_INTF(__prefix, __intf) __prefix``__intf
+`define HCI_SIZE_PARAM(__intf) `HCI_SIZE_PREFIX_INTF(HCI_SIZE_, __intf)
+
+`define HCI_SIZE_GET_DW(__x)  (`HCI_SIZE_PARAM(__x).DW)
+`define HCI_SIZE_GET_AW(__x)  (`HCI_SIZE_PARAM(__x).AW)
+`define HCI_SIZE_GET_BW(__x)  (`HCI_SIZE_PARAM(__x).BW)
+`define HCI_SIZE_GET_UW(__x)  (`HCI_SIZE_PARAM(__x).UW)
+`define HCI_SIZE_GET_IW(__x)  (`HCI_SIZE_PARAM(__x).IW)
+`define HCI_SIZE_GET_EW(__x)  (`HCI_SIZE_PARAM(__x).EW)
+`define HCI_SIZE_GET_EHW(__x) (`HCI_SIZE_PARAM(__x).EHW)
+
+// Shorthand for defining a HCI interface compatible with a parameter
+`define HCI_INTF_EXPLICIT_PARAM(__name, __clk, __param) \
+  hci_core_intf #( \
+    .DW  ( __param.DW  ), \
+    .AW  ( __param.AW  ), \
+    .BW  ( __param.BW  ), \
+    .UW  ( __param.UW  ), \
+    .IW  ( __param.IW  ), \
+    .EW  ( __param.EW  ), \
+    .EHW ( __param.EHW ) \
+  ) __name ( \
+    .clk ( __clk ) \
+  )
+`define HCI_INTF(__name, __clk)                `HCI_INTF_EXPLICIT_PARAM(__name, __clk,          `HCI_SIZE_PARAM(__name))
+`define HCI_INTF_ARRAY(__name, __clk, __range) `HCI_INTF_EXPLICIT_PARAM(__name[__range], __clk, `HCI_SIZE_PARAM(__name))
+
 `ifndef SYNTHESIS
-  `define HCI_SIZE_GET_DW(x)  (x.DW)
-  `define HCI_SIZE_GET_AW(x)  (x.AW)
-  `define HCI_SIZE_GET_BW(x)  (x.BW)
-  `define HCI_SIZE_GET_UW(x)  (x.UW)
-  `define HCI_SIZE_GET_IW(x)  (x.IW)
-  `define HCI_SIZE_GET_EW(x)  (x.EW)
-  `define HCI_SIZE_GET_EHW(x) (x.EHW)
-`else /* SYNTHESIS */
-  `ifdef HCI_TARGET_FPGA
-    `define HCI_SIZE_GET_DW(x)  (x.DW)
-    `define HCI_SIZE_GET_AW(x)  (x.AW)
-    `define HCI_SIZE_GET_BW(x)  (x.BW)
-    `define HCI_SIZE_GET_UW(x)  (x.UW)
-    `define HCI_SIZE_GET_IW(x)  (x.IW)
-    `define HCI_SIZE_GET_EW(x)  (x.EW)
-    `define HCI_SIZE_GET_EHW(x) (x.EHW)
-  `else /* not HCI_TARGET FPGA */
-    `define HCI_SIZE_GET_DW(x)  ($bits(x.data))
-    `define HCI_SIZE_GET_AW(x)  ($bits(x.add))
-    `define HCI_SIZE_GET_BW(x)  ($bits(x.be))
-    `define HCI_SIZE_GET_UW(x)  ($bits(x.user))
-    `define HCI_SIZE_GET_IW(x)  ($bits(x.id))
-    `define HCI_SIZE_GET_EW(x)  ($bits(x.ecc))
-    `define HCI_SIZE_GET_EHW(x) ($bits(x.ereq))
-  `endif
+  `define HCI_SIZE_GET_DW_CHECK(__x)  (__x.DW)
+  `define HCI_SIZE_GET_AW_CHECK(__x)  (__x.AW)
+  `define HCI_SIZE_GET_BW_CHECK(__x)  (__x.BW)
+  `define HCI_SIZE_GET_UW_CHECK(__x)  (__x.UW)
+  `define HCI_SIZE_GET_IW_CHECK(__x)  (__x.IW)
+  `define HCI_SIZE_GET_EW_CHECK(__x)  (__x.EW)
+  `define HCI_SIZE_GET_EHW_CHECK(__x) (__x.EHW)
+
+  // Asserts (generic definition usable with any parameter name)
+  `define HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(__xparam, __xintf) \
+  initial param_intf_size_check_dw  : assert(__xparam.DW  == `HCI_SIZE_GET_DW_CHECK(__xintf)); \
+  initial param_intf_size_check_bw  : assert(__xparam.BW  == `HCI_SIZE_GET_BW_CHECK(__xintf)); \
+  initial param_intf_size_check_aw  : assert(__xparam.AW  == `HCI_SIZE_GET_AW_CHECK(__xintf)); \
+  initial param_intf_size_check_uw  : assert(__xparam.UW  == `HCI_SIZE_GET_UW_CHECK(__xintf)); \
+  initial param_intf_size_check_iw  : assert(__xparam.IW  == `HCI_SIZE_GET_IW_CHECK(__xintf)); \
+  initial param_intf_size_check_ew  : assert(__xparam.EW  == `HCI_SIZE_GET_EW_CHECK(__xintf)); \
+  initial param_intf_size_check_ehw : assert(__xparam.EHW == `HCI_SIZE_GET_EHW_CHECK(__xintf))
+
+  // Asserts (specialized definition for conventional param names
+  `define HCI_SIZE_CHECK_ASSERTS(__intf) `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(__intf), __intf)
+
 `endif
 
 `endif /* `ifndef __HCI_HELPERS__ */

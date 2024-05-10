@@ -43,7 +43,8 @@
 module hci_core_mux_ooo
   import hwpe_stream_package::*;
 #(
-  parameter int unsigned NB_CHAN = 2
+  parameter int unsigned NB_CHAN = 2,
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
 )
 (
   input  logic                                    clk_i,
@@ -197,6 +198,9 @@ module hci_core_mux_ooo
     initial
       ehw : assert(in[i].EHW == out.EHW);
   end
+
+  `HCI_SIZE_CHECK_ASSERTS(out);
+
 `endif
 `endif;
 

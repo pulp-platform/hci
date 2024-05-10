@@ -35,7 +35,8 @@
 module hci_core_mux_static
   import hwpe_stream_package::*;
 #(
-  parameter int unsigned NB_CHAN = 2
+  parameter int unsigned NB_CHAN = 2,
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(in) = '0
 )
 (
   input  logic                       clk_i,
@@ -48,13 +49,13 @@ module hci_core_mux_static
   hci_core_intf.initiator            out
 );
 
-  localparam int unsigned DW  = `HCI_SIZE_GET_DW(in[0]);
-  localparam int unsigned BW  = `HCI_SIZE_GET_BW(in[0]);
-  localparam int unsigned AW  = `HCI_SIZE_GET_AW(in[0]);
-  localparam int unsigned UW  = `HCI_SIZE_GET_UW(in[0]);
-  localparam int unsigned IW  = `HCI_SIZE_GET_IW(in[0]);
-  localparam int unsigned EW  = `HCI_SIZE_GET_EW(in[0]);
-  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in[0]);
+  localparam int unsigned DW  = `HCI_SIZE_GET_DW(in);
+  localparam int unsigned BW  = `HCI_SIZE_GET_BW(in);
+  localparam int unsigned AW  = `HCI_SIZE_GET_AW(in);
+  localparam int unsigned UW  = `HCI_SIZE_GET_UW(in);
+  localparam int unsigned IW  = `HCI_SIZE_GET_IW(in);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(in);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in);
 
   // tcdm ports binding
   generate
@@ -149,6 +150,9 @@ module hci_core_mux_static
     initial
       ehw : assert(in[i].EHW == out.EHW);
   end
+
+  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(in), in[0]);
+
 `endif
 `endif;
 

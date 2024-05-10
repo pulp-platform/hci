@@ -95,7 +95,8 @@ module hci_core_source
   parameter int unsigned TRANS_CNT = 16,
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES = 1,
-  parameter int unsigned PASSTHROUGH_FIFO = 0
+  parameter int unsigned PASSTHROUGH_FIFO = 0,
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
   input logic clk_i,
@@ -366,6 +367,8 @@ module hci_core_source
     initial
       dw :  assert(stream.DATA_WIDTH <= tcdm.DW);
   end
+  
+  `HCI_SIZE_CHECK_ASSERTS(tcdm);
 `endif
 `endif
 
