@@ -52,7 +52,8 @@ module hci_core_mux_dynamic
   import hci_package::*;
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
-  parameter int unsigned NB_OUT_CHAN = 1
+  parameter int unsigned NB_OUT_CHAN = 1,
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(in) = '0
 )
 (
   input  logic            clk_i,
@@ -63,13 +64,13 @@ module hci_core_mux_dynamic
   hci_core_intf.initiator out [0:NB_OUT_CHAN-1]
 );
 
-  localparam int unsigned DW  = `HCI_SIZE_GET_DW(in[0]);
-  localparam int unsigned BW  = `HCI_SIZE_GET_BW(in[0]);
-  localparam int unsigned AW  = `HCI_SIZE_GET_AW(in[0]);
-  localparam int unsigned UW  = `HCI_SIZE_GET_UW(in[0]);
-  localparam int unsigned IW  = `HCI_SIZE_GET_IW(in[0]);
-  localparam int unsigned EW  = `HCI_SIZE_GET_EW(in[0]);
-  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in[0]);
+  localparam int unsigned DW  = `HCI_SIZE_GET_DW(in);
+  localparam int unsigned BW  = `HCI_SIZE_GET_BW(in);
+  localparam int unsigned AW  = `HCI_SIZE_GET_AW(in);
+  localparam int unsigned UW  = `HCI_SIZE_GET_UW(in);
+  localparam int unsigned IW  = `HCI_SIZE_GET_IW(in);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(in);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in);
 
   // based on MUX2Req.sv from LIC
   logic [NB_IN_CHAN-1:0]                     in_req;
@@ -317,6 +318,9 @@ module hci_core_mux_dynamic
     initial
       ehw : assert(out[i].EHW == in[0].EHW);
   end
+
+  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(in), in[0]);
+
 `endif
 `endif;
 

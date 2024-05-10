@@ -27,6 +27,9 @@
 module hci_core_r_valid_filter
   import hwpe_stream_package::*;
   import hci_package::*;
+#(
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
+)
 (
   input  logic clk_i,
   input  logic rst_ni,
@@ -105,6 +108,8 @@ module hci_core_r_valid_filter
     ew : assert(tcdm_target.EW == tcdm_initiator.EW);
   initial
     ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
+  
+  `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
 `endif
 `endif;
 

@@ -47,7 +47,8 @@ module hci_core_split
   parameter int unsigned BW          = 8,
   parameter int unsigned UW          = 2,
   parameter int unsigned NB_OUT_CHAN = 2,
-  parameter int unsigned FIFO_DEPTH  = 0
+  parameter int unsigned FIFO_DEPTH  = 0,
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -60,17 +61,19 @@ module hci_core_split
   localparam int unsigned BW_OUT = 8; 
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
 
-  hci_core_intf #(
-    .DW ( DW_OUT )
-  ) tcdm [0:NB_OUT_CHAN-1] (
-    .clk ( clk_i )
-  );
-
-  hci_core_intf #(
-    .DW ( DW_OUT )
-  ) tcdm_fifo [0:NB_OUT_CHAN-1] (
-    .clk ( clk_i )
-  );
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '{
+    DW:  DW_OUT,
+    AW:  DEFAULT_AW,
+    BW:  DEFAULT_BW,
+    UW:  DEFAULT_UW,
+    IW:  DEFAULT_IW,
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
+  };
+  `HCI_INTF_ARRAY(tcdm, clk_i, 0:NB_OUT_CHAN-1);
+  
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_fifo) = `HCI_SIZE_PARAM(tcdm);
+  `HCI_INTF_ARRAY(tcdm_fifo, clk_i, 0:NB_OUT_CHAN-1);
 
   logic [NB_OUT_CHAN-1:0][DW_OUT-1:0] tcdm_r_data;
   logic [NB_OUT_CHAN-1:0]             tcdm_req;
@@ -134,9 +137,10 @@ module hci_core_split
       assign tcdm[ii].req = cs_gnt==GNT ?  tcdm_target.req :      // if state is GNT, propagate requests directly
                                           ~tcdm_req_masked_q[ii]; // if state is NO-GNT, only propagate request that were not granted before
       hci_core_fifo #(
-        .FIFO_DEPTH ( FIFO_DEPTH ),
-        .DW         ( DW_OUT     ),
-        .UW         ( UW         )
+        .FIFO_DEPTH                      ( FIFO_DEPTH                 ),
+        .DW                              ( DW_OUT                     ),
+        .UW                              ( UW                         ),
+        .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(tcdm_fifo) )
       ) i_fifo (
         .clk_i          ( clk_i          ),
         .rst_ni         ( rst_ni         ),
@@ -297,6 +301,8 @@ module hci_core_split
     initial
       ehw : assert(tcdm_initiator[i].EHW == tcdm_target.EHW);
   end
+  
+  `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
 `endif
 `endif;
 

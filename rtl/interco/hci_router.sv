@@ -51,7 +51,9 @@
 module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
-  parameter int unsigned NB_OUT_CHAN = 8
+  parameter int unsigned NB_OUT_CHAN = 8,
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(in) = '0,
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
 )
 (
   input  logic clk_i,
@@ -67,7 +69,7 @@ module hci_router
   localparam int unsigned BWH = `HCI_SIZE_GET_BW(in);
   localparam int unsigned UWH = `HCI_SIZE_GET_UW(in);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in);
-  localparam int unsigned AWM = `HCI_SIZE_GET_AW(out[0]);
+  localparam int unsigned AWM = `HCI_SIZE_GET_AW(out);
 
   //There is only one input port, but with variable data width.
   //NB_IN_CHAN states, to how many standard (32-bit) ports the input port is equivalent
@@ -84,25 +86,35 @@ module hci_router
   logic [NB_IN_CHAN-1:0] virt_in_rvalid;
   logic                  virt_in_gnt_0_q;
 
-  hci_core_intf #(
-    .DW  ( DWH ),
-    .AW  ( AWC ),
-    .BW  ( BWH ),
-    .UW  ( UWH ),
-    .EHW ( EHW )
-  ) postfifo (
-    .clk ( clk_i )
-  );
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(postfifo) = '{
+    DW:  DWH,
+    AW:  AWH,
+    BW:  BWH,
+    UW:  UWH,
+    IW:  DEFAULT_IW,
+    EW:  DEFAULT_EW,
+    EHW: EHW
+  };
+  `HCI_INTF(postfifo, clk_i);
 
   // using the interface from hwpe-stream here
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(virt_in) = '{
+    DW:  32,
+    AW:  32,
+    BW:  4,
+    UW:  0,
+    IW:  0,
+    EW:  0,
+    EHW: EHW
+  };
   hci_core_intf #(
-    .DW  ( 32 ),
-    .AW  ( 32 ),
-    .BW  ( 4  ),
-    .UW  ( 0  ),
-    .IW  ( 0  ),
-    .EW  ( 0  ),
-    .EHW ( 0  )
+    .DW  ( `HCI_SIZE_PARAM(virt_in) ),
+    .AW  ( `HCI_SIZE_PARAM(virt_in) ),
+    .BW  ( `HCI_SIZE_PARAM(virt_in) ),
+    .UW  ( `HCI_SIZE_PARAM(virt_in) ),
+    .IW  ( `HCI_SIZE_PARAM(virt_in) ),
+    .EW  ( `HCI_SIZE_PARAM(virt_in) ),
+    .EHW ( `HCI_SIZE_PARAM(virt_in) )
 `ifndef SYNTHESIS
     ,
     .WAIVE_RQ3_ASSERT ( 1'b1 ), // virt_in is grant-less by construction
@@ -111,17 +123,9 @@ module hci_router
   ) virt_in  [0:NB_IN_CHAN-1] (
     .clk ( clk_i )
   );
-  hci_core_intf #(
-    .DW  ( 32 ),
-    .AW  ( 32 ),
-    .BW  ( 4  ),
-    .UW  ( 0  ),
-    .IW  ( 0  ),
-    .EW  ( 0  ),
-    .EHW ( 0  )
-  ) virt_out [0:NB_OUT_CHAN-1] (
-    .clk ( clk_i )
-  );
+
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(virt_out) = `HCI_SIZE_PARAM(virt_in);
+  `HCI_INTF_ARRAY(virt_out, clk_i, 0:NB_OUT_CHAN-1);
 
   // aux signal for r_valid generation
   logic [NB_OUT_CHAN-1:0] out_r_valid;
@@ -138,11 +142,12 @@ module hci_router
     end // no_fifo_gen
     else begin: fifo_gen
       hci_core_fifo #(
-        .FIFO_DEPTH ( FIFO_DEPTH ),
-        .DW         ( DWH        ),
-        .BW         ( AWH        ),
-        .AW         ( BWH        ),
-        .UW         ( UWH        )
+        .FIFO_DEPTH                      ( FIFO_DEPTH                ),
+        .DW                              ( DWH                       ),
+        .BW                              ( AWH                       ),
+        .AW                              ( BWH                       ),
+        .UW                              ( UWH                       ),
+        .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(postfifo) )
       ) i_fifo (
         .clk_i          ( clk_i         ),
         .rst_ni         ( rst_ni        ),
@@ -278,6 +283,9 @@ module hci_router
   initial
     assert (2**$clog2(NB_OUT_CHAN) == NB_OUT_CHAN) else  $fatal("NB_OUT_CHAN is not a power-of-2!");
 
+  `HCI_SIZE_CHECK_ASSERTS(in);
+  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(out), out[0]);
+  
 `endif
 `endif;
 

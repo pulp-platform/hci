@@ -85,7 +85,8 @@ module hci_core_sink
   // Stream interface params
   parameter int unsigned TCDM_FIFO_DEPTH = 0,
   parameter int unsigned TRANS_CNT       = 16,
-  parameter int unsigned MISALIGNED_ACCESSES = 1
+  parameter int unsigned MISALIGNED_ACCESSES = 1,
+  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
   input logic clk_i,
@@ -126,11 +127,16 @@ module hci_core_sink
     .clk ( clk_i )
   );
 
-  hci_core_intf #(
-    .DW ( DATA_WIDTH )
-  ) tcdm_target (
-    .clk ( clk_i )
-  );
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '{
+    DW:  DATA_WIDTH,
+    AW:  DEFAULT_AW,
+    BW:  DEFAULT_BW,
+    UW:  DEFAULT_UW,
+    IW:  DEFAULT_IW,
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
+  };
+  `HCI_INTF(tcdm_target, clk_i);
 
   hwpe_stream_addressgen_v3 i_addressgen (
     .clk_i       ( clk_i                    ),
@@ -220,7 +226,8 @@ module hci_core_sink
     if(TCDM_FIFO_DEPTH != 0) begin: tcdm_fifos_gen
 
       hci_core_fifo #(
-        .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
+        .FIFO_DEPTH                      ( TCDM_FIFO_DEPTH       ),
+        .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(tcdm) )
       ) i_tcdm_fifo (
         .clk_i          ( clk_i       ),
         .rst_ni         ( rst_ni      ),
@@ -340,6 +347,8 @@ module hci_core_sink
     initial
       dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
   end
+  
+  `HCI_SIZE_CHECK_ASSERTS(tcdm);
 `endif
 `endif
 
