@@ -15,22 +15,22 @@
 
 package hci_package;
 
-  parameter int unsigned DEFAULT_DW = 32; // Default Data Width
-  parameter int unsigned DEFAULT_AW = 32; // Default Address Width
-  parameter int unsigned DEFAULT_BW = 8;  // Default Byte Width
-  parameter int unsigned DEFAULT_UW = 0;  // Default User Width
-  parameter int unsigned DEFAULT_IW = 8;  // Default ID Width
-  parameter int unsigned DEFAULT_EW = 0;  // Default ECC for Data Width
-  parameter int unsigned DEFAULT_EHW = 0; // Default ECC for Handhshake Width
+  parameter int unsigned DEFAULT_DW  = 32; // Default Data Width
+  parameter int unsigned DEFAULT_AW  = 32; // Default Address Width
+  parameter int unsigned DEFAULT_BW  = 8;  // Default Byte Width
+  parameter int unsigned DEFAULT_UW  = 1;  // Default User Width
+  parameter int unsigned DEFAULT_IW  = 8;  // Default ID Width
+  parameter int unsigned DEFAULT_EW  = 1;  // Default ECC for Data Width
+  parameter int unsigned DEFAULT_EHW = 1;  // Default ECC for Handhshake Width
 
   typedef struct packed {
-    parameter int unsigned DW;
-    parameter int unsigned AW;
-    parameter int unsigned BW;
-    parameter int unsigned UW;
-    parameter int unsigned IW;
-    parameter int unsigned EW;
-    parameter int unsigned EHW;
+    int unsigned DW;
+    int unsigned AW;
+    int unsigned BW;
+    int unsigned UW;
+    int unsigned IW;
+    int unsigned EW;
+    int unsigned EHW;
   } hci_size_parameter_t;
 
   typedef struct packed {

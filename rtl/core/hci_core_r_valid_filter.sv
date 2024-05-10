@@ -28,7 +28,7 @@ module hci_core_r_valid_filter
   import hwpe_stream_package::*;
   import hci_package::*;
 #(
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
 )
 (
   input  logic clk_i,

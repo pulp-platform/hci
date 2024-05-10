@@ -61,9 +61,9 @@ module hci_interconnect
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '0,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(mems)  = '0,
-  parameter int hci_size_parameter_t `HCI_SIZE_PARAM(hwpe)  = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '0,
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(mems)  = '0,
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(hwpe)  = '0
 ) (
   input logic                   clk_i               ,
   input logic                   rst_ni              ,
@@ -97,7 +97,7 @@ module hci_interconnect
   };
   `HCI_INTF_ARRAY(all_except_hwpe, clk_i, 0:N_CORE+N_DMA+N_EXT-1);
 
-  localparam hci_size_parameter_t `HCI_SIZE_PARAM(all_except_hwpe) = '{
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(all_except_hwpe_mem) = '{
     DW:  DEFAULT_DW,
     AW:  DEFAULT_AW,
     BW:  DEFAULT_BW,
@@ -117,7 +117,7 @@ module hci_interconnect
     EW:  DEFAULT_EW,
     EHW: DEFAULT_EHW
   };
-  `HCI_INTF_ARRAY(hwpe_mem, clk_i, 0:N_MEM-1)
+  `HCI_INTF_ARRAY(hwpe_mem, clk_i, 0:N_MEM-1);
 
   generate
   
@@ -186,8 +186,10 @@ module hci_interconnect
     if(N_HWPE > 0) begin: hwpe_branch_gen
 
       hci_router #(
-        .FIFO_DEPTH  ( EXPFIFO ),
-        .NB_OUT_CHAN ( N_MEM   )
+        .FIFO_DEPTH           ( EXPFIFO                   ),
+        .NB_OUT_CHAN          ( N_MEM                     ),
+        .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe)     ),
+        .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
       ) i_router (
         .clk_i   ( clk_i    ),
         .rst_ni  ( rst_ni   ),
