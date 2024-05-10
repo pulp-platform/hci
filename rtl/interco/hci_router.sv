@@ -102,20 +102,20 @@ module hci_router
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(virt_in) = '{
     DW:  32,
     AW:  32,
-    BW:  4,
+    BW:  8,
     UW:  0,
     IW:  0,
     EW:  0,
     EHW: EHW
   };
   hci_core_intf #(
-    .DW  ( `HCI_SIZE_PARAM(virt_in) ),
-    .AW  ( `HCI_SIZE_PARAM(virt_in) ),
-    .BW  ( `HCI_SIZE_PARAM(virt_in) ),
-    .UW  ( `HCI_SIZE_PARAM(virt_in) ),
-    .IW  ( `HCI_SIZE_PARAM(virt_in) ),
-    .EW  ( `HCI_SIZE_PARAM(virt_in) ),
-    .EHW ( `HCI_SIZE_PARAM(virt_in) )
+    .DW  ( `HCI_SIZE_PARAM(virt_in).DW  ),
+    .AW  ( `HCI_SIZE_PARAM(virt_in).AW  ),
+    .BW  ( `HCI_SIZE_PARAM(virt_in).BW  ),
+    .UW  ( `HCI_SIZE_PARAM(virt_in).UW  ),
+    .IW  ( `HCI_SIZE_PARAM(virt_in).IW  ),
+    .EW  ( `HCI_SIZE_PARAM(virt_in).EW  ),
+    .EHW ( `HCI_SIZE_PARAM(virt_in).EHW )
 `ifndef SYNTHESIS
     ,
     .WAIVE_RQ3_ASSERT ( 1'b1 ), // virt_in is grant-less by construction
