@@ -63,7 +63,9 @@ module hci_interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(mems)  = '0,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(hwpe)  = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(hwpe)  = '0,
+  parameter bit WAIVE_RSP3_ASSERT = 1'b0,
+  parameter bit WAIVE_RSP5_ASSERT = 1'b0
 ) (
   input logic                   clk_i               ,
   input logic                   rst_ni              ,
@@ -95,7 +97,22 @@ module hci_interconnect
     EW:  DEFAULT_EW,
     EHW: DEFAULT_EHW
   };
-  `HCI_INTF_ARRAY(all_except_hwpe, clk_i, 0:N_CORE+N_DMA+N_EXT-1);
+  hci_core_intf #(
+    .DW  ( DEFAULT_DW  ),
+    .AW  ( DEFAULT_AW  ),
+    .BW  ( DEFAULT_BW  ),
+    .UW  ( UW_LIC      ),
+    .IW  ( DEFAULT_IW  ),
+    .EW  ( DEFAULT_EW  ),
+    .EHW ( DEFAULT_EHW )
+`ifndef SYNTHESIS
+    ,
+    .WAIVE_RSP3_ASSERT ( WAIVE_RSP3_ASSERT ),
+    .WAIVE_RSP5_ASSERT ( WAIVE_RSP5_ASSERT )
+`endif
+  ) all_except_hwpe[0:N_CORE+N_DMA+N_EXT-1] (
+    .clk ( clk_i )
+  );
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(all_except_hwpe_mem) = '{
     DW:  DEFAULT_DW,
