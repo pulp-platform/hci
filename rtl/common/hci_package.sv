@@ -33,6 +33,16 @@ package hci_package;
     int unsigned EHW;
   } hci_size_parameter_t;
 
+  parameter hci_size_parameter_t DEFAULT_HCI_SIZE = '{
+    DW  : DEFAULT_DW,
+    AW  : DEFAULT_AW,
+    BW  : DEFAULT_BW,
+    UW  : DEFAULT_UW,
+    IW  : DEFAULT_IW,
+    EW  : DEFAULT_EW,
+    EHW : DEFAULT_EHW
+  };
+
   typedef struct packed {
     logic [1:0] arb_policy; // used only in some systems
     logic       invert_prio;
