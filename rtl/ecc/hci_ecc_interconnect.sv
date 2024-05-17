@@ -138,7 +138,12 @@ module hci_ecc_interconnect
       );
 
       hci_ecc_enc #(
+        .DW ( DW_LIC )
       ) i_ecc_lic_enc (
+        .r_data_single_err_o ( ),
+        .r_data_multi_err_o  ( ),
+        .r_meta_single_err_o ( ),
+        .r_meta_multi_err_o  ( ),
         .tcdm_target    ( all_except_hwpe_mem_assign[i]     ),
         .tcdm_initiator ( all_except_hwpe_mem_enc[i] )
       );
@@ -258,9 +263,12 @@ module hci_ecc_interconnect
 
       for (genvar i=0; i < N_MEM; i++) begin : after_router_enc
         hci_ecc_enc #(
-        .CHUNK_SIZE ( CHUNK_SIZE ),
-        .EnableData ( 0          )
+        .EnableData ( 0 )
       ) i_ecc_enc_meta (
+        .r_data_single_err_o ( ),
+        .r_data_multi_err_o  ( ),
+        .r_meta_single_err_o ( ),
+        .r_meta_multi_err_o  ( ),
         .tcdm_target    ( hwpe_mem[i]  ),
         .tcdm_initiator ( hwpe_mem_enc[i]  )
       );

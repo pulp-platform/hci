@@ -22,15 +22,22 @@
 module hci_ecc_enc
   import hci_package::*;
 #(
+  parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned CHUNK_SIZE  = 32,
-  parameter bit EnableData = 1
+  parameter bit EnableData = 1,
+  // Dependent parameters, do not override
+  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE,
+  parameter int unsigned MAX_ERR = $clog2(N_CHUNK) + 1
 )
 (
+  output logic [MAX_ERR-1:0] r_data_single_err_o,
+  output logic [MAX_ERR-1:0] r_data_multi_err_o,
+  output logic               r_meta_single_err_o,
+  output logic               r_meta_multi_err_o,
   hci_core_intf.target    tcdm_target,
   hci_core_intf.initiator tcdm_initiator
 );
 
-  localparam int unsigned DW  = `HCI_SIZE_GET_DW(tcdm_target);
   localparam int unsigned BW  = `HCI_SIZE_GET_BW(tcdm_target);
   localparam int unsigned AW  = `HCI_SIZE_GET_AW(tcdm_target);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm_target);
@@ -42,7 +49,6 @@ module hci_ecc_enc
   localparam int unsigned RQMETAW = AW + DW/BW + UW + 1;
   localparam int unsigned RSMETAW = UW + 1;
 
-  localparam int unsigned N_CHUNK = DW / CHUNK_SIZE;
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
   localparam int unsigned EW_RQMETA = $clog2(RQMETAW)+2;
   localparam int unsigned EW_RSMETA = $clog2(RSMETAW)+2;
@@ -100,6 +106,8 @@ module hci_ecc_enc
     logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_dec;
     logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
     logic [N_CHUNK-1:0][1:0]            r_data_err;
+    logic [N_CHUNK-1:0]                 r_data_single_err;
+    logic [N_CHUNK-1:0]                 r_data_multi_err;
 
     assign r_data_ecc = tcdm_initiator.r_ecc[EW_DW*N_CHUNK+EW_RSMETA-1:EW_RSMETA];
 
@@ -115,11 +123,31 @@ module hci_ecc_enc
         .err_o      ( r_data_err[ii] )
       );
 
-    assign tcdm_target.r_data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] = r_data_dec[ii];
+      assign tcdm_target.r_data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] = r_data_dec[ii];
 
+      // error signals
+      assign r_data_single_err[ii] = r_data_err[ii][0];
+      assign r_data_multi_err[ii]  = r_data_err[ii][1];
     end
-  end else
+
+    popcount #(
+      .INPUT_WIDTH   ( N_CHUNK )
+    ) i_popcount_single (
+      .data_i     ( r_data_single_err   ),
+      .popcount_o ( r_data_single_err_o )
+    );
+
+    popcount #(
+      .INPUT_WIDTH   ( N_CHUNK )
+    ) i_popcount_multi (
+      .data_i     ( r_data_multi_err   ),
+      .popcount_o ( r_data_multi_err_o )
+    );
+  end else begin : gen_no_r_data_decoding
+    assign data_single_err_o = '0;
+    assign data_multi_err_o  = '0;
     assign tcdm_target.r_data  = tcdm_initiator.r_data;
+  end
 
   // metadata (r_opc/r_user) hsiao decoder
   generate
@@ -170,5 +198,8 @@ module hci_ecc_enc
   assign tcdm_initiator.r_eready = tcdm_target.r_eready;
   assign tcdm_initiator.ecc      = { data_ecc, meta_ecc };
   assign tcdm_target.r_ecc       = (!EnableData) ? tcdm_initiator.r_ecc[EW_RSMETA+:EW_DW*N_CHUNK] : '0;
+
+  assign r_meta_single_err_o = r_meta_err[0];
+  assign r_meta_multi_err_o  = r_meta_err[1];
 
 endmodule // hci_ecc_enc

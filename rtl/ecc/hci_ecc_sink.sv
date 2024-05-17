@@ -70,7 +70,13 @@ module hci_ecc_sink
     .flags_o     ( flags_o       )
   );
 
-  hci_ecc_enc i_ecc_enc (
+  hci_ecc_enc  #(
+    .DW ( DW )
+  ) i_ecc_enc (
+    .r_data_single_err_o ( ),
+    .r_data_multi_err_o  ( ),
+    .r_meta_single_err_o ( ),
+    .r_meta_multi_err_o  ( ),
     .tcdm_target    ( internal_tcdm ),
     .tcdm_initiator ( tcdm          )
   );
