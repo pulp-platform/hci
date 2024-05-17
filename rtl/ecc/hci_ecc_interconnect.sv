@@ -78,6 +78,7 @@ module hci_ecc_interconnect
 
   localparam int unsigned AWC = `HCI_SIZE_GET_AW(cores[0]);
   localparam int unsigned AWM = `HCI_SIZE_GET_AW(mems[0]);
+  localparam int unsigned EWM = `HCI_SIZE_GET_EW(mems[0]);
   localparam int unsigned DW_LIC = `HCI_SIZE_GET_DW(cores[0]);
   localparam int unsigned BW_LIC = `HCI_SIZE_GET_BW(cores[0]);
   localparam int unsigned UW_LIC = `HCI_SIZE_GET_UW(cores[0]);
@@ -87,6 +88,7 @@ module hci_ecc_interconnect
   localparam int unsigned UWH = `HCI_SIZE_GET_UW(hwpe);
   localparam int unsigned EWH = `HCI_SIZE_GET_EW(hwpe);
   localparam int unsigned N_CHUNK = DWH / CHUNK_SIZE;
+  localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
 
   hci_core_intf #(
     .UW ( UW_LIC )
@@ -105,11 +107,42 @@ module hci_ecc_interconnect
     .IW ( IW     ),
     .UW ( UW_LIC ),
     .AW ( AWM    )
+  ) all_except_hwpe_mem_assign [0:N_MEM-1] (
+    .clk ( clk_i )
+  );
+
+  hci_core_intf #(
+    .IW ( IW     ),
+    .UW ( UW_LIC ),
+    .AW ( AWM    ),
+    .EW ( EWM    )
+  ) all_except_hwpe_mem_enc [0:N_MEM-1] (
+    .clk( clk_i )
+  );
+
+  hci_core_intf #(
+    .IW ( IW     ),
+    .UW ( UW_LIC ),
+    .AW ( AWM    ),
+    .EW ( EW_DW  )
   ) hwpe_mem [0:N_MEM-1] (
     .clk ( clk_i )
   );
 
   generate
+
+    for (genvar i=0; i < N_MEM; i++) begin : post_lic_encoding
+      hci_core_assign i_tcdm_assign (
+        .tcdm_target    ( all_except_hwpe_mem [i] ),
+        .tcdm_initiator ( all_except_hwpe_mem_assign [i] )
+      );
+
+      hci_ecc_enc #(
+      ) i_ecc_lic_enc (
+        .tcdm_target    ( all_except_hwpe_mem_assign[i]     ),
+        .tcdm_initiator ( all_except_hwpe_mem_enc[i] )
+      );
+    end
 
     if(SEL_LIC==0) begin : l1_interconnect_gen
       hci_log_interconnect #(
@@ -185,15 +218,25 @@ module hci_ecc_interconnect
         .AW ( AWH ),
         .BW ( BWH ),
         .UW ( UWH ),
-        .EW ( EWH )
+        .EW ( EW_DW*N_CHUNK )
       ) hwpe_dec (
         .clk( clk_i )
       );
 
+    hci_core_intf #(
+      .IW ( IW     ),
+      .UW ( UW_LIC ),
+      .AW ( AWM    ),
+      .EW ( EWM    )
+    ) hwpe_mem_enc [0:N_MEM-1] (
+      .clk ( clk_i )
+    );
+
       hci_ecc_dec #(
         .DW         ( DWH ),
-        .CHUNK_SIZE ( CHUNK_SIZE )
-      ) i_ecc_dec (
+        .CHUNK_SIZE ( CHUNK_SIZE ),
+        .EnableData ( 0 )
+      ) i_ecc_dec_meta (
         .data_single_err_o ( data_single_err ),
         .data_multi_err_o  ( data_multi_err  ),
         .meta_single_err_o ( meta_single_err ),
@@ -202,16 +245,26 @@ module hci_ecc_interconnect
         .tcdm_initiator    ( hwpe_dec        )
       );
 
-      hci_router #(
+      hci_ecc_router #(
         .FIFO_DEPTH  ( EXPFIFO ),
         .NB_OUT_CHAN ( N_MEM   )
-      ) i_router (
+      ) i_ecc_router (
         .clk_i   ( clk_i    ),
         .rst_ni  ( rst_ni   ),
         .clear_i ( clear_i  ),
         .in      ( hwpe_dec ),
         .out     ( hwpe_mem )
       );
+
+      for (genvar i=0; i < N_MEM; i++) begin : after_router_enc
+        hci_ecc_enc #(
+        .CHUNK_SIZE ( CHUNK_SIZE ),
+        .EnableData ( 0          )
+      ) i_ecc_enc_meta (
+        .tcdm_target    ( hwpe_mem[i]  ),
+        .tcdm_initiator ( hwpe_mem_enc[i]  )
+      );
+      end
 
       hci_arbiter #(
         .NB_CHAN ( N_MEM )
@@ -220,8 +273,8 @@ module hci_ecc_interconnect
         .rst_ni  ( rst_ni              ),
         .clear_i ( clear_i             ),
         .ctrl_i  ( ctrl_i              ),
-        .in_high ( all_except_hwpe_mem ),
-        .in_low  ( hwpe_mem            ),
+        .in_high ( all_except_hwpe_mem_enc ),
+        .in_low  ( hwpe_mem_enc        ),
         .out     ( mems                )
       );
 
