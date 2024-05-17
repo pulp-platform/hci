@@ -24,6 +24,7 @@ module hci_ecc_dec
 #(
   parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned CHUNK_SIZE  = 32,
+  parameter bit EnableData = 1,
   // Dependent parameters, do not override
   parameter int unsigned N_CHUNK = DW / CHUNK_SIZE,
   parameter int unsigned MAX_ERR = $clog2(N_CHUNK) + 1
@@ -53,24 +54,24 @@ module hci_ecc_dec
   localparam int unsigned EW_RSMETA = $clog2(RSMETAW)+2;
   localparam int unsigned ZEROBITS  = EW_RQMETA - EW_RSMETA;
 
-  logic [N_CHUNK-1:0][1:0]            data_err;
-  logic [N_CHUNK-1:0]                 data_single_err;
-  logic [N_CHUNK-1:0]                 data_multi_err;
-  logic [1:0]                         meta_err;
-
-  logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_enc;
   logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
+  logic [1:0]                         meta_err;
   logic [RSMETAW-1:0]                 r_meta_enc;
   logic [EW_RSMETA-1:0]               r_meta_ecc;
 
-  logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] data_dec;
-  logic [N_CHUNK-1:0][EW_DW-1:0]      data_ecc;
-
   // REQUEST PHASE PAYLOAD DECODING
-  assign data_ecc = tcdm_target.ecc[EW_DW*N_CHUNK+EW_RQMETA-1:EW_RQMETA];
 
   // data hsiao decoders
-  generate
+  if (EnableData) begin : gen_data_decoding
+
+    logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] data_dec;
+    logic [N_CHUNK-1:0][EW_DW-1:0]      data_ecc;
+    logic [N_CHUNK-1:0][1:0]            data_err;
+    logic [N_CHUNK-1:0]                 data_single_err;
+    logic [N_CHUNK-1:0]                 data_multi_err;
+
+    assign data_ecc = tcdm_target.ecc[EW_DW*N_CHUNK+EW_RQMETA-1:EW_RQMETA];
+
     for(genvar ii=0; ii<N_CHUNK; ii++) begin : data_decoding
       hsiao_ecc_dec #(
         .DataWidth ( CHUNK_SIZE ),
@@ -81,8 +82,34 @@ module hci_ecc_dec
         .syndrome_o (  ),
         .err_o      ( data_err[ii] )
       );
+
+      assign tcdm_initiator.data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] = data_dec[ii];
     end
-  endgenerate
+
+    // error signals
+    for(genvar ii=0; ii<N_CHUNK; ii++) begin
+      assign data_single_err[ii] = data_err[ii][0];
+      assign data_multi_err[ii]  = data_err[ii][1];
+    end
+
+    popcount #(
+      .INPUT_WIDTH   ( N_CHUNK )
+    ) i_popcount_single (
+      .data_i     ( data_single_err   ),
+      .popcount_o ( data_single_err_o )
+    );
+
+    popcount #(
+      .INPUT_WIDTH   ( N_CHUNK )
+    ) i_popcount_multi (
+      .data_i     ( data_multi_err   ),
+      .popcount_o ( data_multi_err_o )
+    );
+  end else begin : gen_no_data_decoding
+    assign data_single_err_o = '0;
+    assign data_multi_err_o  = '0;
+    assign tcdm_initiator.data  = tcdm_target.data;
+  end
 
   // metadata (add/wen/be/user) hsiao decoder
   generate
@@ -114,7 +141,10 @@ module hci_ecc_dec
 
   // RESPONSE PHASE PAYLOAD ENCODING
   // r_data hsiao encoders
-  generate
+  if (EnableData) begin : gen_r_data_encoding
+
+    logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_enc;
+
     for(genvar ii=0; ii<N_CHUNK; ii++) begin : r_data_encoding
       hsiao_ecc_enc #(
         .DataWidth ( CHUNK_SIZE ),
@@ -124,7 +154,8 @@ module hci_ecc_dec
         .out ( { r_data_ecc[ii], r_data_enc[ii] } )
       );
     end
-  endgenerate
+  end else
+    assign r_data_ecc = tcdm_initiator.r_ecc;
 
   // metadata (r_opc/r_user) hsiao encoder
   generate
@@ -151,10 +182,6 @@ module hci_ecc_dec
   assign tcdm_initiator.req     = tcdm_target.req;
   assign tcdm_target.gnt        = tcdm_initiator.gnt;
 
-  for(genvar ii=0; ii<N_CHUNK; ii++) begin
-    assign tcdm_initiator.data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] = data_dec[ii];
-  end
-
   assign tcdm_initiator.id      = tcdm_target.id;
   assign tcdm_initiator.r_ready = tcdm_target.r_ready;
 
@@ -169,28 +196,8 @@ module hci_ecc_dec
   assign tcdm_target.egnt        = tcdm_initiator.egnt;
   assign tcdm_target.r_evalid    = tcdm_initiator.r_evalid;
   assign tcdm_initiator.r_eready = tcdm_target.r_eready;
-  assign tcdm_initiator.ecc      = '0;
+  assign tcdm_initiator.ecc      = (!EnableData) ? tcdm_target.ecc[EW_RQMETA+:EW_DW*N_CHUNK] : '0;
   assign tcdm_target.r_ecc       = { {ZEROBITS{1'b0}}, r_data_ecc, r_meta_ecc };
-
-  // error signals
-  for(genvar ii=0; ii<N_CHUNK; ii++) begin
-    assign data_single_err[ii] = data_err[ii][0];
-    assign data_multi_err[ii]  = data_err[ii][1];
-  end
-
-  popcount #(
-    .INPUT_WIDTH   ( N_CHUNK )
-  ) i_popcount_single (
-    .data_i     ( data_single_err   ),
-    .popcount_o ( data_single_err_o )
-  );
-
-  popcount #(
-    .INPUT_WIDTH   ( N_CHUNK )
-  ) i_popcount_multi (
-    .data_i     ( data_multi_err   ),
-    .popcount_o ( data_multi_err_o )
-  );
 
   assign meta_single_err_o = meta_err[0];
   assign meta_multi_err_o  = meta_err[1];
