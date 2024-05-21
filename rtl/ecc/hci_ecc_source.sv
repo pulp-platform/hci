@@ -59,11 +59,16 @@ module hci_ecc_source
   `HCI_INTF(virt_tcdm, clk_i);
 
   hci_ecc_enc #(
+    .DW ( DW ),
     .`HCI_SIZE_PARAM(tcdm_target)    ( `HCI_SIZE_PARAM(virt_tcdm) ),
     .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(tcdm)      )
   ) i_ecc_enc (
-    .tcdm_target    ( virt_tcdm ),
-    .tcdm_initiator ( tcdm      )
+    .r_data_single_err_o ( ),
+    .r_data_multi_err_o  ( ),
+    .r_meta_single_err_o ( ),
+    .r_meta_multi_err_o  ( ),
+    .tcdm_target         ( virt_tcdm ),
+    .tcdm_initiator      ( tcdm      )
   );
 
   hci_core_source #(
