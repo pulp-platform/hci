@@ -43,6 +43,7 @@ sources:
       - rtl/ecc/hci_ecc_dec.sv
       - rtl/ecc/hci_ecc_enc.sv
       - rtl/ecc/hci_ecc_manager.sv
+      - rtl/ecc/hci_ecc_router_reorder.sv
       - rtl/interco/hci_log_interconnect.sv
       - rtl/interco/hci_log_interconnect_l2.sv
       - rtl/interco/hci_new_log_interconnect.sv # `new_XBAR_TCDM` dep. is a private repo
@@ -52,6 +53,7 @@ sources:
       - rtl/parity/hci_copy_sink.sv
       # Level 3
       - rtl/core/hci_core_sink.sv
+      - rtl/ecc/hci_ecc_router.sv
       - rtl/ecc/hci_ecc_source.sv
       - rtl/interco/hci_router.sv
       # Level 4
