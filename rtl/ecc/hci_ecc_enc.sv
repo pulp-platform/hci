@@ -23,7 +23,9 @@ module hci_ecc_enc
   import hci_package::*;
 #(
   parameter int unsigned CHUNK_SIZE  = 32,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
+  parameter bit EnableData = 1,
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_initiator) = '0
 )
 (
   hci_core_intf.target    tcdm_target,
@@ -34,8 +36,8 @@ module hci_ecc_enc
   localparam int unsigned BW  = `HCI_SIZE_GET_BW(tcdm_target);
   localparam int unsigned AW  = `HCI_SIZE_GET_AW(tcdm_target);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm_target);
-  localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_target);
-  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_initiator);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_initiator);
 
   if (!(EW > 0)) $error("EW must be greater than 0");
 
@@ -47,20 +49,17 @@ module hci_ecc_enc
   localparam int unsigned EW_RQMETA = $clog2(RQMETAW)+2;
   localparam int unsigned EW_RSMETA = $clog2(RSMETAW)+2;
 
-  logic [N_CHUNK-1][1:0]              r_data_err;
-  logic [1:0]                         r_meta_err;
-
-  logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] data_enc;
   logic [N_CHUNK-1:0][EW_DW-1:0]      data_ecc;
+  logic [1:0]                         r_meta_err;
   logic [RQMETAW-1:0]                 meta_enc;
   logic [EW_RQMETA-1:0]               meta_ecc;
 
-  logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_dec;
-  logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
-
   // REQUEST PHASE PAYLOAD ENCODING
   // data hsiao encoders
-  generate
+  if (EnableData) begin : gen_data_encoding
+
+    logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] data_enc;
+
     for(genvar ii=0; ii<N_CHUNK; ii++) begin : data_encoding
       hsiao_ecc_enc #(
         .DataWidth ( CHUNK_SIZE ),
@@ -70,7 +69,8 @@ module hci_ecc_enc
         .out ( { data_ecc[ii], data_enc[ii] } )
       );
     end
-  endgenerate
+  end else
+    assign data_ecc = tcdm_target.ecc;
 
   // metadata (add/wen/be/user) hsiao encoder
   generate
@@ -95,10 +95,15 @@ module hci_ecc_enc
   endgenerate
 
   // RESPONSE PHASE PAYLOAD DECODING
-  assign r_data_ecc = tcdm_initiator.r_ecc[EW_DW*N_CHUNK+EW_RSMETA-1:EW_RSMETA];
+  if (EnableData) begin : gen_r_data_decoding
 
-  // r_data hsiao decoders
-  generate
+    logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_dec;
+    logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
+    logic [N_CHUNK-1:0][1:0]            r_data_err;
+
+    assign r_data_ecc = tcdm_initiator.r_ecc[EW_DW*N_CHUNK+EW_RSMETA-1:EW_RSMETA];
+
+    // r_data hsiao decoders
     for(genvar ii=0; ii<N_CHUNK; ii++) begin : r_data_decoding
       hsiao_ecc_dec #(
         .DataWidth ( CHUNK_SIZE ),
@@ -109,8 +114,12 @@ module hci_ecc_enc
         .syndrome_o (  ), // is syndrome useless?
         .err_o      ( r_data_err[ii] )
       );
+
+    assign tcdm_target.r_data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] = r_data_dec[ii];
+
     end
-  endgenerate
+  end else
+    assign tcdm_target.r_data  = tcdm_initiator.r_data;
 
   // metadata (r_opc/r_user) hsiao decoder
   generate
@@ -151,9 +160,6 @@ module hci_ecc_enc
   assign tcdm_initiator.user    = tcdm_target.user;
   assign tcdm_initiator.id      = tcdm_target.id;
 
-  for(genvar ii=0; ii<N_CHUNK; ii++) begin
-    assign tcdm_target.r_data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] = r_data_dec[ii];
-  end
   assign tcdm_target.r_id    = tcdm_initiator.r_id;
   assign tcdm_target.r_valid = tcdm_initiator.r_valid;
 
@@ -163,6 +169,6 @@ module hci_ecc_enc
   assign tcdm_target.r_evalid    = tcdm_initiator.r_evalid;
   assign tcdm_initiator.r_eready = tcdm_target.r_eready;
   assign tcdm_initiator.ecc      = { data_ecc, meta_ecc };
-  assign tcdm_target.r_ecc       = '0;
+  assign tcdm_target.r_ecc       = (!EnableData) ? tcdm_initiator.r_ecc[EW_RSMETA+:EW_DW*N_CHUNK] : '0;
 
 endmodule // hci_ecc_enc

@@ -57,7 +57,8 @@ module hci_ecc_sink
   `HCI_INTF(virt_tcdm, clk_i);
 
   hci_ecc_enc #(
-    .`HCI_SIZE_PARAM(tcdm_target) ( `HCI_SIZE_PARAM(virt_tcdm) )
+    .`HCI_SIZE_PARAM(tcdm_target)    ( `HCI_SIZE_PARAM(virt_tcdm) ),
+    .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(tcdm)      )
   ) i_ecc_enc (
     .tcdm_target    ( virt_tcdm ),
     .tcdm_initiator ( tcdm      )
