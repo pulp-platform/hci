@@ -129,6 +129,35 @@ module hci_ecc_interconnect
     .clk ( clk_i )
   );
 
+  logic [N_MEM-1:0]       data_single_err;
+  logic [N_MEM-1:0]       data_multi_err;
+  logic [1:0][N_MEM-1:0]  rmeta_single_err;
+  logic [1:0][N_MEM-1:0]  rmeta_multi_err;
+  logic [N_MEM:0]         meta_corr_total_error;
+  logic [N_MEM:0]         meta_uncorr_total_error;
+
+  hci_ecc_manager #(
+    .ParData ( N_MEM      ),
+    .ParMeta ( N_MEM + 1  ),
+    .AW      ( AWC        ),
+    .DW      ( DW_LIC     ),
+    .BW      ( BW_LIC     ),
+    .IW      ( N_CORE + 1 )
+  ) i_hci_ecc_manager (
+    .clk_i                    ( clk_i                   ),
+    .rst_ni                   ( rst_ni                  ),
+    .periph                   ( periph_hci_ecc          ),
+    .data_correctable_err_i   ( data_single_err         ),
+    .data_uncorrectable_err_i ( data_multi_err          ),
+    .meta_correctable_err_i   ( meta_corr_total_error   ),
+    .meta_uncorrectable_err_i ( meta_uncorr_total_error )
+  );
+
+  for (genvar i=0; i < N_MEM; i++) begin : meta_err_bind
+    assign meta_corr_total_error[i]   = rmeta_single_err[0][i] | rmeta_single_err[1][i];
+    assign meta_uncorr_total_error[i] = rmeta_multi_err[0][i]  | rmeta_multi_err[1][i];
+  end
+
   generate
 
     for (genvar i=0; i < N_MEM; i++) begin : post_lic_encoding
@@ -140,12 +169,12 @@ module hci_ecc_interconnect
       hci_ecc_enc #(
         .DW ( DW_LIC )
       ) i_ecc_lic_enc (
-        .r_data_single_err_o ( ),
-        .r_data_multi_err_o  ( ),
-        .r_meta_single_err_o ( ),
-        .r_meta_multi_err_o  ( ),
-        .tcdm_target    ( all_except_hwpe_mem_assign[i]     ),
-        .tcdm_initiator ( all_except_hwpe_mem_enc[i] )
+        .r_data_single_err_o ( data_single_err[i]            ),
+        .r_data_multi_err_o  ( data_multi_err[i]             ),
+        .r_meta_single_err_o ( rmeta_single_err[0][i]        ),
+        .r_meta_multi_err_o  ( rmeta_multi_err[0][i]         ),
+        .tcdm_target         ( all_except_hwpe_mem_assign[i] ),
+        .tcdm_initiator      ( all_except_hwpe_mem_enc[i]    )
       );
     end
 
@@ -213,11 +242,6 @@ module hci_ecc_interconnect
   generate
     if(N_HWPE > 0) begin: hwpe_branch_gen
 
-      logic [$clog2(N_CHUNK):0] data_single_err;
-      logic [$clog2(N_CHUNK):0] data_multi_err;
-      logic                     meta_single_err;
-      logic                     meta_multi_err;
-
       hci_core_intf #(
         .DW ( DWH ),
         .AW ( AWH ),
@@ -228,26 +252,26 @@ module hci_ecc_interconnect
         .clk( clk_i )
       );
 
-    hci_core_intf #(
-      .IW ( IW     ),
-      .UW ( UW_LIC ),
-      .AW ( AWM    ),
-      .EW ( EWM    )
-    ) hwpe_mem_enc [0:N_MEM-1] (
-      .clk ( clk_i )
-    );
+      hci_core_intf #(
+        .IW ( IW     ),
+        .UW ( UW_LIC ),
+        .AW ( AWM    ),
+        .EW ( EWM    )
+      ) hwpe_mem_enc [0:N_MEM-1] (
+        .clk ( clk_i )
+      );
 
       hci_ecc_dec #(
         .DW         ( DWH ),
         .CHUNK_SIZE ( CHUNK_SIZE ),
         .EnableData ( 0 )
       ) i_ecc_dec_meta (
-        .data_single_err_o ( data_single_err ),
-        .data_multi_err_o  ( data_multi_err  ),
-        .meta_single_err_o ( meta_single_err ),
-        .meta_multi_err_o  ( meta_multi_err  ),
-        .tcdm_target       ( hwpe            ),
-        .tcdm_initiator    ( hwpe_dec        )
+        .data_single_err_o (  ),
+        .data_multi_err_o  (  ),
+        .meta_single_err_o ( meta_corr_total_error[N_MEM]   ),
+        .meta_multi_err_o  ( meta_uncorr_total_error[N_MEM] ),
+        .tcdm_target       ( hwpe                           ),
+        .tcdm_initiator    ( hwpe_dec                       )
       );
 
       hci_ecc_router #(
@@ -267,10 +291,10 @@ module hci_ecc_interconnect
       ) i_ecc_enc_meta (
         .r_data_single_err_o ( ),
         .r_data_multi_err_o  ( ),
-        .r_meta_single_err_o ( ),
-        .r_meta_multi_err_o  ( ),
-        .tcdm_target    ( hwpe_mem[i]  ),
-        .tcdm_initiator ( hwpe_mem_enc[i]  )
+        .r_meta_single_err_o ( rmeta_single_err[1][i] ),
+        .r_meta_multi_err_o  ( rmeta_multi_err[1][i]  ),
+        .tcdm_target         ( hwpe_mem[i]            ),
+        .tcdm_initiator      ( hwpe_mem_enc[i]        )
       );
       end
 
@@ -284,22 +308,6 @@ module hci_ecc_interconnect
         .in_high ( all_except_hwpe_mem_enc ),
         .in_low  ( hwpe_mem_enc        ),
         .out     ( mems                )
-      );
-
-      hci_ecc_manager #(
-        .N_CHUNK       ( N_CHUNK                ),
-        .AW            ( AWC                    ),
-        .DW            ( DW_LIC                 ),
-        .BW            ( BW_LIC                 ),
-        .IW            ( N_CORE + 1             )
-      ) i_hci_ecc_manager (
-        .clk_i                        ( clk_i           ),
-        .rst_ni                       ( rst_ni          ),
-        .periph                       ( periph_hci_ecc  ),
-        .data_correctable_err_num_i   ( data_single_err ),
-        .data_uncorrectable_err_num_i ( data_multi_err  ),
-        .meta_correctable_err_i       ( meta_single_err ),
-        .meta_uncorrectable_err_i     ( meta_multi_err  )
       );
 
     end

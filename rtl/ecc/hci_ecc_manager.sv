@@ -16,7 +16,8 @@ module hci_ecc_manager
   import hci_ecc_manager_reg_pkg::*;
 #(
   parameter int unsigned N_CHUNK = 1,
-  parameter int unsigned MAX_ERR = $clog2(N_CHUNK) + 1,
+  parameter int unsigned ParData = 1,
+  parameter int unsigned ParMeta = 1,
   parameter int unsigned AW    = 32,
   parameter int unsigned DW    = 32,
   parameter int unsigned BW    = 8,
@@ -27,10 +28,10 @@ module hci_ecc_manager
 
   XBAR_PERIPH_BUS.Slave       periph,
 
-  input  logic [MAX_ERR-1:0] data_correctable_err_num_i,
-  input  logic [MAX_ERR-1:0] data_uncorrectable_err_num_i,
-  input  logic               meta_correctable_err_i,
-  input  logic               meta_uncorrectable_err_i
+  input  logic [ParData-1:0][N_CHUNK-1:0] data_correctable_err_i,
+  input  logic [ParData-1:0][N_CHUNK-1:0] data_uncorrectable_err_i,
+  input  logic [ParMeta-1:0]              meta_correctable_err_i,
+  input  logic [ParMeta-1:0]              meta_uncorrectable_err_i
 );
 
   hci_ecc_manager_reg2hw_t reg2hw;
@@ -39,6 +40,39 @@ module hci_ecc_manager
   `REG_BUS_TYPEDEF_ALL(hci_ecc_reg, logic[AW-1:0], logic[DW-1:0], logic[BW-1:0])
   hci_ecc_reg_req_t hci_ecc_reg_req;
   hci_ecc_reg_rsp_t hci_ecc_reg_rsp;
+
+  logic [$clog2(ParData*N_CHUNK):0] data_correctable_err_num;
+  logic [$clog2(ParData*N_CHUNK):0] data_uncorrectable_err_num;
+  logic [$clog2(ParMeta):0] meta_correctable_err_num;
+  logic [$clog2(ParMeta):0] meta_uncorrectable_err_num;
+
+  popcount #(
+    .INPUT_WIDTH ( ParData*N_CHUNK )
+  ) i_popcount_data_single (
+    .data_i      ( data_correctable_err_i   ),
+    .popcount_o  ( data_correctable_err_num )
+  );
+
+  popcount #(
+    .INPUT_WIDTH ( ParData*N_CHUNK )
+  ) i_popcount_data_multi (
+    .data_i      ( data_uncorrectable_err_i   ),
+    .popcount_o  ( data_uncorrectable_err_num )
+  );
+
+  popcount #(
+    .INPUT_WIDTH ( ParMeta )
+  ) i_popcount_meta_single (
+    .data_i      ( meta_correctable_err_i   ),
+    .popcount_o  ( meta_correctable_err_num )
+  );
+
+  popcount #(
+    .INPUT_WIDTH ( ParMeta )
+  ) i_popcount_meta_multi (
+    .data_i      ( meta_correctable_err_i     ),
+    .popcount_o  ( meta_uncorrectable_err_num )
+  );
 
   hci_ecc_manager_reg_top #(
     .reg_req_t ( hci_ecc_reg_req_t ),
@@ -54,20 +88,20 @@ module hci_ecc_manager
   );
 
   // Count ECC correctable errors on data
-  assign hw2reg.data_correctable_errors.d = reg2hw.data_correctable_errors.q + data_correctable_err_num_i;
-  assign hw2reg.data_correctable_errors.de = |(data_correctable_err_num_i);
+  assign hw2reg.data_correctable_errors.d = reg2hw.data_correctable_errors.q + data_correctable_err_num;
+  assign hw2reg.data_correctable_errors.de = |(data_correctable_err_i);
 
   // Count ECC uncorrectable errors on data
-  assign hw2reg.data_uncorrectable_errors.d = reg2hw.data_uncorrectable_errors.q + data_uncorrectable_err_num_i;
-  assign hw2reg.data_uncorrectable_errors.de = |(data_uncorrectable_err_num_i);
+  assign hw2reg.data_uncorrectable_errors.d = reg2hw.data_uncorrectable_errors.q + data_uncorrectable_err_num;
+  assign hw2reg.data_uncorrectable_errors.de = |(data_uncorrectable_err_i);
 
   // Count ECC correctable errors on metadata
-  assign hw2reg.metadata_correctable_errors.d = reg2hw.metadata_correctable_errors.q + 1;
-  assign hw2reg.metadata_correctable_errors.de = meta_correctable_err_i;
+  assign hw2reg.metadata_correctable_errors.d = reg2hw.metadata_correctable_errors.q + meta_correctable_err_num;
+  assign hw2reg.metadata_correctable_errors.de = |(meta_correctable_err_i);
 
   // Count ECC uncorrectable errors on metadata
-  assign hw2reg.metadata_uncorrectable_errors.d = reg2hw.metadata_uncorrectable_errors.q + 1;
-  assign hw2reg.metadata_uncorrectable_errors.de = meta_uncorrectable_err_i;
+  assign hw2reg.metadata_uncorrectable_errors.d = reg2hw.metadata_uncorrectable_errors.q + meta_uncorrectable_err_num;
+  assign hw2reg.metadata_uncorrectable_errors.de = |(meta_uncorrectable_err_i);
 
   periph_to_reg #(
     .AW          ( AW            ),

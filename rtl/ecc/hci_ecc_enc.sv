@@ -26,12 +26,11 @@ module hci_ecc_enc
   parameter int unsigned CHUNK_SIZE  = 32,
   parameter bit EnableData = 1,
   // Dependent parameters, do not override
-  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE,
-  parameter int unsigned MAX_ERR = $clog2(N_CHUNK) + 1
+  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE
 )
 (
-  output logic [MAX_ERR-1:0] r_data_single_err_o,
-  output logic [MAX_ERR-1:0] r_data_multi_err_o,
+  output logic [N_CHUNK-1:0] r_data_single_err_o,
+  output logic [N_CHUNK-1:0] r_data_multi_err_o,
   output logic               r_meta_single_err_o,
   output logic               r_meta_multi_err_o,
   hci_core_intf.target    tcdm_target,
@@ -126,23 +125,10 @@ module hci_ecc_enc
       assign tcdm_target.r_data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] = r_data_dec[ii];
 
       // error signals
-      assign r_data_single_err[ii] = r_data_err[ii][0];
-      assign r_data_multi_err[ii]  = r_data_err[ii][1];
+      assign r_data_single_err_o[ii] = r_data_err[ii][0];
+      assign r_data_multi_err_o[ii]  = r_data_err[ii][1];
     end
 
-    popcount #(
-      .INPUT_WIDTH   ( N_CHUNK )
-    ) i_popcount_single (
-      .data_i     ( r_data_single_err   ),
-      .popcount_o ( r_data_single_err_o )
-    );
-
-    popcount #(
-      .INPUT_WIDTH   ( N_CHUNK )
-    ) i_popcount_multi (
-      .data_i     ( r_data_multi_err   ),
-      .popcount_o ( r_data_multi_err_o )
-    );
   end else begin : gen_no_r_data_decoding
     assign data_single_err_o = '0;
     assign data_multi_err_o  = '0;
