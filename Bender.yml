@@ -10,6 +10,8 @@ dependencies:
   cluster_interconnect:   { git: "https://github.com/pulp-platform/cluster_interconnect.git", version: 1.1.1 }
   L2_tcdm_hybrid_interco: { git: "https://github.com/pulp-platform/L2_tcdm_hybrid_interco.git", version: 1.0.0 }
   redundancy_cells:       { git: "https://github.com/pulp-platform/redundancy_cells.git", rev: c37bdb47339bf70e8323de8df14ea8bbeafb6583 } # branch: astral_rebase
+  common_cells:           { git: "https://github.com/pulp-platform/common_cells.git", version: 1.24.0 }
+  register_interface:     { git: "https://github.com/pulp-platform/register_interface.git", version: 0.3.1 }
 
 # this is necessary to expose hci_helpers.svh to dependent packages
 export_include_dirs:
@@ -24,8 +26,10 @@ sources:
       # levels 1 and 0, etc. Files within a level are ordered alphabetically.
       # Level 0
       - rtl/common/hci_package.sv
+      - rtl/ecc/hci_ecc_manager_reg_pkg.sv
       # Level 1
       - rtl/common/hci_interfaces.sv
+      - rtl/ecc/hci_ecc_manager_reg_top.sv
       # Level 2
       - rtl/core/hci_core_assign.sv
       - rtl/core/hci_core_fifo.sv
@@ -38,6 +42,7 @@ sources:
       - rtl/core/hci_core_split.sv
       - rtl/ecc/hci_ecc_dec.sv
       - rtl/ecc/hci_ecc_enc.sv
+      - rtl/ecc/hci_ecc_manager.sv
       - rtl/interco/hci_log_interconnect.sv
       - rtl/interco/hci_log_interconnect_l2.sv
       - rtl/interco/hci_new_log_interconnect.sv # `new_XBAR_TCDM` dep. is a private repo

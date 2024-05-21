@@ -1,0 +1,63 @@
+{
+  name: "HCI_ECC_manager",
+  clock_primary: "clk_i",
+  reset_primary: "rst_ni",
+  bus_interfaces: [
+    { protocol: "reg_iface",
+      direction: "device"
+    }
+  ],
+
+  regwidth: "32",
+
+  registers: [
+    { name: "data_correctable_errors",
+      desc: "Correctable errors on data caught by ecc on interconnect",
+      swaccess: "ro",
+      hwaccess: "hrw",
+      resval: "0",
+      fields: [
+        { bits: "31:0",
+          name: "data_correctable_errors",
+          desc: "Correctable errors on data caught by ecc on interconnect"
+        }
+      ]
+    },
+    { name: "data_uncorrectable_errors",
+      desc: "Uncorrectable errors on data caught by ecc on interconnect",
+      swaccess: "ro",
+      hwaccess: "hrw",
+      resval: "0",
+      fields: [
+        { bits: "31:0",
+          name: "data_uncorrectable_errors",
+          desc: "Uncorrectable errors on data caught by ecc on interconnect"
+        }
+      ]
+    },
+    { name: "metadata_correctable_errors",
+      desc: "Correctable errors caught on metadata by ecc on interconnect",
+      swaccess: "ro",
+      hwaccess: "hrw",
+      resval: "0",
+      fields: [
+        { bits: "31:0",
+          name: "metadata_correctable_errors",
+          desc: "Correctable errors caught on metadata by ecc on interconnect"
+        }
+      ]
+    },
+    { name: "metadata_uncorrectable_errors",
+      desc: "Uncorrectable errors caught on metadata by ecc on interconnect",
+      swaccess: "ro",
+      hwaccess: "hrw",
+      resval: "0",
+      fields: [
+        { bits: "31:0",
+          name: "metadata_uncorrectable_errors",
+          desc: "Uncorrectable errors caught on metadata by ecc on interconnect"
+        }
+      ]
+    }
+  ],
+}
