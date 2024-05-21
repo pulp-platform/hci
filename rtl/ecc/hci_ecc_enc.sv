@@ -28,12 +28,11 @@ module hci_ecc_enc
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_initiator) = '0,
   // Dependent parameters, do not override
-  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE,
-  parameter int unsigned MAX_ERR = $clog2(N_CHUNK) + 1
+  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE
 )
 (
-  output logic [MAX_ERR-1:0] r_data_single_err_o,
-  output logic [MAX_ERR-1:0] r_data_multi_err_o,
+  output logic [N_CHUNK-1:0] r_data_single_err_o,
+  output logic [N_CHUNK-1:0] r_data_multi_err_o,
   output logic               r_meta_single_err_o,
   output logic               r_meta_multi_err_o,
   hci_core_intf.target    tcdm_target,
@@ -106,8 +105,6 @@ module hci_ecc_enc
     logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_dec;
     logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
     logic [N_CHUNK-1:0][1:0]            r_data_err;
-    logic [N_CHUNK-1:0]                 r_data_single_err;
-    logic [N_CHUNK-1:0]                 r_data_multi_err;
 
     assign r_data_ecc = tcdm_initiator.r_ecc[EW_DW*N_CHUNK+EW_RSMETA-1:EW_RSMETA];
 
@@ -126,23 +123,10 @@ module hci_ecc_enc
       assign tcdm_target.r_data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] = r_data_dec[ii];
 
       // error signals
-      assign r_data_single_err[ii] = r_data_err[ii][0];
-      assign r_data_multi_err[ii]  = r_data_err[ii][1];
+      assign r_data_single_err_o[ii] = r_data_err[ii][0];
+      assign r_data_multi_err_o[ii]  = r_data_err[ii][1];
     end
 
-    popcount #(
-      .INPUT_WIDTH   ( N_CHUNK )
-    ) i_popcount_single (
-      .data_i     ( r_data_single_err   ),
-      .popcount_o ( r_data_single_err_o )
-    );
-
-    popcount #(
-      .INPUT_WIDTH   ( N_CHUNK )
-    ) i_popcount_multi (
-      .data_i     ( r_data_multi_err   ),
-      .popcount_o ( r_data_multi_err_o )
-    );
   end else begin : gen_no_r_data_decoding
     assign data_single_err_o = '0;
     assign data_multi_err_o  = '0;
