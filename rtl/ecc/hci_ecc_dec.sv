@@ -27,12 +27,11 @@ module hci_ecc_dec
   parameter bit EnableData = 1,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
   // Dependent parameters, do not override
-  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE,
-  parameter int unsigned MAX_ERR = $clog2(N_CHUNK) + 1
+  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE
 )
 (
-  output logic [MAX_ERR-1:0] data_single_err_o,
-  output logic [MAX_ERR-1:0] data_multi_err_o,
+  output logic [N_CHUNK-1:0] data_single_err_o,
+  output logic [N_CHUNK-1:0] data_multi_err_o,
   output logic               meta_single_err_o,
   output logic               meta_multi_err_o,
   hci_core_intf.target       tcdm_target,
@@ -89,8 +88,8 @@ module hci_ecc_dec
 
     // error signals
     for(genvar ii=0; ii<N_CHUNK; ii++) begin
-      assign data_single_err[ii] = data_err[ii][0];
-      assign data_multi_err[ii]  = data_err[ii][1];
+      assign data_single_err_o[ii] = data_err[ii][0];
+      assign data_multi_err_o[ii]  = data_err[ii][1];
     end
 
     popcount #(
