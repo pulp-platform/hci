@@ -84,10 +84,12 @@ module hci_core_mux_ooo
 
   logic [$clog2(NB_CHAN)-1:0]              rr_counter_q;
   logic [NB_CHAN-1:0][$clog2(NB_CHAN)-1:0] rr_priority_d;
-  logic [$clog2(NB_CHAN)-1:0]              winner_d;
+  logic [$clog2(NB_CHAN)-1:0]              winner_d, winner_q;
 
-  logic s_rr_counter_reg_en;
-  assign s_rr_counter_reg_en = out.req & out.gnt;
+  logic rr_counter_en_d, rr_counter_en_q;
+  assign rr_counter_en_d = out.req & out.gnt;
+
+  logic any_req_q;
 
   // round-robin counter
   always_ff @(posedge clk_i, negedge rst_ni)
@@ -98,11 +100,53 @@ module hci_core_mux_ooo
     else if (clear_i == 1'b1) begin
       rr_counter_q <= '0;
     end
-    else if (s_rr_counter_reg_en) begin
+    else if (rr_counter_en_d) begin
       if (rr_counter_q == NB_CHAN-1)
         rr_counter_q <= '0;
       else
         rr_counter_q <= (rr_counter_q + {{($clog2(NB_CHAN)-1){1'b0}},1'b1}); 
+    end
+  end
+
+  // keep previous winner in case of no-gnt
+  always_ff @(posedge clk_i, negedge rst_ni)
+  begin : winner_reg
+    if(rst_ni == 1'b0) begin
+      winner_q <= '0;
+    end
+    else if (clear_i == 1'b1) begin
+      winner_q <= '0;
+    end
+    else begin
+      winner_q <= winner_d;
+    end
+  end
+
+  // keep track of round-robin counter updates (= output handshakes) to enable WTA circuit
+  always_ff @(posedge clk_i, negedge rst_ni)
+  begin : rr_counter_en_reg
+    if(rst_ni == 1'b0) begin
+      rr_counter_en_q <= '0;
+    end
+    else if (clear_i == 1'b1) begin
+      rr_counter_en_q <= '0;
+    end
+    else begin
+      rr_counter_en_q <= rr_counter_en_d;
+    end
+  end
+
+  // keep track of any input requests to enable WTA circuit
+  always_ff @(posedge clk_i, negedge rst_ni)
+  begin : any_req_reg
+    if(rst_ni == 1'b0) begin
+      any_req_q <= '0;
+    end
+    else if (clear_i == 1'b1) begin
+      any_req_q <= '0;
+    end
+    else begin
+      any_req_q <= |(in_req);
     end
   end
 
@@ -127,6 +171,7 @@ module hci_core_mux_ooo
     assign in[ii].r_opc    = out.r_opc;
     assign in[ii].r_user   = out.r_user;
     assign in[ii].r_ecc    = out.r_ecc;
+    assign in[ii].r_id     = out.r_id;
     assign in[ii].egnt     = in_egnt;
     assign in[ii].r_evalid = in_r_evalid;
 
@@ -138,10 +183,16 @@ module hci_core_mux_ooo
   // winner-takes-all circuit for arbitration, depending on round-robin priorities
   always_comb
   begin : wta_comb
-    winner_d = rr_counter_q;
-    for(int jj=0; jj<NB_CHAN; jj++) begin
-      if (in_req[rr_priority_d[NB_CHAN-jj-1]] == 1'b1)
-        winner_d = rr_priority_d[NB_CHAN-jj-1];
+    winner_d = winner_q;
+    // only re-evaluate WTA output after an output handshake or if any
+    // in_req was 0, otherwise a more recent in_req could overtake an
+    // older one causing a RQ3-STABILITY issue on the output side.
+    if(rr_counter_en_q | ~any_req_q) begin
+      winner_d = rr_counter_q;
+      for(int jj=0; jj<NB_CHAN; jj++) begin
+        if (in_req[rr_priority_d[NB_CHAN-jj-1]] == 1'b1)
+          winner_d = rr_priority_d[NB_CHAN-jj-1];
+      end
     end
   end
 
