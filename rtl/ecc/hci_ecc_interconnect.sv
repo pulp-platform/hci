@@ -176,6 +176,21 @@ module hci_ecc_interconnect
   logic [N_MEM:0]         meta_corr_total_error;
   logic [N_MEM:0]         meta_uncorr_total_error;
 
+  logic [N_MEM-1:0]       valid_read_d, valid_read_q;
+  for (genvar i=0; i < N_MEM; i++) begin : gen_data_err_valid
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_valid_read
+      if(~rst_ni) begin
+        valid_read_q[i] <= '0;
+      end else begin
+        valid_read_q[i] <= valid_read_d[i];
+      end
+    end
+
+    assign valid_read_d[i] = all_except_hwpe_mem[i].req && all_except_hwpe_mem[i].gnt &&
+                          (all_except_hwpe_mem[i].wen || (all_except_hwpe_mem[i].be != {DEFAULT_BW{1'b1}}));
+  end
+
   hci_ecc_manager #(
     .ParData ( N_MEM      ),
     .ParMeta ( N_MEM + 1  ),
@@ -184,13 +199,13 @@ module hci_ecc_interconnect
     .BW      ( BW_LIC     ),
     .IW      ( N_CORE + 1 )
   ) i_hci_ecc_manager (
-    .clk_i                    ( clk_i                   ),
-    .rst_ni                   ( rst_ni                  ),
-    .periph                   ( periph_hci_ecc          ),
-    .data_correctable_err_i   ( data_single_err         ),
-    .data_uncorrectable_err_i ( data_multi_err          ),
-    .meta_correctable_err_i   ( meta_corr_total_error   ),
-    .meta_uncorrectable_err_i ( meta_uncorr_total_error )
+    .clk_i                    ( clk_i                          ),
+    .rst_ni                   ( rst_ni                         ),
+    .periph                   ( periph_hci_ecc                 ),
+    .data_correctable_err_i   ( data_single_err & valid_read_q ),
+    .data_uncorrectable_err_i ( data_multi_err & valid_read_q  ),
+    .meta_correctable_err_i   ( meta_corr_total_error          ),
+    .meta_uncorrectable_err_i ( meta_uncorr_total_error        )
   );
 
   for (genvar i=0; i < N_MEM; i++) begin : meta_err_bind
