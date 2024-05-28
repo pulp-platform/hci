@@ -105,8 +105,6 @@ module hci_ecc_enc
     logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_dec;
     logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
     logic [N_CHUNK-1:0][1:0]            r_data_err;
-    logic [N_CHUNK-1:0]                 r_data_single_err;
-    logic [N_CHUNK-1:0]                 r_data_multi_err;
 
     assign r_data_ecc = tcdm_initiator.r_ecc[EW_DW*N_CHUNK+EW_RSMETA-1:EW_RSMETA];
 
