@@ -315,7 +315,7 @@ module hci_ecc_interconnect
       hci_ecc_router #(
         .FIFO_DEPTH           ( EXPFIFO                   ),
         .NB_OUT_CHAN          ( N_MEM                     ),
-        .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe)     ),
+        .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe_dec) ),
         .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
       ) i_ecc_router (
         .clk_i   ( clk_i    ),
