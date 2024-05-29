@@ -24,7 +24,11 @@ module hci_ecc_source
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES = 1,
   parameter int unsigned PASSTHROUGH_FIFO = 0,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
+  parameter int unsigned CHUNK_SIZE  = 32,
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
+  parameter int unsigned DW  = `HCI_SIZE_GET_DW(tcdm),
+  // Dependent parameters, do not override
+  parameter int unsigned N_CHUNK = DW / CHUNK_SIZE
 )
 (
   input logic clk_i,
@@ -36,12 +40,16 @@ module hci_ecc_source
   hci_core_intf.initiator        tcdm,
   hwpe_stream_intf_stream.source stream,
 
+  output logic [N_CHUNK-1:0] r_data_single_err_o,
+  output logic [N_CHUNK-1:0] r_data_multi_err_o,
+  output logic               r_meta_single_err_o,
+  output logic               r_meta_multi_err_o,
+
   // control plane
   input  hci_streamer_ctrl_t   ctrl_i,
   output hci_streamer_flags_t  flags_o
 );
 
-  localparam int unsigned DW  = `HCI_SIZE_GET_DW(tcdm);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm);
@@ -63,12 +71,12 @@ module hci_ecc_source
     .`HCI_SIZE_PARAM(tcdm_target)    ( `HCI_SIZE_PARAM(virt_tcdm) ),
     .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(tcdm)      )
   ) i_ecc_enc (
-    .r_data_single_err_o ( ),
-    .r_data_multi_err_o  ( ),
-    .r_meta_single_err_o ( ),
-    .r_meta_multi_err_o  ( ),
-    .tcdm_target         ( virt_tcdm ),
-    .tcdm_initiator      ( tcdm      )
+    .r_data_single_err_o ( r_data_single_err_o ),
+    .r_data_multi_err_o  ( r_data_multi_err_o  ),
+    .r_meta_single_err_o ( r_meta_single_err_o ),
+    .r_meta_multi_err_o  ( r_meta_multi_err_o  ),
+    .tcdm_target         ( virt_tcdm           ),
+    .tcdm_initiator      ( tcdm                )
   );
 
   hci_core_source #(
