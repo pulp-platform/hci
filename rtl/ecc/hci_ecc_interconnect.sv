@@ -2,7 +2,7 @@
  * hci_ecc_interconnect.sv
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
- * Luigi Ghionda <luigi.ghionda@studio.unibo.it>
+ * Luigi Ghionda <luigi.ghionda2@unibo.it>
  *
  * Copyright (C) 2019-2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
