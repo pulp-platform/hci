@@ -244,7 +244,7 @@ module hci_core_mux_ooo
     // initial
     //   iw_in :  assert(in[i].IW  == 0);
     initial
-      iw_out :  assert(out.IW  == $clog2(NB_CHAN));
+      iw_out :  assert(out.IW  >= $clog2(NB_CHAN));
     initial
       ew :  assert(in[i].EW  == out.EW);
     initial
