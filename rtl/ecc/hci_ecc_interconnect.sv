@@ -341,9 +341,10 @@ module hci_ecc_interconnect
         .tcdm_initiator    ( hwpe_dec                       )
       );
 
-      hci_ecc_router #(
+      hci_router #(
         .FIFO_DEPTH           ( EXPFIFO                   ),
         .NB_OUT_CHAN          ( N_MEM                     ),
+        .UseECC               ( 1                         ),
         .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe_dec) ),
         .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
       ) i_ecc_router (

@@ -22,7 +22,8 @@ module hci_router_reorder
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 2,
-  parameter int unsigned FILTER_WRITE_R_VALID = 0
+  parameter int unsigned FILTER_WRITE_R_VALID = 0,
+  parameter bit          UseECC = 0
 )
 (
   input  logic                       clk_i,
@@ -36,23 +37,33 @@ module hci_router_reorder
 
 );
 
+  localparam int unsigned RespDataWidth = (UseECC) ? (32+7) : 32;
+  localparam int unsigned EW            = (UseECC) ?  7     : 1;
+
   logic [NB_IN_CHAN-1:0]       in_req;
   logic [NB_IN_CHAN-1:0]       in_req_q;
   logic [NB_IN_CHAN-1:0][31:0] in_add;
   logic [NB_IN_CHAN-1:0]       in_wen;
   logic [NB_IN_CHAN-1:0][3:0]  in_be;
   logic [NB_IN_CHAN-1:0][31:0] in_data;
+  logic [NB_IN_CHAN-1:0][EW-1:0] in_ecc;
   logic [NB_IN_CHAN-1:0]       in_gnt;
   logic [NB_IN_CHAN-1:0][31:0] in_r_data;
   logic [NB_IN_CHAN-1:0]       in_r_valid;
+  logic [NB_IN_CHAN-1:0][EW-1:0] in_r_ecc;
   logic [NB_OUT_CHAN-1:0]       out_req;
   logic [NB_OUT_CHAN-1:0][31:0] out_add;
   logic [NB_OUT_CHAN-1:0]       out_wen;
   logic [NB_OUT_CHAN-1:0][3:0]  out_be;
   logic [NB_OUT_CHAN-1:0][31:0] out_data;
+  logic [NB_OUT_CHAN-1:0][EW-1:0] out_ecc;
   logic [NB_OUT_CHAN-1:0]       out_gnt;
   logic [NB_OUT_CHAN-1:0][31:0] out_r_data;
+  logic [NB_OUT_CHAN-1:0][EW-1:0] out_r_ecc;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0] ma_req;
+
+  logic [NB_IN_CHAN-1:0 ][RespDataWidth-1:0] adrm_rdata_o;
+  logic [NB_OUT_CHAN-1:0][RespDataWidth-1:0] adrm_rdata_i;
 
   generate
 
@@ -93,26 +104,26 @@ module hci_router_reorder
 
       // address decoder mux from TCDM XBAR
       addr_dec_resp_mux #(
-        .NumOut        ( NB_OUT_CHAN ),
-        .ReqDataWidth  ( 1           ),
-        .RespDataWidth ( 32          ),
-        .RespLat       ( 1           ),
-        .BroadCastOn   ( 0           ),
-        .WriteRespOn   ( 1           )
+        .NumOut        ( NB_OUT_CHAN   ),
+        .ReqDataWidth  ( 1             ),
+        .RespDataWidth ( RespDataWidth ),
+        .RespLat       ( 1             ),
+        .BroadCastOn   ( 0             ),
+        .WriteRespOn   ( 1             )
       ) i_addr_dec_resp_mux (
-        .clk_i   ( clk_i         ),
-        .rst_ni  ( rst_ni        ),
-        .req_i   ( in_req[0]     ),
-        .add_i   ( add           ),
-        .wen_i   ( in_wen[0]     ),
-        .data_i  ( '0            ),
-        .gnt_o   (               ), // unused
-        .vld_o   (               ), // unused
-        .rdata_o ( in_r_data[i]  ),
-        .req_o   ( ma_req[i]     ),
-        .gnt_i   ( '0            ),
-        .data_o  (               ), // unused
-        .rdata_i ( out_r_data    )
+        .clk_i   ( clk_i           ),
+        .rst_ni  ( rst_ni          ),
+        .req_i   ( in_req[0]       ),
+        .add_i   ( add             ),
+        .wen_i   ( in_wen[0]       ),
+        .data_i  ( '0              ),
+        .gnt_o   (                 ), // unused
+        .vld_o   (                 ), // unused
+        .rdata_o ( adrm_rdata_o[i] ),
+        .req_o   ( ma_req[i]       ),
+        .gnt_i   ( '0              ),
+        .data_o  (                 ), // unused
+        .rdata_i ( adrm_rdata_i    )
       );
     
       // bindings
@@ -121,16 +132,24 @@ module hci_router_reorder
       assign in_wen  [i] = in[i].wen  ;
       assign in_be   [i] = in[i].be   ;
       assign in_data [i] = in[i].data ;
+      assign in_ecc  [i] = in[i].ecc  ;
       assign in[i].gnt     = in_gnt     [i];
       assign in[i].r_data  = in_r_data  [i];
+      assign in[i].r_ecc   = in_r_ecc   [i];
       assign in[i].r_valid = in_req_q[0]; // fixed latency = 1
       // tie unused/unsupported signals
       assign in[i].r_user   = '0;
       assign in[i].r_id     = '0;
       assign in[i].r_opc    = '0;
-      assign in[i].r_ecc    = '0;
       assign in[i].egnt     = '1;
       assign in[i].r_evalid = '0;
+
+      if (UseECC)
+        assign { in_r_data[i], in_r_ecc[i] } = adrm_rdata_o[i];
+      else begin
+        assign in_r_data[i] = adrm_rdata_o[i];
+        assign in_r_ecc[i]  = '0;
+      end
 
     end
 
@@ -144,11 +163,13 @@ module hci_router_reorder
         out_wen[i]  = in_wen[0];
         out_be[i]   = '0;
         out_data[i] = '0;
+        out_ecc[i]  = '0;
         for(int j=0; j<NB_IN_CHAN; j++) begin
           out_req[i]  |= ma_req [j][i];
           out_add[i]  |= ma_req [j][i] ? in_add  [j] : '0;
           out_be[i]   |= ma_req [j][i] ? in_be   [j] : '0;
           out_data[i] |= ma_req [j][i] ? in_data [j] : '0;
+          out_ecc[i]  |= ma_req [j][i] ? in_ecc  [j] : '0;
         end
       end
 
@@ -158,16 +179,22 @@ module hci_router_reorder
       assign out[i].wen  = out_wen  [i];
       assign out[i].be   = out_be   [i];
       assign out[i].data = out_data [i];
+      assign out[i].ecc  = out_ecc  [i];
       assign out_gnt     [i] = out[i].gnt;
       assign out_r_data  [i] = out[i].r_data;
+      assign out_r_ecc   [i] = out[i].r_ecc;
       // tie r_ready to '1;
       assign out[i].r_ready = '1;
       // tie unused/unsupported signals
       assign out[i].user     = '0;
       assign out[i].id       = '0;
-      assign out[i].ecc      = '0;
       assign out[i].ereq     = '0;
       assign out[i].r_eready = '1;
+
+      if (UseECC)
+        assign adrm_rdata_i[i] = { out_r_data[i], out_r_ecc[i] };
+      else
+        assign adrm_rdata_i[i] = out_r_data[i];
 
     end // out_chan_gen
 

@@ -53,6 +53,7 @@ module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
   parameter int unsigned NB_OUT_CHAN = 8,
+  parameter bit          UseECC      = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(in)  = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
 )
@@ -69,6 +70,7 @@ module hci_router
   localparam int unsigned AWH = `HCI_SIZE_GET_AW(in);
   localparam int unsigned BWH = `HCI_SIZE_GET_BW(in);
   localparam int unsigned UWH = `HCI_SIZE_GET_UW(in);
+  localparam int unsigned EWH = `HCI_SIZE_GET_EW(in);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in);
   localparam int unsigned AWM = `HCI_SIZE_GET_AW(out);
 
@@ -93,7 +95,7 @@ module hci_router
     BW:  BWH,
     UW:  UWH,
     IW:  DEFAULT_IW,
-    EW:  DEFAULT_EW,
+    EW:  EWH,
     EHW: EHW
   };
   `HCI_INTF(postfifo, clk_i);
@@ -105,7 +107,7 @@ module hci_router
     BW:  8,
     UW:  0,
     IW:  0,
-    EW:  0,
+    EW:  7*UseECC,
     EHW: EHW
   };
   hci_core_intf #(
@@ -161,8 +163,9 @@ module hci_router
     // unimplemented id bits = 0
     assign postfifo.r_id = '0;
 
-    // unimplemented ECC bits = 0
-    assign postfifo.r_ecc = '0;
+    if(!UseECC)
+      // unimplemented ECC bits = 0
+      assign postfifo.r_ecc = '0;
 
     // unimplemented operation code = 0
     assign postfifo.r_opc = '0;
@@ -177,7 +180,6 @@ module hci_router
       assign virt_in[ii].data     = postfifo.data[ii*32+31:ii*32];
       assign postfifo.r_data[ii*32+31:ii*32]  = virt_in[ii].r_data;
       assign virt_in[ii].user     = postfifo.user;
-      assign virt_in[ii].ecc      = postfifo.ecc;
       assign virt_in[ii].id       = postfifo.id;
       assign virt_in[ii].ereq     = postfifo.ereq;
       assign virt_in[ii].r_eready = postfifo.r_eready;
@@ -194,6 +196,12 @@ module hci_router
       assign virt_in[ii].r_ready = postfifo.r_ready;
       assign virt_in_gnt[ii] = virt_in[ii].gnt;
       assign virt_in_rvalid[ii] = virt_in[ii].r_valid;
+
+      if(UseECC) begin : ecc_assignment
+        assign virt_in[ii].ecc             = postfifo.ecc[ii*7+6:ii*7];
+        assign postfifo.r_ecc[ii*7+6:ii*7] = virt_in[ii].r_ecc;
+      end else
+        assign virt_in[ii].ecc = postfifo.ecc;
 
     end // virt_in_bind
 
@@ -218,7 +226,7 @@ module hci_router
     // filter R_VALID with registered GNT
     assign postfifo.r_valid = virt_in_rvalid[0] & virt_in_gnt_0_q;
 
-    for(genvar ii=0; ii<NB_OUT_CHAN; ii++) 
+    for(genvar ii=0; ii<NB_OUT_CHAN; ii++)
     begin : virt_out_bind
       assign out[ii].req  = virt_out[ii].req;
       assign out[ii].wen  = virt_out[ii].wen;
@@ -235,8 +243,14 @@ module hci_router
       // unimplemented id bits = 0
       assign out[ii].id = '0;
 
-      // unimplemented ecc bits = 0
-      assign out[ii].ecc = '0;
+      if(UseECC) begin : ecc_assignment
+        assign out[ii].ecc  = virt_out[ii].ecc;
+        assign virt_out[ii].r_ecc  = out[ii].r_ecc;
+      end else begin
+        assign out[ii].ecc         = '0;
+        assign virt_out[ii].r_ecc  = '0;
+      end
+
     end // virt_out_bind
 
   endgenerate
@@ -245,7 +259,8 @@ module hci_router
   //are located at the correct bank offset
   hci_router_reorder #(
     .NB_IN_CHAN  ( NB_IN_CHAN  ),
-    .NB_OUT_CHAN ( NB_OUT_CHAN )
+    .NB_OUT_CHAN ( NB_OUT_CHAN ),
+    .UseECC      ( UseECC      )
   ) i_reorder (
     .clk_i   ( clk_i         ),
     .rst_ni  ( rst_ni        ),
