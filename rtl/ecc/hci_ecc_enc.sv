@@ -45,8 +45,6 @@ module hci_ecc_enc
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_initiator);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_initiator);
 
-  if (!(EW > 0)) $error("EW must be greater than 0");
-
   localparam int unsigned RQMETAW = AW + DW/BW + UW + 1;
   localparam int unsigned RSMETAW = UW + 1;
 
@@ -79,7 +77,7 @@ module hci_ecc_enc
 
   // metadata (add/wen/be/user) hsiao encoder
   generate
-    if (UW > 0) begin : meta_user_enc // need to specificy UW>0 case; ASK
+    if (UW > 0) begin : meta_user_enc
       hsiao_ecc_enc #(
         .DataWidth ( RQMETAW ),
         .ProtWidth ( EW_RQMETA )
@@ -106,7 +104,7 @@ module hci_ecc_enc
     logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
     logic [N_CHUNK-1:0][1:0]            r_data_err;
 
-    assign r_data_ecc = tcdm_initiator.r_ecc[EW_DW*N_CHUNK+EW_RSMETA-1:EW_RSMETA];
+    assign r_data_ecc = tcdm_initiator.r_ecc[EW_RSMETA+:EW_DW*N_CHUNK];
 
     // r_data hsiao decoders
     for(genvar ii=0; ii<N_CHUNK; ii++) begin : r_data_decoding
@@ -116,7 +114,7 @@ module hci_ecc_enc
       ) i_hsiao_ecc_r_data_dec (
         .in         ( { r_data_ecc[ii], tcdm_initiator.r_data[ii*CHUNK_SIZE+CHUNK_SIZE-1:ii*CHUNK_SIZE] } ),
         .out        ( r_data_dec[ii] ),
-        .syndrome_o (  ), // is syndrome useless?
+        .syndrome_o (  ),
         .err_o      ( r_data_err[ii] )
       );
 
@@ -135,14 +133,14 @@ module hci_ecc_enc
 
   // metadata (r_opc/r_user) hsiao decoder
   generate
-    if (UW > 0) begin : meta_user_dec // need to specificy UW>0 case; ASK
+    if (UW > 0) begin : meta_user_dec
       hsiao_ecc_dec #(
         .DataWidth ( RSMETAW ),
         .ProtWidth ( EW_RSMETA )
       ) i_hsiao_ecc_meta_dec (
         .in         ( { tcdm_initiator.r_ecc[EW_RSMETA-1:0], tcdm_initiator.r_opc, tcdm_initiator.r_user } ),
         .out        ( { tcdm_target.r_opc, tcdm_target.r_user } ),
-        .syndrome_o (  ), // is syndrome useless?
+        .syndrome_o (  ),
         .err_o      ( r_meta_err )
       );
     end
@@ -153,7 +151,7 @@ module hci_ecc_enc
       ) i_hsiao_ecc_meta_dec (
         .in         ( { tcdm_initiator.r_ecc[EW_RSMETA-1:0], tcdm_initiator.r_opc } ),
         .out        ( tcdm_target.r_opc ),
-        .syndrome_o (  ), // is syndrome useless?
+        .syndrome_o (  ),
         .err_o      ( r_meta_err )
       );
 
@@ -185,5 +183,12 @@ module hci_ecc_enc
 
   assign r_meta_single_err_o = r_meta_err[0];
   assign r_meta_multi_err_o  = r_meta_err[1];
+
+  `ifndef SYNTHESIS
+  `ifndef VERILATOR
+    initial
+      ew : assert(EW >= EW_DW*N_CHUNK+EW_RQMETA);
+  `endif
+  `endif
 
 endmodule // hci_ecc_enc
