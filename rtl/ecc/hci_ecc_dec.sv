@@ -44,8 +44,6 @@ module hci_ecc_dec
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_target);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
 
-  if (!(EW > 0)) $error("EW must be greater than 0");
-
   localparam int unsigned RQMETAW = AW + DW/BW + UW + 1;
   localparam int unsigned RSMETAW = UW + 1;
 
@@ -70,7 +68,7 @@ module hci_ecc_dec
     logic [N_CHUNK-1:0]                 data_single_err;
     logic [N_CHUNK-1:0]                 data_multi_err;
 
-    assign data_ecc = tcdm_target.ecc[EW_DW*N_CHUNK+EW_RQMETA-1:EW_RQMETA];
+    assign data_ecc = tcdm_target.ecc[EW-1:EW_RQMETA];
 
     for(genvar ii=0; ii<N_CHUNK; ii++) begin : data_decoding
       hsiao_ecc_dec #(
@@ -98,7 +96,7 @@ module hci_ecc_dec
 
   // metadata (add/wen/be/user) hsiao decoder
   generate
-    if (UW > 0) begin : meta_user_dec // need to specificy UW>0 case; ASK
+    if (UW > 0) begin : meta_user_dec
       hsiao_ecc_dec #(
         .DataWidth ( RQMETAW   ),
         .ProtWidth ( EW_RQMETA )
@@ -144,7 +142,7 @@ module hci_ecc_dec
 
   // metadata (r_opc/r_user) hsiao encoder
   generate
-    if (UW > 0) begin : meta_user_enc // need to specificy UW>0 case; ASK
+    if (UW > 0) begin : meta_user_enc
       hsiao_ecc_enc #(
         .DataWidth ( RSMETAW ),
         .ProtWidth ( EW_RSMETA )
@@ -186,5 +184,12 @@ module hci_ecc_dec
 
   assign meta_single_err_o = meta_err[0];
   assign meta_multi_err_o  = meta_err[1];
+
+  `ifndef SYNTHESIS
+  `ifndef VERILATOR
+    initial
+      ew : assert(EW >= EW_DW*N_CHUNK+EW_RQMETA);
+  `endif
+  `endif
 
 endmodule // hci_ecc_dec
