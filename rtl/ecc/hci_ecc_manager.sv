@@ -66,7 +66,7 @@ module hci_ecc_manager
   popcount #(
     .INPUT_WIDTH ( ParMeta )
   ) i_popcount_meta_multi (
-    .data_i      ( meta_correctable_err_i     ),
+    .data_i      ( meta_uncorrectable_err_i   ),
     .popcount_o  ( meta_uncorrectable_err_num )
   );
 
