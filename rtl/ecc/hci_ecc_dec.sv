@@ -45,7 +45,7 @@ module hci_ecc_dec
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
 
   localparam int unsigned RQMETAW = AW + DW/BW + UW + 1;
-  localparam int unsigned RSMETAW = UW + 1;
+  localparam int unsigned RSMETAW = UW;
 
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
   localparam int unsigned EW_RQMETA = $clog2(RQMETAW)+2;
@@ -140,25 +140,20 @@ module hci_ecc_dec
   end else
     assign r_data_ecc = tcdm_initiator.r_ecc;
 
-  // metadata (r_opc/r_user) hsiao encoder
+  // metadata (r_user) hsiao encoder
   generate
     if (UW > 0) begin : meta_user_enc
       hsiao_ecc_enc #(
         .DataWidth ( RSMETAW ),
         .ProtWidth ( EW_RSMETA )
       ) i_hsiao_ecc_meta_enc (
-        .in  ( { tcdm_initiator.r_opc, tcdm_initiator.r_user } ),
+        .in  ( tcdm_initiator.r_user ),
         .out ( { r_meta_ecc, r_meta_enc } )
       );
     end
     else begin : meta_no_user_enc
-      hsiao_ecc_enc #(
-        .DataWidth ( RSMETAW   ),
-        .ProtWidth ( EW_RSMETA )
-      ) i_hsiao_ecc_meta_enc (
-        .in  ( tcdm_initiator.r_opc ),
-        .out ( { r_meta_ecc, r_meta_enc } )
-      );
+      assign r_meta_ecc = '0;
+      assign r_meta_enc = '0;
     end
   endgenerate
 
