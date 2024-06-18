@@ -45,12 +45,14 @@ module hci_ecc_enc
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_initiator);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_initiator);
 
-  localparam int unsigned RQMETAW = AW + DW/BW + UW + 1;
-  localparam int unsigned RSMETAW = UW + 1;
+  localparam bit          UseUW   = (UW > 1) ? 1 : 0;
+
+  localparam int unsigned RQMETAW = (UseUW) ? AW + DW/BW + UW + 1 : AW + DW/BW + 1;
+  localparam int unsigned RSMETAW = (UseUW) ? UW : 0;
 
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
   localparam int unsigned EW_RQMETA = $clog2(RQMETAW)+2;
-  localparam int unsigned EW_RSMETA = $clog2(RSMETAW)+2;
+  localparam int unsigned EW_RSMETA = (UseUW) ? $clog2(RSMETAW)+2 : 0;
 
   logic [N_CHUNK-1:0][EW_DW-1:0]      data_ecc;
   logic [1:0]                         r_meta_err;
@@ -77,7 +79,7 @@ module hci_ecc_enc
 
   // metadata (add/wen/be/user) hsiao encoder
   generate
-    if (UW > 0) begin : meta_user_enc
+    if (UseUW) begin : meta_user_enc
       hsiao_ecc_enc #(
         .DataWidth ( RQMETAW ),
         .ProtWidth ( EW_RQMETA )
@@ -131,31 +133,21 @@ module hci_ecc_enc
     assign tcdm_target.r_data  = tcdm_initiator.r_data;
   end
 
-  // metadata (r_opc/r_user) hsiao decoder
+  // metadata (r_user) hsiao decoder
   generate
-    if (UW > 0) begin : meta_user_dec
+    if (UseUW) begin : meta_user_dec
       hsiao_ecc_dec #(
         .DataWidth ( RSMETAW ),
         .ProtWidth ( EW_RSMETA )
       ) i_hsiao_ecc_meta_dec (
-        .in         ( { tcdm_initiator.r_ecc[EW_RSMETA-1:0], tcdm_initiator.r_opc, tcdm_initiator.r_user } ),
-        .out        ( { tcdm_target.r_opc, tcdm_target.r_user } ),
+        .in         ( { tcdm_initiator.r_ecc[EW_RSMETA-1:0], tcdm_initiator.r_user } ),
+        .out        ( tcdm_target.r_user ),
         .syndrome_o (  ),
         .err_o      ( r_meta_err )
       );
-    end
-    else begin : meta_no_user_dec
-      hsiao_ecc_dec #(
-        .DataWidth ( RSMETAW ),
-        .ProtWidth ( EW_RSMETA )
-      ) i_hsiao_ecc_meta_dec (
-        .in         ( { tcdm_initiator.r_ecc[EW_RSMETA-1:0], tcdm_initiator.r_opc } ),
-        .out        ( tcdm_target.r_opc ),
-        .syndrome_o (  ),
-        .err_o      ( r_meta_err )
-      );
-
+    end else begin : meta_no_dec
       assign tcdm_target.r_user = '0;
+      assign r_meta_err         = '0;
     end
   endgenerate
 
@@ -171,6 +163,7 @@ module hci_ecc_enc
   assign tcdm_initiator.id      = tcdm_target.id;
 
   assign tcdm_target.r_id    = tcdm_initiator.r_id;
+  assign tcdm_target.r_opc   = tcdm_initiator.r_opc;
   assign tcdm_target.r_valid = tcdm_initiator.r_valid;
 
   // ECC signals
