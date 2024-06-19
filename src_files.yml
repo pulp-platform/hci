@@ -30,6 +30,8 @@ hci:
     - rtl/interco/hci_new_log_interconnect.sv # `new_XBAR_TCDM` dep. is a private repo
     - rtl/interco/hci_arbiter.sv
     - rtl/interco/hci_router_reorder.sv
+    - rtl/parity/hci_copy_source.sv
+    - rtl/parity/hci_copy_sink.sv
     # Level 3
     - rtl/core/hci_core_sink.sv
     - rtl/interco/hci_router.sv
