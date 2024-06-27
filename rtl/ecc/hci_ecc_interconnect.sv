@@ -170,15 +170,20 @@ module hci_ecc_interconnect
   };
   `HCI_INTF_ARRAY(hwpe_mem, clk_i, 0:N_MEM-1);
 
-  logic [N_MEM-1:0]       data_single_err;
-  logic [N_MEM-1:0]       data_multi_err;
-  logic [1:0][N_MEM-1:0]  rmeta_single_err;
-  logic [1:0][N_MEM-1:0]  rmeta_multi_err;
-  logic [N_MEM:0]         meta_corr_total_error;
-  logic [N_MEM:0]         meta_uncorr_total_error;
+  logic [N_MEM-1:0]       data_single_err, data_multi_err;
+  logic                   meta_single_err, meta_multi_err;
+  logic [1:0][N_MEM-1:0]  rmeta_single_err, rmeta_multi_err;
+  logic [N_MEM:0]         meta_corr_total_error, meta_uncorr_total_error;
 
   logic [N_MEM-1:0]       valid_read_d, valid_read_q;
-  for (genvar i=0; i < N_MEM; i++) begin : gen_data_err_valid
+  logic [1:0][N_MEM-1:0]  arb_valid_handshake;
+  logic                   hwpe_valid_handshake;
+
+  for (genvar i=0; i < N_MEM; i++) begin : gen_valid
+
+    assign arb_valid_handshake[0][i] = all_except_hwpe_mem_assign[i].req && all_except_hwpe_mem_assign[i].gnt;
+    assign arb_valid_handshake[1][i] = hwpe_mem[i].req && hwpe_mem[i].gnt;
+    assign valid_read_d[i]           = all_except_hwpe_mem[i].req && all_except_hwpe_mem[i].gnt && all_except_hwpe_mem[i].wen;
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_valid_read
       if(~rst_ni) begin
@@ -187,10 +192,9 @@ module hci_ecc_interconnect
         valid_read_q[i] <= valid_read_d[i];
       end
     end
-
-    assign valid_read_d[i] = all_except_hwpe_mem[i].req && all_except_hwpe_mem[i].gnt &&
-                          (all_except_hwpe_mem[i].wen || (all_except_hwpe_mem[i].be != {DEFAULT_BW{1'b1}}));
   end
+
+  assign hwpe_valid_handshake = hwpe.req && hwpe.gnt;
 
   `REG_BUS_TYPEDEF_ALL(hci_ecc, logic[AWC-1:0], logic[DW_LIC-1:0], logic[BW_LIC-1:0])
   hci_ecc_req_t hci_ecc_req;
@@ -238,9 +242,12 @@ module hci_ecc_interconnect
   );
 
   for (genvar i=0; i < N_MEM; i++) begin : meta_err_bind
-    assign meta_corr_total_error[i]   = rmeta_single_err[0][i] | rmeta_single_err[1][i];
-    assign meta_uncorr_total_error[i] = rmeta_multi_err[0][i]  | rmeta_multi_err[1][i];
+    assign meta_corr_total_error[i]   = (rmeta_single_err[0][i] & arb_valid_handshake[0][i]) | (rmeta_single_err[1][i] & arb_valid_handshake[1][i]);
+    assign meta_uncorr_total_error[i] = (rmeta_multi_err[0][i] & arb_valid_handshake[0][i])  | (rmeta_multi_err[1][i] & arb_valid_handshake[1][i]);
   end
+
+  assign meta_corr_total_error[N_MEM]   = meta_single_err & hwpe_valid_handshake;
+  assign meta_uncorr_total_error[N_MEM] = meta_multi_err  & hwpe_valid_handshake;
 
   generate
 
@@ -350,10 +357,10 @@ module hci_ecc_interconnect
       ) i_ecc_dec_meta (
         .data_single_err_o (  ),
         .data_multi_err_o  (  ),
-        .meta_single_err_o ( meta_corr_total_error[N_MEM]   ),
-        .meta_multi_err_o  ( meta_uncorr_total_error[N_MEM] ),
-        .tcdm_target       ( hwpe                           ),
-        .tcdm_initiator    ( hwpe_dec                       )
+        .meta_single_err_o ( meta_single_err ),
+        .meta_multi_err_o  ( meta_multi_err  ),
+        .tcdm_target       ( hwpe            ),
+        .tcdm_initiator    ( hwpe_dec        )
       );
 
       hci_router #(
