@@ -49,6 +49,7 @@
  */
 
 `include "hci_helpers.svh"
+`include "register_interface/typedef.svh"
 
 module hci_ecc_interconnect
   import hci_package::*;
@@ -176,17 +177,45 @@ module hci_ecc_interconnect
   logic [N_MEM:0]         meta_corr_total_error;
   logic [N_MEM:0]         meta_uncorr_total_error;
 
+  `REG_BUS_TYPEDEF_ALL(hci_ecc, logic[AWC-1:0], logic[DW_LIC-1:0], logic[BW_LIC-1:0])
+  hci_ecc_req_t hci_ecc_req;
+  hci_ecc_rsp_t hci_ecc_rsp;
+
+  periph_to_reg #(
+    .AW        ( AWC                    ),
+    .DW        ( DW_LIC                 ),
+    .BW        ( BW_LIC                 ),
+    .IW        ( N_CORE + 1             ),
+    .req_t     ( hci_ecc_req_t          ),
+    .rsp_t     ( hci_ecc_rsp_t          )
+  ) i_periph_to_reg_ecc (
+    .clk_i     ( clk_i                  ),
+    .rst_ni    ( rst_ni                 ),
+    .req_i     ( periph_hci_ecc.req     ),
+    .add_i     ( periph_hci_ecc.add     ),
+    .wen_i     ( periph_hci_ecc.wen     ),
+    .wdata_i   ( periph_hci_ecc.wdata    ),
+    .be_i      ( periph_hci_ecc.be      ),
+    .id_i      ( periph_hci_ecc.id      ),
+    .gnt_o     ( periph_hci_ecc.gnt     ),
+    .r_rdata_o ( periph_hci_ecc.r_rdata  ),
+    .r_opc_o   ( periph_hci_ecc.r_opc   ),
+    .r_id_o    ( periph_hci_ecc.r_id    ),
+    .r_valid_o ( periph_hci_ecc.r_valid ),
+    .reg_req_o ( hci_ecc_req            ),
+    .reg_rsp_i ( hci_ecc_rsp            )
+  );
+
   hci_ecc_manager #(
-    .ParData ( N_MEM      ),
-    .ParMeta ( N_MEM + 1  ),
-    .AW      ( AWC        ),
-    .DW      ( DW_LIC     ),
-    .BW      ( BW_LIC     ),
-    .IW      ( N_CORE + 1 )
+    .ParData                  ( N_MEM                   ),
+    .ParMeta                  ( N_MEM + 1               ),
+    .hci_ecc_req_t            ( hci_ecc_req_t           ),
+    .hci_ecc_rsp_t            ( hci_ecc_rsp_t           )
   ) i_hci_ecc_manager (
     .clk_i                    ( clk_i                   ),
     .rst_ni                   ( rst_ni                  ),
-    .periph                   ( periph_hci_ecc          ),
+    .hci_ecc_req_i            ( hci_ecc_req             ),
+    .hci_ecc_rsp_o            ( hci_ecc_rsp             ),
     .data_correctable_err_i   ( data_single_err         ),
     .data_uncorrectable_err_i ( data_multi_err          ),
     .meta_correctable_err_i   ( meta_corr_total_error   ),
