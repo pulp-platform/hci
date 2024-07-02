@@ -258,7 +258,6 @@ module hci_ecc_interconnect
       );
 
       hci_ecc_enc #(
-        .DW ( DW_LIC ),
         .`HCI_SIZE_PARAM(tcdm_target)    ( `HCI_SIZE_PARAM(all_except_hwpe_mem_assign) ),
         .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(all_except_hwpe_mem_enc)    )
       ) i_ecc_lic_enc (
@@ -350,7 +349,6 @@ module hci_ecc_interconnect
       `HCI_INTF_ARRAY(hwpe_mem_enc, clk_i, 0:N_MEM-1);
 
       hci_ecc_dec #(
-        .DW         ( DWH        ),
         .CHUNK_SIZE ( CHUNK_SIZE ),
         .EnableData ( 0          ),
         .`HCI_SIZE_PARAM(tcdm_target) ( `HCI_SIZE_PARAM(hwpe) )
