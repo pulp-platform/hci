@@ -44,12 +44,14 @@ module hci_ecc_dec
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_target);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
 
-  localparam int unsigned RQMETAW = AW + DW/BW + UW + 1;
-  localparam int unsigned RSMETAW = UW;
+  localparam bit          UseUW   = (UW > 1) ? 1 : 0;
+
+  localparam int unsigned RQMETAW = (UseUW) ? AW + DW/BW + UW + 1 : AW + DW/BW + 1;
+  localparam int unsigned RSMETAW = (UseUW) ? UW : 0;
 
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
   localparam int unsigned EW_RQMETA = $clog2(RQMETAW)+2;
-  localparam int unsigned EW_RSMETA = $clog2(RSMETAW)+2;
+  localparam int unsigned EW_RSMETA = (UseUW) ? $clog2(RSMETAW)+2 : 0;
   localparam int unsigned ZEROBITS  = EW_RQMETA - EW_RSMETA;
 
   logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
@@ -96,7 +98,7 @@ module hci_ecc_dec
 
   // metadata (add/wen/be/user) hsiao decoder
   generate
-    if (UW > 0) begin : meta_user_dec
+    if (UseUW) begin : meta_user_dec
       hsiao_ecc_dec #(
         .DataWidth ( RQMETAW   ),
         .ProtWidth ( EW_RQMETA )
@@ -142,7 +144,7 @@ module hci_ecc_dec
 
   // metadata (r_user) hsiao encoder
   generate
-    if (UW > 0) begin : meta_user_enc
+    if (UseUW) begin : meta_user_enc
       hsiao_ecc_enc #(
         .DataWidth ( RSMETAW ),
         .ProtWidth ( EW_RSMETA )
@@ -175,7 +177,8 @@ module hci_ecc_dec
   assign tcdm_target.r_evalid    = tcdm_initiator.r_evalid;
   assign tcdm_initiator.r_eready = tcdm_target.r_eready;
   assign tcdm_initiator.ecc      = (!EnableData) ? tcdm_target.ecc[EW_RQMETA+:EW_DW*N_CHUNK] : '0;
-  assign tcdm_target.r_ecc       = { {ZEROBITS{1'b0}}, r_data_ecc, r_meta_ecc };
+  assign tcdm_target.r_ecc       = (UseUW) ? { {ZEROBITS{1'b0}}, r_data_ecc, r_meta_ecc }
+                                           : { {ZEROBITS{1'b0}}, r_data_ecc };
 
   assign meta_single_err_o = meta_err[0];
   assign meta_multi_err_o  = meta_err[1];
