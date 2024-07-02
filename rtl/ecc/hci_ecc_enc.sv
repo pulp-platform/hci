@@ -22,12 +22,12 @@
 module hci_ecc_enc
   import hci_package::*;
 #(
-  parameter int unsigned DW = hci_package::DEFAULT_DW,
   parameter int unsigned CHUNK_SIZE  = 32,
   parameter bit EnableData = 1,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_initiator) = '0,
   // Dependent parameters, do not override
+  parameter int unsigned DW  = `HCI_SIZE_GET_DW(tcdm_target),
   parameter int unsigned N_CHUNK = DW / CHUNK_SIZE
 )
 (
@@ -43,7 +43,6 @@ module hci_ecc_enc
   localparam int unsigned AW  = `HCI_SIZE_GET_AW(tcdm_target);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm_target);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_initiator);
-  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_initiator);
 
   localparam bit          UseUW   = (UW > 1) ? 1 : 0;
 
