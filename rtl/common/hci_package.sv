@@ -69,4 +69,11 @@ package hci_package;
     STREAMER_IDLE, STREAMER_WORKING, STREAMER_DONE
   } hci_streamer_state_t;
 
+  typedef enum {
+    COPY,        // Full copy and comparison of all signals
+    NO_ECC,      // Do not assign and compare ecc signals
+    NO_DATA,     // Do not assign and compare data signals
+    CTRL_ONLY    // Do not assign either ecc nor data signals
+  } hci_copy_t;
+
 endpackage // hci_package
