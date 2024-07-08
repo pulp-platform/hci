@@ -33,6 +33,7 @@ sources:
       - rtl/ecc/hci_ecc_manager_reg_top.sv
       # Level 2
       - rtl/core/hci_core_assign.sv
+      - rtl/core/hci_core_assign_expand.sv
       - rtl/core/hci_core_fifo.sv
       - rtl/core/hci_core_mux_dynamic.sv
       - rtl/core/hci_core_mux_static.sv
