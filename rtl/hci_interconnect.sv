@@ -77,7 +77,7 @@ module hci_interconnect
   hci_core_intf.target           dma     [0:N_DMA-1] ,
   hci_core_intf.target           ext     [0:N_EXT-1] ,
   hci_core_intf.initiator        mems    [0:N_MEM-1] ,
-  hci_core_intf.target           hwpe
+  hci_core_intf.target           hwpe    [0:N_HWPE-1]
 );
 
   localparam int unsigned AWC = `HCI_SIZE_GET_AW(cores);
@@ -141,8 +141,20 @@ module hci_interconnect
   };
   `HCI_INTF_ARRAY(hwpe_mem, clk_i, 0:N_MEM-1);
 
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_to_router) = `HCI_SIZE_PARAM(hwpe);
+  hci_core_intf #(
+    .DW(DWH),
+    .AW(AWH),
+    .BW(BWH),
+    .UW(UWH),
+    .IW(IW),
+    .EW(DEFAULT_EW),
+    .EHW(DEFAULT_EHW)) hwpe_to_router (
+      .clk(clk_i)
+    );
+
   generate
-  
+
     if(SEL_LIC==0) begin : l1_interconnect_gen
       hci_log_interconnect #(
         .N_CH0  ( N_CORE              ),
@@ -206,7 +218,19 @@ module hci_interconnect
   endgenerate
 
   generate
+    // for now, just mux multiple HWPEs.
     if(N_HWPE > 0) begin: hwpe_branch_gen
+      hci_core_mux_dynamic #(
+        .NB_IN_CHAN(N_HWPE),
+          .NB_OUT_CHAN(1),
+        .`HCI_SIZE_PARAM(in)(`HCI_SIZE_PARAM(hwpe))
+        ) i_hwpe_mux(
+          .clk_i,
+          .rst_ni,
+          .clear_i,
+          .in(hwpe),
+          .out({hwpe_to_router})
+      );
 
       hci_router #(
         .FIFO_DEPTH           ( EXPFIFO                   ),
@@ -217,7 +241,7 @@ module hci_interconnect
         .clk_i   ( clk_i    ),
         .rst_ni  ( rst_ni   ),
         .clear_i ( clear_i  ),
-        .in      ( hwpe     ),
+        .in      ( hwpe_to_router     ),
         .out     ( hwpe_mem )
       );
 
@@ -252,19 +276,19 @@ module hci_interconnect
         .tcdm_target    ( cores           [ii] ),
         .tcdm_initiator ( all_except_hwpe [ii] )
       );
-    end // cores_binding
+    end : cores_binding
     for(genvar ii=0; ii<N_EXT; ii++) begin: ext_binding
       hci_core_assign i_ext_assign (
         .tcdm_target    ( ext             [ii]        ),
         .tcdm_initiator ( all_except_hwpe [N_CORE+ii] )
       );
-    end // ext_binding
+    end : ext_binding
     for(genvar ii=0; ii<N_DMA; ii++) begin: dma_binding
       hci_core_assign i_dma_assign (
         .tcdm_target    ( dma             [ii]              ),
         .tcdm_initiator ( all_except_hwpe [N_CORE+N_EXT+ii] )
       );
-    end // dma_binding
+    end : dma_binding
   endgenerate
 
 /*
@@ -272,12 +296,14 @@ module hci_interconnect
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+  for (genvar i=0; i<N_HWPE; i++) begin : check_hwpe_size_asserts
+`HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(hwpe), hwpe[i]);
+  end
 
-  `HCI_SIZE_CHECK_ASSERTS(hwpe);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(cores), cores[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(mems), mems[0]);
-  
+
 `endif
 `endif;
 
-endmodule // hci_interconnect
+endmodule : hci_interconnect
