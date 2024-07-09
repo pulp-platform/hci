@@ -90,6 +90,7 @@ module hci_interconnect
   localparam int unsigned AWH = `HCI_SIZE_GET_AW(hwpe);
   localparam int unsigned BWH = `HCI_SIZE_GET_BW(hwpe);
   localparam int unsigned UWH = `HCI_SIZE_GET_UW(hwpe);
+  localparam int unsigned IWH = `HCI_SIZE_GET_IW(hwpe);
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(all_except_hwpe) = '{
     DW:  DEFAULT_DW,
@@ -147,7 +148,7 @@ module hci_interconnect
     .AW(AWH),
     .BW(BWH),
     .UW(UWH),
-    .IW(IW),
+    .IW(IWH),
     .EW(DEFAULT_EW),
     .EHW(DEFAULT_EHW)) hwpe_to_router (
       .clk(clk_i)
@@ -241,7 +242,7 @@ module hci_interconnect
         .clk_i   ( clk_i    ),
         .rst_ni  ( rst_ni   ),
         .clear_i ( clear_i  ),
-        .in      ( hwpe_to_router     ),
+        .in      ( hwpe_to_router ),
         .out     ( hwpe_mem )
       );
 
