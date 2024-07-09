@@ -34,7 +34,8 @@
 module hci_copy_source
   import hci_package::*;
 #(
-  parameter hci_package::hci_copy_t  COPY_TYPE = COPY,
+  parameter hci_package::hci_copy_t  COPY_TYPE = COPY, // Main -> Copy
+  parameter hci_package::hci_copy_t  COMPARE_TYPE = COPY, // Copy -> Main
   parameter                   logic  DONT_CARE = 1 // Signal to use for don't care assignments
 ) (
   input logic             clk_i,
@@ -46,7 +47,7 @@ module hci_copy_source
   
   logic fault, ctrl_fault, data_fault, ecc_fault;
 
-  // Control signals always assigned
+  // Control signals always assigned and compared
   assign tcdm_copy.req     = tcdm_main.req;
   assign tcdm_copy.add     = tcdm_main.add;
   assign tcdm_copy.wen     = tcdm_main.wen;
@@ -64,28 +65,37 @@ module hci_copy_source
 
 
   // Data
-  if (COPY_TYPE == NO_DATA || COPY_TYPE == CTRL_ONLY) begin
-    assign data_fault = 1'b0;
+  if (COPY_TYPE == NO_DATA || COPY_TYPE == CTRL_ONLY) begin : data_nocopy
     assign tcdm_copy.data = DONT_CARE;
   end
-  else begin
+  else begin : data_copy
     assign tcdm_copy.data = tcdm_main.data;
+  end
+
+  if (COMPARE_TYPE == NO_DATA || COMPARE_TYPE == CTRL_ONLY) begin : data_nocompare
+    assign data_fault = 1'b0;
+  end
+  else begin : data_compare
     assign data_fault = tcdm_main.r_data != tcdm_copy.r_data;
   end
 
 
   // ECC
-  if (COPY_TYPE == NO_ECC || COPY_TYPE == CTRL_ONLY) begin
-    assign ecc_fault = 1'b0;
+  if (COPY_TYPE == NO_ECC || COPY_TYPE == CTRL_ONLY) begin : ecc_nocopy
     assign tcdm_copy.ereq     = DONT_CARE;
     assign tcdm_copy.r_eready = DONT_CARE;
     assign tcdm_copy.ecc      = DONT_CARE;
   end
-  else begin
+  else begin : ecc_copy
     assign tcdm_copy.ereq     = tcdm_main.ereq;
     assign tcdm_copy.r_eready = tcdm_main.r_eready;
     assign tcdm_copy.ecc      = tcdm_main.ecc;
+  end
 
+  if (COMPARE_TYPE == NO_ECC || COMPARE_TYPE == CTRL_ONLY) begin : ecc_nocompare
+    assign ecc_fault = 1'b0;
+  end
+  else begin : ecc_compare
     assign ecc_fault =
       ( tcdm_main.egnt     != tcdm_copy.egnt     ) |
       ( tcdm_main.r_evalid != tcdm_copy.r_evalid ) |
