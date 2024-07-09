@@ -26,7 +26,9 @@ module hci_core_r_id_filter
   import hwpe_stream_package::*;
   import hci_package::*;
 #(
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
+parameter int unsigned N_OUTSTANDING = 2,
+              parameter bit MULTICYCLE_SUPPORT = 1'b0
 )
 (
   input  logic clk_i,
@@ -40,25 +42,51 @@ module hci_core_r_id_filter
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm_target);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
 
-  logic [IW-1:0] id_q;
+  logic [IW-1:0] target_r_id;
 
   assign tcdm_initiator.add     = tcdm_target.add;
   assign tcdm_initiator.data    = tcdm_target.data;
   assign tcdm_initiator.be      = tcdm_target.be;
   assign tcdm_initiator.wen     = tcdm_target.wen;
-  assign tcdm_initiator.req     = tcdm_target.req;
   assign tcdm_initiator.r_ready = tcdm_target.r_ready;
   assign tcdm_initiator.user    = tcdm_target.user;
   assign tcdm_initiator.id      = '0;
   assign tcdm_initiator.ecc     = tcdm_target.ecc;
-  assign tcdm_target.gnt        = tcdm_initiator.gnt;
+  
   assign tcdm_target.r_data     = tcdm_initiator.r_data;
   assign tcdm_target.r_user     = tcdm_initiator.r_user;
-  assign tcdm_target.r_id       = id_q;
+  assign tcdm_target.r_id       = target_r_id;
   assign tcdm_target.r_opc      = tcdm_initiator.r_opc;
   assign tcdm_target.r_ecc      = tcdm_initiator.r_ecc;
   assign tcdm_target.r_valid    = tcdm_initiator.r_valid;
 
+
+  if (MULTICYCLE_SUPPORT) begin
+    logic fifo_full, fifo_empty;
+    assign tcdm_target.gnt = tcdm_initiator.gnt & !(fifo_full);
+    assign tcdm_initiator.req = tcdm_target.req & !(fifo_full);
+
+   fifo_v3 #(
+    .FALL_THROUGH(1'b0),
+    .DATA_WIDTH(IW),
+    .DEPTH(N_OUTSTANDING)
+    ) i_r_id_fifo (
+      .clk_i,
+      .rst_ni,
+      .flush_i(clear_i),
+      .testmode_i(1'b0),
+      .full_o(fifo_full),
+      .empty_o(fifo_empty),
+      .data_i(tcdm_target.id),
+      .push_i(tcdm_target.req & tcdm_target.gnt),
+      .data_o(target_r_id),
+      .pop_i(tcdm_initiator.r_valid & tcdm_target.r_ready)
+    );
+  end else begin
+    logic [IW-1:0] id_q;
+    assign target_r_id = id_q;
+assign tcdm_target.gnt        = tcdm_initiator.gnt;
+assign tcdm_initiator.req     = tcdm_target.req;
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
     if(~rst_ni) begin
@@ -115,6 +143,7 @@ module hci_core_r_id_filter
     else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
 `endif
 `endif
+  end
 
 /*
  * Interface size asserts
@@ -138,4 +167,4 @@ module hci_core_r_id_filter
 `endif
 `endif;
 
-endmodule // hci_core_r_id_filter
+endmodule : hci_core_r_id_filter

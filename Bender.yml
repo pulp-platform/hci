@@ -9,6 +9,7 @@ dependencies:
   hwpe-stream:            { git: "https://github.com/pulp-platform/hwpe-stream.git", version: 1.8.0 }
   cluster_interconnect:   { git: "https://github.com/pulp-platform/cluster_interconnect.git", rev: 1284def6c0b7f7e9355eb093d00883ad9dead1b7 }
   L2_tcdm_hybrid_interco: { git: "https://github.com/pulp-platform/L2_tcdm_hybrid_interco.git", version: 1.0.0 }
+  common_cells:           { git: "https://github.com/pulp-platform/common_cells.git", version: 1.21.0 }
 
 # this is necessary to expose hci_helpers.svh to dependent packages
 export_include_dirs:

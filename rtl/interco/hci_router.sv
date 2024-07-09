@@ -140,14 +140,10 @@ module hci_router
         .tcdm_target    ( in            ),
         .tcdm_initiator ( postfifo      )
       );
-    end // no_fifo_gen
+    end : no_fifo_gen
     else begin: fifo_gen
       hci_core_fifo #(
         .FIFO_DEPTH                      ( FIFO_DEPTH                ),
-        .DW                              ( DWH                       ),
-        .BW                              ( AWH                       ),
-        .AW                              ( BWH                       ),
-        .UW                              ( UWH                       ),
         .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(postfifo) )
       ) i_fifo (
         .clk_i          ( clk_i         ),
@@ -157,7 +153,7 @@ module hci_router
         .tcdm_target    ( in            ),
         .tcdm_initiator ( postfifo      )
       );
-    end // fifo_gen
+    end : fifo_gen
 
     // unimplemented user bits = 0
     assign postfifo.r_user = '0;
@@ -193,13 +189,13 @@ module hci_router
           virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR] + 1, 2'b0};
         else
           virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR], 2'b0};
-      end // address_generation
+      end : address_generation
       
       assign virt_in[ii].r_ready = postfifo.r_ready;
       assign virt_in_gnt[ii] = virt_in[ii].gnt;
       assign virt_in_rvalid[ii] = virt_in[ii].r_valid;
 
-    end // virt_in_bind
+    end : virt_in_bind
 
     // register REQ&GNT --> TCDM protocol assumes that (post FIFO)
     // the GNT and R_VALID are exactly asserted in consecutive
@@ -241,7 +237,7 @@ module hci_router
 
       // unimplemented ecc bits = 0
       assign out[ii].ecc = '0;
-    end // virt_out_bind
+    end : virt_out_bind
 
   endgenerate
 
@@ -292,4 +288,4 @@ module hci_router
 `endif
 `endif;
 
-endmodule // hci_router
+endmodule : hci_router
