@@ -371,11 +371,15 @@ module hci_core_fifo
     ew : assert(tcdm_target.EW == tcdm_initiator.EW);
   initial
     ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
-
+  initial begin : depth_check
+    if (FIFO_DEPTH % 2 != 0) begin
+      $error("hci_core_fifo FIFO_DEPTH must be a multiple of 2!");
+    end
+  end
   `HCI_SIZE_CHECK_ASSERTS(tcdm_initiator);
 
 `endif
 `endif
 `endif
 
-endmodule // hci_core_fifo
+endmodule : hci_core_fifo

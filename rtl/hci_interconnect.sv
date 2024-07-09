@@ -154,6 +154,17 @@ module hci_interconnect
       .clk(clk_i)
     );
 
+  hci_core_intf #(
+    .DW(DWH),
+    .AW(AWH),
+    .BW(BWH),
+    .UW(UWH),
+    .IW(IWH),
+    .EW(DEFAULT_EW),
+    .EHW(DEFAULT_EHW)) hwpe_to_id_filt (
+      .clk(clk_i)
+    );
+
   generate
 
     if(SEL_LIC==0) begin : l1_interconnect_gen
@@ -221,16 +232,31 @@ module hci_interconnect
   generate
     // for now, just mux multiple HWPEs.
     if(N_HWPE > 0) begin: hwpe_branch_gen
-      hci_core_mux_dynamic #(
-        .NB_IN_CHAN(N_HWPE),
-          .NB_OUT_CHAN(1),
-        .`HCI_SIZE_PARAM(in)(`HCI_SIZE_PARAM(hwpe))
+      hci_core_mux_ooo #(
+        .NB_CHAN(N_HWPE),
+        .`HCI_SIZE_PARAM(out)(`HCI_SIZE_PARAM(hwpe))
         ) i_hwpe_mux(
           .clk_i,
           .rst_ni,
           .clear_i,
+          .priority_force_i(1'b0),
+          .priority_i('0),
           .in(hwpe),
-          .out({hwpe_to_router})
+          .out(hwpe_to_id_filt)
+      );
+      // for now, plug an ID filter here so we can use the OOO mux
+      // TODO Arpan find a more optimal solution :^)
+      hci_core_r_id_filter #(
+        .`HCI_SIZE_PARAM(tcdm_target)(`HCI_SIZE_PARAM(hwpe)),
+        .N_OUTSTANDING(2),
+        .MULTICYCLE_SUPPORT(1'b1)
+        ) i_hwpe_id_filt (
+          .clk_i,
+          .rst_ni,
+          .clear_i(clear_i),
+          .enable_i(1'b1),
+          .tcdm_target(hwpe_to_id_filt),
+          .tcdm_initiator(hwpe_to_router)
       );
 
       hci_router #(
