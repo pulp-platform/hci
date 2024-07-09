@@ -34,7 +34,8 @@
 module hci_copy_sink
   import hci_package::*; 
 #(
-  parameter hci_package::hci_copy_t  COPY_TYPE = COPY,
+  parameter hci_package::hci_copy_t  COPY_TYPE = COPY, // Main -> Copy
+  parameter hci_package::hci_copy_t  COMPARE_TYPE = COPY, // Copy -> Main
   parameter                   logic  DONT_CARE = 1 // Signal to use for don't care assignments
 ) (
   input logic           clk_i,
@@ -46,7 +47,7 @@ module hci_copy_sink
   
   logic fault, ctrl_fault, data_fault, ecc_fault;
 
-  // Control signals always assigned
+  // Control signals always assigned and compared
   assign tcdm_copy.gnt      = tcdm_main.gnt;
   assign tcdm_copy.r_valid  = tcdm_main.r_valid;
   assign tcdm_copy.r_user   = tcdm_main.r_user;
@@ -64,34 +65,41 @@ module hci_copy_sink
 
 
   // Data
-  if (COPY_TYPE == NO_DATA || COPY_TYPE == CTRL_ONLY) begin
-    assign data_fault = 1'b0;
+  if (COPY_TYPE == NO_DATA || COPY_TYPE == CTRL_ONLY) begin : data_nocopy
     assign tcdm_copy.r_data = DONT_CARE;
   end
-  else begin
+  else begin : data_copy
     assign tcdm_copy.r_data = tcdm_main.r_data;
+  end
+
+  if (COMPARE_TYPE == NO_DATA || COMPARE_TYPE == CTRL_ONLY) begin : data_nocompare
+    assign data_fault = 1'b0;
+  end
+  else begin : data_compare
     assign data_fault = tcdm_main.data != tcdm_copy.data;
   end
 
-
   // ECC
-  if (COPY_TYPE == NO_ECC || COPY_TYPE == CTRL_ONLY) begin
-    assign ecc_fault = 1'b0;
+  if (COPY_TYPE == NO_ECC || COPY_TYPE == CTRL_ONLY) begin : ecc_nocopy
     assign tcdm_copy.egnt     = DONT_CARE;
     assign tcdm_copy.r_evalid = DONT_CARE;
     assign tcdm_copy.r_ecc    = DONT_CARE;
   end
-  else begin
+  else begin : ecc_copy
     assign tcdm_copy.egnt     = tcdm_main.egnt;
     assign tcdm_copy.r_evalid = tcdm_main.r_evalid;
     assign tcdm_copy.r_ecc    = tcdm_main.r_ecc;
+  end
 
+  if (COMPARE_TYPE == NO_ECC || COMPARE_TYPE == CTRL_ONLY) begin : ecc_nocompare
+    assign ecc_fault = 1'b0;
+  end
+  else begin : ecc_compare
     assign ecc_fault =
       ( tcdm_main.ereq     != tcdm_copy.ereq     ) |
       ( tcdm_main.r_eready != tcdm_copy.r_eready ) |
       ( tcdm_main.ecc      != tcdm_copy.ecc      );
   end
-
 
   assign fault = ctrl_fault | data_fault | ecc_fault;
   
