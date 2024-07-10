@@ -65,28 +65,32 @@ module hci_router_reorder
     for(genvar i=0; i<NB_IN_CHAN; i++) begin : in_chan_gen
 
       // only in_req_q[0] is actually used... keep the rest for symmetry only
-      if (FILTER_WRITE_R_VALID) begin : filter_write_r_valid_gen
-        always_ff @(posedge clk_i or negedge rst_ni)
-        begin
-          if(~rst_ni)
-            in_req_q[i] <= '0;
-          else if(clear_i)
-            in_req_q[i] <= '0;
-          else
-            in_req_q[i] <= in_req[0] & in_wen[0];
+      if(i==0) begin : filter_r_valid_0_gen
+        if (FILTER_WRITE_R_VALID) begin : filter_write_r_valid_gen
+          always_ff @(posedge clk_i or negedge rst_ni)
+          begin
+            if(~rst_ni)
+              in_req_q[i] <= '0;
+            else if(clear_i)
+              in_req_q[i] <= '0;
+            else
+              in_req_q[i] <= in_req[0] & in_wen[0];
+          end
         end
-      end
-      else begin : no_filter_write_r_valid_gen
-        always_ff @(posedge clk_i or negedge rst_ni)
-        begin
-          if(~rst_ni)
-            in_req_q[i] <= '0;
-          else if(clear_i)
-            in_req_q[i] <= '0;
-          else
-            in_req_q[i] <= in_req[0];
+        else begin : no_filter_write_r_valid_gen
+          always_ff @(posedge clk_i or negedge rst_ni)
+          begin
+            if(~rst_ni)
+              in_req_q[i] <= '0;
+            else if(clear_i)
+              in_req_q[i] <= '0;
+            else
+              in_req_q[i] <= in_req[0];
+          end
         end
-      end
+      end else begin : filter_r_valid_others_gen
+        assign in_req_q[i] = in_req_q[0];
+      end 
 
       logic unsigned [$clog2(NB_OUT_CHAN)-1:0] add;
       assign add = order_i + i;
