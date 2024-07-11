@@ -5,6 +5,7 @@ package:
     - "Gianna Paulin <pauling@iis.ee.ethz.ch"
     - "Tobias Riedener <tobiasri@student.ethz.ch>"
     - "Luigi Ghionda <luigi.ghionda2@studio.it>"
+    - "Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>"
 
 dependencies:
   hwpe-stream:            { git: "https://github.com/pulp-platform/hwpe-stream.git", version: 1.9.0 }
