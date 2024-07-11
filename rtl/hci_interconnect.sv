@@ -2,6 +2,7 @@
  * hci_interconnect.sv
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
+ * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
  *
  * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
@@ -131,6 +132,18 @@ module hci_interconnect
   };
   `HCI_INTF_ARRAY(all_except_hwpe_mem, clk_i, 0:N_MEM-1);
 
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_muxed) = '{
+    DW:  DEFAULT_DW,
+    AW:  AWM,
+    BW:  DEFAULT_BW,
+    UW:  UW_LIC,
+    IW:  IW,
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
+  };
+  `HCI_INTF_ARRAY(hwpe_mem_muxed, clk_i, 0:N_MEM-1);
+
+
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem) = '{
     DW:  DEFAULT_DW,
     AW:  AWM,
@@ -140,7 +153,8 @@ module hci_interconnect
     EW:  DEFAULT_EW,
     EHW: DEFAULT_EHW
   };
-  `HCI_INTF_ARRAY(hwpe_mem, clk_i, 0:N_MEM-1);
+  `HCI_INTF_2D_ARRAY(hwpe_mem, clk_i, 0:N_HWPE-1, 0:N_MEM-1);
+
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_to_router) = `HCI_SIZE_PARAM(hwpe);
   hci_core_intf #(
@@ -232,55 +246,44 @@ module hci_interconnect
   generate
     // for now, just mux multiple HWPEs.
     if(N_HWPE > 0) begin: hwpe_branch_gen
-      hci_core_mux_ooo #(
-        .NB_CHAN(N_HWPE),
-        .`HCI_SIZE_PARAM(out)(`HCI_SIZE_PARAM(hwpe))
-        ) i_hwpe_mux(
-          .clk_i,
-          .rst_ni,
-          .clear_i,
-          .priority_force_i(1'b0),
-          .priority_i('0),
-          .in(hwpe),
-          .out(hwpe_to_id_filt)
-      );
-      // for now, plug an ID filter here so we can use the OOO mux
-      // TODO Arpan find a more optimal solution :^)
-      hci_core_r_id_filter #(
-        .`HCI_SIZE_PARAM(tcdm_target)(`HCI_SIZE_PARAM(hwpe)),
-        .N_OUTSTANDING(2),
-        .MULTICYCLE_SUPPORT(1'b1)
-        ) i_hwpe_id_filt (
-          .clk_i,
-          .rst_ni,
-          .clear_i(clear_i),
-          .enable_i(1'b1),
-          .tcdm_target(hwpe_to_id_filt),
-          .tcdm_initiator(hwpe_to_router)
-      );
+      for(genvar ii=0; ii<N_HWPE; ii++) begin : hwpe_mem_muxing
+        hci_router #(
+          .FIFO_DEPTH           ( EXPFIFO                   ),
+          .NB_OUT_CHAN          ( N_MEM                     ),
+          .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe)     ),
+          .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
+        ) i_router (
+          .clk_i   ( clk_i       ),
+          .rst_ni  ( rst_ni      ),
+          .clear_i ( clear_i     ),
+          .in      ( hwpe[ii]    ),
+          .out     ( hwpe_mem[ii])
+        );
+      end : hwpe_mem_muxing
 
-      hci_router #(
-        .FIFO_DEPTH           ( EXPFIFO                   ),
-        .NB_OUT_CHAN          ( N_MEM                     ),
-        .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe)     ),
-        .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
-      ) i_router (
-        .clk_i   ( clk_i    ),
-        .rst_ni  ( rst_ni   ),
-        .clear_i ( clear_i  ),
-        .in      ( hwpe_to_router ),
-        .out     ( hwpe_mem )
+      hci_arbiter_tree #(
+        .NB_REQUESTS(N_HWPE),
+        .NB_CHAN ( N_MEM ),
+        .`HCI_SIZE_PARAM(out)(`HCI_SIZE_PARAM(hwpe_mem_muxed))
+
+      ) i_wide_port_arbiter_tree (
+        .clk_i   ( clk_i               ),
+        .rst_ni  ( rst_ni              ),
+        .clear_i ( clear_i             ),
+        .ctrl_i  ( ctrl_i              ),
+        .in      ( hwpe_mem            ),
+        .out     ( hwpe_mem_muxed      )
       );
 
       hci_arbiter #(
         .NB_CHAN ( N_MEM )
-      ) i_arbiter (
+      ) i_wide_vs_narrow_arbiter (
         .clk_i   ( clk_i               ),
         .rst_ni  ( rst_ni              ),
         .clear_i ( clear_i             ),
         .ctrl_i  ( ctrl_i              ),
         .in_high ( all_except_hwpe_mem ),
-        .in_low  ( hwpe_mem            ),
+        .in_low  ( hwpe_mem_muxed      ),
         .out     ( mems                )
       );
 

@@ -1,6 +1,7 @@
 /*
  * hci_helpers.svh
  * Francesco Conti <f.conti@unibo.it>
+ * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
  *
  * Copyright (C) 2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
