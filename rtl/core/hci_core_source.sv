@@ -1,6 +1,7 @@
 /*
  * hci_core_source.sv
  * Francesco Conti <f.conti@unibo.it>
+ * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
  *
  * Copyright (C) 2014-2022 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
@@ -193,7 +194,7 @@ module hci_core_source
       stream_data_aligned = '0;
       case(addr_misaligned_q)
         2'b00: begin
-          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-32-1:0];
+          stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
         end
         2'b01: begin
           stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-24-1:8];
