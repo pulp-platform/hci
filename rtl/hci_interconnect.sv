@@ -62,6 +62,7 @@ module hci_interconnect
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
+  parameter int unsigned FILTER_WRITE_R_VALID[0:N_HWPE-1] = '{default: 0},
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(mems)  = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(hwpe)  = '0,
@@ -167,18 +168,6 @@ module hci_interconnect
     .EHW(DEFAULT_EHW)) hwpe_to_router (
       .clk(clk_i)
     );
-
-  hci_core_intf #(
-    .DW(DWH),
-    .AW(AWH),
-    .BW(BWH),
-    .UW(UWH),
-    .IW(IWH),
-    .EW(DEFAULT_EW),
-    .EHW(DEFAULT_EHW)) hwpe_to_id_filt (
-      .clk(clk_i)
-    );
-
   generate
 
     if(SEL_LIC==0) begin : l1_interconnect_gen
@@ -244,22 +233,25 @@ module hci_interconnect
   endgenerate
 
   generate
-    // for now, just mux multiple HWPEs.
     if(N_HWPE > 0) begin: hwpe_branch_gen
-      for(genvar ii=0; ii<N_HWPE; ii++) begin : hwpe_mem_muxing
-        hci_router #(
-          .FIFO_DEPTH           ( EXPFIFO                   ),
-          .NB_OUT_CHAN          ( N_MEM                     ),
-          .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe)     ),
-          .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
-        ) i_router (
-          .clk_i   ( clk_i       ),
-          .rst_ni  ( rst_ni      ),
-          .clear_i ( clear_i     ),
-          .in      ( hwpe[ii]    ),
-          .out     ( hwpe_mem[ii])
-        );
-      end : hwpe_mem_muxing
+
+      for(genvar ii=0; ii<N_HWPE; ii++) begin : hwpe_req2mem
+    
+          hci_router #(
+            .FIFO_DEPTH           ( EXPFIFO                   ),
+            .NB_OUT_CHAN          ( N_MEM                     ),
+            .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID[ii]  ),
+            .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe)     ),
+            .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
+          ) i_router (
+            .clk_i   ( clk_i       ),
+            .rst_ni  ( rst_ni      ),
+            .clear_i ( clear_i     ),
+            .in      ( hwpe[ii]),
+            .out     ( hwpe_mem[ii])
+          );
+    
+      end : hwpe_req2mem
 
       hci_arbiter_tree #(
         .NB_REQUESTS(N_HWPE),
