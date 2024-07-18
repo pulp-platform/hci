@@ -53,6 +53,7 @@ module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
   parameter int unsigned NB_OUT_CHAN = 8,
+  parameter int unsigned FILTER_WRITE_R_VALID = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(in)  = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
 )
@@ -242,7 +243,8 @@ module hci_router
   //are located at the correct bank offset
   hci_router_reorder #(
     .NB_IN_CHAN  ( NB_IN_CHAN  ),
-    .NB_OUT_CHAN ( NB_OUT_CHAN )
+    .NB_OUT_CHAN ( NB_OUT_CHAN ),
+    .FILTER_WRITE_R_VALID(FILTER_WRITE_R_VALID)
   ) i_reorder (
     .clk_i   ( clk_i         ),
     .rst_ni  ( rst_ni        ),
