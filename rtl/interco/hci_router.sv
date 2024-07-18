@@ -53,7 +53,11 @@ module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
   parameter int unsigned NB_OUT_CHAN = 8,
+<<<<<<< HEAD
   parameter bit          UseECC      = 0,
+=======
+  parameter int unsigned FILTER_WRITE_R_VALID = 0,
+>>>>>>> 5a4a689 ([update] parameter to filter the r_valid for the writes)
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(in)  = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
 )
@@ -257,7 +261,8 @@ module hci_router
   hci_router_reorder #(
     .NB_IN_CHAN  ( NB_IN_CHAN  ),
     .NB_OUT_CHAN ( NB_OUT_CHAN ),
-    .UseECC      ( UseECC      )
+    .UseECC      ( UseECC      ),
+    .FILTER_WRITE_R_VALID(FILTER_WRITE_R_VALID)
   ) i_reorder (
     .clk_i   ( clk_i         ),
     .rst_ni  ( rst_ni        ),

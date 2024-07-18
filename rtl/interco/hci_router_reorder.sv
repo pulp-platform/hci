@@ -71,7 +71,8 @@ module hci_router_reorder
 
     // in_gnt out of in_chan_gen because only [0] is used
     assign in_gnt[0] = &(~out_req | out_gnt);
-    assign in_gnt[NB_IN_CHAN-1:1] = '0;
+    if(NB_IN_CHAN > 1)
+      assign in_gnt[NB_IN_CHAN-1:1] = '0;
 
     for(genvar i=0; i<NB_IN_CHAN; i++) begin : in_chan_gen
 
