@@ -47,18 +47,14 @@ module hci_arbiter_tree
   input  logic                   clear_i,
   input  hci_interconnect_ctrl_t ctrl_i,
 
-  hci_core_intf.target    in    					[0:NB_REQUESTS-1][0:NB_CHAN-1],
+  hci_core_intf.target    in    			   [0:NB_REQUESTS-1][0:NB_CHAN-1],
   hci_core_intf.initiator out                  [0:NB_CHAN-1]
 );
   
   // number of levels in the arbitration tree
-  localparam int unsigned NB_LEVELS = $clog2(NB_REQUESTS);
-  // maximum total number of arbiters, as when the NB_REQUESTS is not power of 2 it is smaller
-  localparam int unsigned MAX_TOTAL_ARBITERS = (NB_REQUESTS > 1) ? (2**NB_LEVELS -1) : 1;  
+  localparam int unsigned NB_LEVELS = NB_REQUESTS > 1 ? $clog2(NB_REQUESTS) : 1;
   // maximum total number of arbiters in a single level
-  localparam int unsigned MAX_ARBITERS_PER_LEVEL = (NB_REQUESTS > 1) ? 2**(NB_LEVELS-1) : 1;  
-
-  localparam int unsigned NB_TOTAL_ARBITERS = NB_REQUESTS > 1 ?  NB_REQUESTS -1 : 1;
+  localparam int unsigned MAX_ARBITERS_PER_LEVEL = (NB_REQUESTS + 1)/2;  
 
 	localparam int unsigned DW = `HCI_SIZE_GET_DW(out);
 	localparam int unsigned AW = `HCI_SIZE_GET_AW(out);
@@ -78,23 +74,22 @@ module hci_arbiter_tree
     EHW: `HCI_SIZE_GET_EHW(out)
   };
 
-  // localparam hci_size_parameter_t `HCI_SIZE_PARAM(arb_out) = `HCI_SIZE_PARAM(virt_in);
   `HCI_INTF_3D_ARRAY(arb_out, clk_i, 0:NB_LEVELS-1, 0:MAX_ARBITERS_PER_LEVEL-1, 0:NB_CHAN-1);
 
 	generate
 		// genvar quo, rem;
 		for(genvar lvl=0; lvl<NB_LEVELS; lvl++) begin : arbiter_tree_levels
 
-			localparam int unsigned quo = NB_REQUESTS/(1<<lvl);
-			localparam int unsigned rem = NB_REQUESTS%(1<<lvl) ? 1 : 0;
-			localparam int unsigned nb_arbiters = quo == 1 ? quo : 2*(quo/2);
+			localparam int unsigned quo = NB_REQUESTS / (1 << lvl);
+			localparam int unsigned rem = (NB_REQUESTS % (1 << lvl)) ? 1 : 0;
+			localparam int unsigned nb_arbiters = (quo + rem) / 2;
 
 			for(genvar ii=0; ii< quo+rem; ii += 2) begin : arbiter_single_level
 				// At the 0th level the primary inputs are used. in other levels intermediate input are used 
 				if(lvl==0) begin : level_0
 					// only arbiters are needed for atleast 2 requests together otherwise the remaining
 					// requests could be bypassed as shown in the else statement
-					if(ii < nb_arbiters) begin : arbiter_path 
+					if(ii < 2*nb_arbiters) begin : arbiter_path 
 						hci_arbiter #(
 							.NB_CHAN ( NB_CHAN )
 						) i_arbiter (
@@ -102,8 +97,8 @@ module hci_arbiter_tree
 							.rst_ni  ( rst_ni              ),
 							.clear_i ( clear_i             ),
 							.ctrl_i  ( ctrl_i              ),
-							.in_high ( in[ii] 			   		 ),
-							.in_low  ( in[ii+1]      	   	 ),
+							.in_high ( in[ii] 			   ),
+							.in_low  ( in[ii+1]      	   ),
 							.out     ( arb_out[lvl][ii>>1] )
 						);
 					end else begin : bypass
@@ -115,7 +110,7 @@ module hci_arbiter_tree
 						end
 					end 
 				end else begin : level_greater_than_0
-					if(ii < nb_arbiters) begin : arbiter_path
+					if(ii < 2*nb_arbiters) begin : arbiter_path
 						hci_arbiter #(
 							.NB_CHAN ( NB_CHAN )
 						) i_arbiter (
