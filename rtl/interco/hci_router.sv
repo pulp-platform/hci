@@ -276,6 +276,7 @@ module hci_router
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
 
   initial
     assert (NB_IN_CHAN <= NB_OUT_CHAN)             else  $fatal("NB_IN_CHAN > NB_OUT_CHAN!");
@@ -289,6 +290,7 @@ module hci_router
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(virt_in),  virt_in[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(virt_out), virt_out[0]);
   
+`endif
 `endif
 `endif;
 

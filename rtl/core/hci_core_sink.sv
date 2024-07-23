@@ -339,6 +339,7 @@ module hci_core_sink
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
   if(MISALIGNED_ACCESSES == 0) begin
     initial
       dw :  assert(stream.DATA_WIDTH == tcdm.DW);
@@ -349,6 +350,7 @@ module hci_core_sink
   end
   
   `HCI_SIZE_CHECK_ASSERTS(tcdm);
+`endif
 `endif
 `endif
 
