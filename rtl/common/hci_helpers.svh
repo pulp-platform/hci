@@ -222,8 +222,6 @@
   )
 `define HCI_INTF(__name, __clk)                `HCI_INTF_EXPLICIT_PARAM(__name, __clk,          `HCI_SIZE_PARAM(__name))
 `define HCI_INTF_ARRAY(__name, __clk, __range) `HCI_INTF_EXPLICIT_PARAM(__name[__range], __clk, `HCI_SIZE_PARAM(__name))
-`define HCI_INTF_2D_ARRAY(__name, __clk, __range2D, __range1D) `HCI_INTF_EXPLICIT_PARAM(__name[__range2D][__range1D], __clk, `HCI_SIZE_PARAM(__name))
-`define HCI_INTF_3D_ARRAY(__name, __clk, __range3D, __range2D, __range1D) `HCI_INTF_EXPLICIT_PARAM(__name[__range3D][__range2D][__range1D], __clk, `HCI_SIZE_PARAM(__name))
 
 `ifndef SYNTHESIS
   `define HCI_SIZE_GET_DW_CHECK(__x)  (__x.DW)
