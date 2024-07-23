@@ -21,10 +21,10 @@
 
 module hci_core_assign_expand
   import hwpe_stream_package::*;
-    #(
-      parameter int unsigned TGT_DATA_WIDTH = -1,
-      parameter int unsigned INIT_DATA_WIDTH = -1
-    )
+#(
+  parameter int unsigned TGT_DATA_WIDTH = -1,
+  parameter int unsigned INIT_DATA_WIDTH = -1
+)
 (
   hci_core_intf.target    tcdm_target,
   hci_core_intf.initiator tcdm_initiator
@@ -53,10 +53,12 @@ module hci_core_assign_expand
   assign tcdm_initiator.ecc      = tcdm_target.ecc;
   assign tcdm_target.r_ecc       = tcdm_initiator.r_ecc;
 
+`ifndef SYNTHESIS
   initial begin : width_checks
     if (TGT_DATA_WIDTH % 8 != 0 || INIT_DATA_WIDTH % 8 != 0)
       $error("TGT_DATA_WIDTH (%d) and INIT_DATA_WIDTH (%d) must be multiples of 8!", TGT_DATA_WIDTH, INIT_DATA_WIDTH);
     if (TGT_DATA_WIDTH > INIT_DATA_WIDTH)
       $error("TGT_DATA_WIDTH must be smaller or equal to INIT_DATA_WIDTH!");
   end
+`endif
 endmodule : hci_core_assign_expand

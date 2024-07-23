@@ -47,7 +47,7 @@ module hci_arbiter_tree
   input  logic                   clear_i,
   input  hci_interconnect_ctrl_t ctrl_i,
 
-  hci_core_intf.target    in    			   [0:NB_REQUESTS-1][0:NB_CHAN-1],
+  hci_core_intf.target    in    			   [0:NB_REQUESTS*NB_CHAN-1],
   hci_core_intf.initiator out                  [0:NB_CHAN-1]
 );
   
@@ -74,10 +74,9 @@ module hci_arbiter_tree
     EHW: `HCI_SIZE_GET_EHW(out)
   };
 
-  `HCI_INTF_3D_ARRAY(arb_out, clk_i, 0:NB_LEVELS-1, 0:MAX_ARBITERS_PER_LEVEL-1, 0:NB_CHAN-1);
+  `HCI_INTF_ARRAY(arb_out, clk_i, 0:NB_LEVELS*MAX_ARBITERS_PER_LEVEL*NB_CHAN-1);
 
-	generate
-		// genvar quo, rem;
+	generate		
 		for(genvar lvl=0; lvl<NB_LEVELS; lvl++) begin : arbiter_tree_levels
 
 			localparam int unsigned quo = NB_REQUESTS / (1 << lvl);
@@ -89,45 +88,53 @@ module hci_arbiter_tree
 				if(lvl==0) begin : level_0
 					// only arbiters are needed for atleast 2 requests together otherwise the remaining
 					// requests could be bypassed as shown in the else statement
+					localparam in_high_index = ii*NB_CHAN;
+					localparam in_low_index  = in_high_index + NB_CHAN;
+					localparam out_index  	 = lvl*MAX_ARBITERS_PER_LEVEL*NB_CHAN + (ii>>1)*NB_CHAN;
 					if(ii < 2*nb_arbiters) begin : arbiter_path 
 						hci_arbiter #(
 							.NB_CHAN ( NB_CHAN )
 						) i_arbiter (
-							.clk_i   ( clk_i               ),
-							.rst_ni  ( rst_ni              ),
-							.clear_i ( clear_i             ),
-							.ctrl_i  ( ctrl_i              ),
-							.in_high ( in[ii] 			   ),
-							.in_low  ( in[ii+1]      	   ),
-							.out     ( arb_out[lvl][ii>>1] )
+							.clk_i   ( clk_i               														),
+							.rst_ni  ( rst_ni              														),
+							.clear_i ( clear_i             														),
+							.ctrl_i  ( ctrl_i              														),
+							.in_high ( in[in_high_index : in_high_index + NB_CHAN-1] 	),
+							.in_low  ( in[in_low_index  : in_low_index + NB_CHAN-1] 	),
+							.out     ( arb_out[out_index: out_index + NB_CHAN-1] 			)
 						);
 					end else begin : bypass
 						for(genvar jj=0; jj<NB_CHAN; jj++) begin: assign_bankwise
 							hci_core_assign i_no_arbiter_level_0 (
-								.tcdm_target    ( in[ii][jj]        	   ),
-								.tcdm_initiator ( arb_out[lvl][ii >> 1][jj])
+								.tcdm_target    ( in[ii*NB_CHAN+jj]       ),
+								.tcdm_initiator ( arb_out[out_index + jj]	)
 							);
 						end
 					end 
 				end else begin : level_greater_than_0
+					
+					localparam in_high_index = (lvl-1)*MAX_ARBITERS_PER_LEVEL*NB_CHAN + ii*NB_CHAN;
+					localparam in_low_index  = in_high_index + NB_CHAN;
+					localparam out_index  	 = lvl*MAX_ARBITERS_PER_LEVEL*NB_CHAN + (ii>>1)*NB_CHAN;
+
 					if(ii < 2*nb_arbiters) begin : arbiter_path
 						hci_arbiter #(
 							.NB_CHAN ( NB_CHAN )
 						) i_arbiter (
-							.clk_i   ( clk_i               ),
-							.rst_ni  ( rst_ni              ),
-							.clear_i ( clear_i             ),
-							.ctrl_i  ( ctrl_i              ),
-							.in_high ( arb_out[lvl-1][ii]  ),
-							.in_low  ( arb_out[lvl-1][ii+1]),
-							.out     ( arb_out[lvl][ii >> 1])
-						);
+							.clk_i   ( clk_i               								  							),
+							.rst_ni  ( rst_ni              								  							),
+							.clear_i ( clear_i             								  							),
+							.ctrl_i  ( ctrl_i              								  							),
+							.in_high ( arb_out[in_high_index: in_high_index + NB_CHAN -1] ),
+              .in_low  ( arb_out[in_low_index : in_low_index + NB_CHAN - 1] ),
+              .out     ( arb_out[out_index    : out_index + NB_CHAN-1]	 	  	)
+            );
 					end else begin : bypass
-						for(genvar jj=0; jj<NB_CHAN; jj++) begin: assign_bankwise
+						for(genvar jj=0; jj<NB_CHAN; jj++) begin : assign_bankwise
 							hci_core_assign i_no_arbiter (
-								.tcdm_target    ( arb_out[lvl-1][ii][jj]   ),
-								.tcdm_initiator ( arb_out[lvl][ii >> 1][jj])
-							); 
+								.tcdm_target    ( arb_out[in_high_index + jj] ),
+								.tcdm_initiator ( arb_out[out_index + jj] 	  )
+							);
 						end
 					end 
 				end
@@ -135,8 +142,8 @@ module hci_arbiter_tree
 		end
 		for(genvar jj=0; jj<NB_CHAN; jj++) begin: assign_output_bankwise
 			hci_core_assign i_arbiter_output (
-				.tcdm_target    ( arb_out[NB_LEVELS-1][0][jj] ),
-				.tcdm_initiator ( out[jj]					  )
+				.tcdm_target    ( arb_out[(NB_LEVELS-1)*MAX_ARBITERS_PER_LEVEL*NB_CHAN + jj] ),
+        .tcdm_initiator ( out[jj]					  																				 )
 			); 
 		end
 	endgenerate
