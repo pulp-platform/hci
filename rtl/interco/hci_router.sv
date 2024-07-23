@@ -242,9 +242,9 @@ module hci_router
   //Re-order the interfaces such that the port requesting the lowest bits of data
   //are located at the correct bank offset
   hci_router_reorder #(
-    .NB_IN_CHAN  ( NB_IN_CHAN  ),
-    .NB_OUT_CHAN ( NB_OUT_CHAN ),
-    .FILTER_WRITE_R_VALID(FILTER_WRITE_R_VALID)
+    .NB_IN_CHAN           ( NB_IN_CHAN          ),
+    .NB_OUT_CHAN          ( NB_OUT_CHAN         ),
+    .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID)
   ) i_reorder (
     .clk_i   ( clk_i         ),
     .rst_ni  ( rst_ni        ),

@@ -27,8 +27,8 @@ module hci_core_r_id_filter
   import hci_package::*;
 #(
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
-parameter int unsigned N_OUTSTANDING = 2,
-              parameter bit MULTICYCLE_SUPPORT = 1'b0
+  parameter int unsigned N_OUTSTANDING = 2,
+  parameter bit MULTICYCLE_SUPPORT = 1'b0
 )
 (
   input  logic clk_i,
@@ -85,64 +85,65 @@ parameter int unsigned N_OUTSTANDING = 2,
   end else begin
     logic [IW-1:0] id_q;
     assign target_r_id = id_q;
-assign tcdm_target.gnt        = tcdm_initiator.gnt;
-assign tcdm_initiator.req     = tcdm_target.req;
-  always_ff @(posedge clk_i or negedge rst_ni)
-  begin
-    if(~rst_ni) begin
-      id_q <= '0;
+    assign tcdm_target.gnt        = tcdm_initiator.gnt;
+    assign tcdm_initiator.req     = tcdm_target.req;
+
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+      if(~rst_ni) begin
+        id_q <= '0;
+      end
+      else if (clear_i) begin
+        id_q <= '0;
+      end
+      else if(enable_i & tcdm_target.req) begin
+        id_q <= tcdm_target.id;
+      end
     end
-    else if (clear_i) begin
-      id_q <= '0;
+
+  /*
+  * ECC Handshake signals
+  */
+    if(EHW > 0) begin : ecc_handshake_gen
+      assign tcdm_initiator.ereq     = '{default: {tcdm_initiator.req}};
+      assign tcdm_target.egnt        = '{default: {tcdm_target.gnt}};
+      assign tcdm_target.r_evalid    = '{default: {tcdm_target.r_valid}};
+      assign tcdm_initiator.r_eready = '{default: {tcdm_initiator.r_ready}};
     end
-    else if(enable_i & tcdm_target.req) begin
-      id_q <= tcdm_target.id;
+    else begin : no_ecc_handshake_gen
+      assign tcdm_initiator.ereq     = '0;
+      assign tcdm_target.egnt        = '1; // assign all gnt's to 1
+      assign tcdm_target.r_evalid    = '0;
+      assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1 
     end
-  end
 
-/*
- * ECC Handshake signals
- */
-  if(EHW > 0) begin : ecc_handshake_gen
-    assign tcdm_initiator.ereq     = '{default: {tcdm_initiator.req}};
-    assign tcdm_target.egnt        = '{default: {tcdm_target.gnt}};
-    assign tcdm_target.r_evalid    = '{default: {tcdm_target.r_valid}};
-    assign tcdm_initiator.r_eready = '{default: {tcdm_initiator.r_ready}};
-  end
-  else begin : no_ecc_handshake_gen
-    assign tcdm_initiator.ereq     = '0;
-    assign tcdm_target.egnt        = '1; // assign all gnt's to 1
-    assign tcdm_target.r_evalid    = '0;
-    assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1 
-  end
+    /*
+    * The hci_core_r_id_filter works *only* if it is positioned at the 1-cycle latency boundary, i.e.,
+    * the boundary in a cluster where we are guaranteed that a grant on a read results in a response in
+    * the following cycle. Positioning it in another place results in hard-to-debug problems, typically
+    * showing up as r_valid's never being taken or being served to the wrong initiator by a OoO mux or a
+    * dynamic mux.
+    * These asserts try to avoid this scenario!
+    */
+    `ifndef SYNTHESIS
+    `ifndef VERILATOR
+      // gnt=1 & wen=1 => the following cycle r_valid=1
+      property p_gnt_wen_high_then_r_valid_high_next_cycle;
+        @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
+      endproperty
 
-/*
- * The hci_core_r_id_filter works *only* if it is positioned at the 1-cycle latency boundary, i.e.,
- * the boundary in a cluster where we are guaranteed that a grant on a read results in a response in
- * the following cycle. Positioning it in another place results in hard-to-debug problems, typically
- * showing up as r_valid's never being taken or being served to the wrong initiator by a OoO mux or a
- * dynamic mux.
- * These asserts try to avoid this scenario!
- */
-`ifndef SYNTHESIS
-`ifndef VERILATOR
-  // gnt=1 & wen=1 => the following cycle r_valid=1
-  property p_gnt_wen_high_then_r_valid_high_next_cycle;
-    @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
-  endproperty
+      assert_gnt_wen_high_then_r_valid_high_next_cycle: assert property (p_gnt_wen_high_then_r_valid_high_next_cycle)
+        else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
 
-  assert_gnt_wen_high_then_r_valid_high_next_cycle: assert property (p_gnt_wen_high_then_r_valid_high_next_cycle)
-    else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
+      // gnt=0 => the following cycle r_valid=0
+      property p_gnt_low_then_r_valid_low_next_cycle;
+        @(posedge clk_i) (!tcdm_initiator.gnt) |-> ##1 !tcdm_initiator.r_valid;
+      endproperty
 
-  // gnt=0 => the following cycle r_valid=0
-  property p_gnt_low_then_r_valid_low_next_cycle;
-    @(posedge clk_i) (!tcdm_initiator.gnt) |-> ##1 !tcdm_initiator.r_valid;
-  endproperty
-
-  assert_gnt_low_then_r_valid_low_next_cycle: assert property (p_gnt_low_then_r_valid_low_next_cycle)
-    else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
-`endif
-`endif
+      assert_gnt_low_then_r_valid_low_next_cycle: assert property (p_gnt_low_then_r_valid_low_next_cycle)
+        else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
+    `endif
+    `endif
   end
 
 /*
