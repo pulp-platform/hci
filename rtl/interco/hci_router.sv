@@ -53,6 +53,7 @@ module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
   parameter int unsigned NB_OUT_CHAN = 8,
+  parameter int unsigned FILTER_WRITE_R_VALID = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(in)  = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
 )
@@ -83,9 +84,7 @@ module hci_router
   localparam int unsigned AWC = AWM+$clog2(NB_OUT_CHAN);
 
   logic [$clog2(NB_OUT_CHAN)-1:0] bank_offset_s;
-  logic [NB_IN_CHAN-1:0] virt_in_gnt;
-  logic [NB_IN_CHAN-1:0] virt_in_rvalid;
-  logic                  virt_in_gnt_0_q;
+  logic virt_in_0_handshake_d, virt_in_0_handshake_q;
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(postfifo) = '{
     DW:  DWH,
@@ -140,14 +139,10 @@ module hci_router
         .tcdm_target    ( in            ),
         .tcdm_initiator ( postfifo      )
       );
-    end // no_fifo_gen
+    end : no_fifo_gen
     else begin: fifo_gen
       hci_core_fifo #(
         .FIFO_DEPTH                      ( FIFO_DEPTH                ),
-        .DW                              ( DWH                       ),
-        .BW                              ( AWH                       ),
-        .AW                              ( BWH                       ),
-        .UW                              ( UWH                       ),
         .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(postfifo) )
       ) i_fifo (
         .clk_i          ( clk_i         ),
@@ -157,7 +152,7 @@ module hci_router
         .tcdm_target    ( in            ),
         .tcdm_initiator ( postfifo      )
       );
-    end // fifo_gen
+    end : fifo_gen
 
     // unimplemented user bits = 0
     assign postfifo.r_user = '0;
@@ -188,18 +183,16 @@ module hci_router
       // in a word-interleaved scheme, the internal word-address is given
       // by the highest set of bits in postfifo[0].add, plus the bank-level offset
       always_comb
-      begin : address_generation
+      begin : bank_level_address_generation
         if(bank_offset_s + ii >= NB_OUT_CHAN)
-          virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR] + 1, 2'b0};
+          virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR] + 1, 2'b0}; //bank level address
         else
-          virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR], 2'b0};
-      end // address_generation
+          virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR], 2'b0}; //bank level address
+      end : bank_level_address_generation
       
       assign virt_in[ii].r_ready = postfifo.r_ready;
-      assign virt_in_gnt[ii] = virt_in[ii].gnt;
-      assign virt_in_rvalid[ii] = virt_in[ii].r_valid;
 
-    end // virt_in_bind
+    end : virt_in_bind
 
     // register REQ&GNT --> TCDM protocol assumes that (post FIFO)
     // the GNT and R_VALID are exactly asserted in consecutive
@@ -207,20 +200,21 @@ module hci_router
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
       if(~rst_ni) begin
-        virt_in_gnt_0_q <= '0;
+        virt_in_0_handshake_q <= '0;
       end
       else if(clear_i) begin
-        virt_in_gnt_0_q <= '0;
+        virt_in_0_handshake_q <= '0;
       end
       else begin
-        virt_in_gnt_0_q <= virt_in_gnt[0] & virt_in[0].req;
+        virt_in_0_handshake_q <= virt_in_0_handshake_d;
       end
     end
+    assign virt_in_0_handshake_d = virt_in[0].req & virt_in[0].gnt;  
     
     // only propagate GNT for those initiators that have asserted REQ
-    assign postfifo.gnt     = virt_in_gnt[0] & virt_in[0].req;
+    assign postfifo.gnt     = virt_in_0_handshake_d;
     // filter R_VALID with registered GNT
-    assign postfifo.r_valid = virt_in_rvalid[0] & virt_in_gnt_0_q;
+    assign postfifo.r_valid = virt_in[0].r_valid & virt_in_0_handshake_q;
 
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) 
     begin : virt_out_bind
@@ -241,15 +235,16 @@ module hci_router
 
       // unimplemented ecc bits = 0
       assign out[ii].ecc = '0;
-    end // virt_out_bind
+    end : virt_out_bind
 
   endgenerate
 
   //Re-order the interfaces such that the port requesting the lowest bits of data
   //are located at the correct bank offset
   hci_router_reorder #(
-    .NB_IN_CHAN  ( NB_IN_CHAN  ),
-    .NB_OUT_CHAN ( NB_OUT_CHAN )
+    .NB_IN_CHAN           ( NB_IN_CHAN          ),
+    .NB_OUT_CHAN          ( NB_OUT_CHAN         ),
+    .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID)
   ) i_reorder (
     .clk_i   ( clk_i         ),
     .rst_ni  ( rst_ni        ),
@@ -292,4 +287,4 @@ module hci_router
 `endif
 `endif;
 
-endmodule // hci_router
+endmodule : hci_router
