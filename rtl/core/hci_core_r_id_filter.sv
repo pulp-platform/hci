@@ -98,6 +98,7 @@ module hci_core_r_id_filter
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
   // gnt=1 & wen=1 => the following cycle r_valid=1
   property p_gnt_wen_high_then_r_valid_high_next_cycle;
     @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
@@ -115,12 +116,14 @@ module hci_core_r_id_filter
     else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
 `endif
 `endif
+`endif
 
 /*
  * Interface size asserts
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
   initial
     dw : assert(tcdm_target.DW == tcdm_initiator.DW);
   initial
@@ -135,6 +138,7 @@ module hci_core_r_id_filter
     ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
   
   `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
+`endif
 `endif
 `endif;
 

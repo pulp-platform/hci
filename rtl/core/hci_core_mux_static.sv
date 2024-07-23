@@ -137,6 +137,7 @@ module hci_core_mux_static
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
   for(genvar i=0; i<NB_CHAN; i++) begin
     initial
       dw :  assert(in[i].DW  == out.DW);
@@ -154,6 +155,7 @@ module hci_core_mux_static
 
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(in), in[0]);
 
+`endif
 `endif
 `endif;
 

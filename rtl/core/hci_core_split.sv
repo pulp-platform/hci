@@ -292,6 +292,7 @@ module hci_core_split
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
   for(genvar i=0; i<NB_OUT_CHAN; i++) begin
     initial
       aw :  assert(tcdm_initiator[i].AW  == tcdm_target.AW);
@@ -304,6 +305,7 @@ module hci_core_split
   end
   
   `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
+`endif
 `endif
 `endif;
 

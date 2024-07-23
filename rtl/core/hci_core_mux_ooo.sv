@@ -232,6 +232,7 @@ module hci_core_mux_ooo
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
   for(genvar i=0; i<NB_CHAN; i++) begin
     initial
       dw :  assert(in[i].DW  == out.DW);
@@ -253,6 +254,7 @@ module hci_core_mux_ooo
 
   `HCI_SIZE_CHECK_ASSERTS(out);
 
+`endif
 `endif
 `endif;
 

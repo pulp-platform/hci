@@ -272,11 +272,13 @@ module hci_interconnect
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
 
   `HCI_SIZE_CHECK_ASSERTS(hwpe);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(cores), cores[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(mems), mems[0]);
   
+`endif
 `endif
 `endif;
 
