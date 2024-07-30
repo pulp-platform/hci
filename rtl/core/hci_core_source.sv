@@ -97,7 +97,8 @@ module hci_core_source
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES = 1,
   parameter int unsigned PASSTHROUGH_FIFO = 0,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
+  parameter bit [2:0] DIM_ENABLE_1H = 3'b011 // Number of dimensions enabled in the address generator
 )
 (
   input logic clk_i,
@@ -137,7 +138,9 @@ module hci_core_source
   );
 
   // generate addresses
-  hwpe_stream_addressgen_v3 i_addressgen (
+  hwpe_stream_addressgen_v3 #(
+    .DIM_ENABLE_1H ( DIM_ENABLE_1H )
+  ) i_addressgen (
     .clk_i       ( clk_i                    ),
     .rst_ni      ( rst_ni                   ),
     .enable_i    ( address_gen_en           ),

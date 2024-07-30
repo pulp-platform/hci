@@ -86,7 +86,8 @@ module hci_core_sink
   parameter int unsigned TCDM_FIFO_DEPTH = 0,
   parameter int unsigned TRANS_CNT       = 16,
   parameter int unsigned MISALIGNED_ACCESSES = 1,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
+  parameter bit [2:0] DIM_ENABLE_1H = 3'b011 // Number of dimensions enabled in the address generator
 )
 (
   input logic clk_i,
@@ -138,7 +139,9 @@ module hci_core_sink
   };
   `HCI_INTF(tcdm_target, clk_i);
 
-  hwpe_stream_addressgen_v3 i_addressgen (
+  hwpe_stream_addressgen_v3 #(
+    .DIM_ENABLE_1H ( DIM_ENABLE_1H )
+  ) i_addressgen (
     .clk_i       ( clk_i                    ),
     .rst_ni      ( rst_ni                   ),
     .enable_i    ( address_gen_en           ),
