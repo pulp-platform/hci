@@ -144,10 +144,12 @@ module hci_log_interconnect_l2
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
   for(genvar ii=0; ii<N_MEM; ii++) begin
     initial
       r_valid_tied_high : assert(mems[ii].r_valid == 1'b1);
   end
+`endif
 `endif
 `endif;
 

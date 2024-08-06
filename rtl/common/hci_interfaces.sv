@@ -142,6 +142,7 @@ interface hci_core_intf (
 
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
 
   logic clk_assert;
   always @(clk)
@@ -197,6 +198,7 @@ interface hci_core_intf (
 
   HCI_RSP5: assert property(hci_rsp5_noretire_rule)
     else `HCI_ASSERT_SEVERITY("HCI RSP-5 NORETIRE protocol violation!", 1);
+`endif
 `endif
 `endif
 

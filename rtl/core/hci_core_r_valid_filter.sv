@@ -94,6 +94,7 @@ module hci_core_r_valid_filter
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
   initial
     dw : assert(tcdm_target.DW == tcdm_initiator.DW);
   initial
@@ -110,6 +111,7 @@ module hci_core_r_valid_filter
     ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
   
   `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
+`endif
 `endif
 `endif;
 
