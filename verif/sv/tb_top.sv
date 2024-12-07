@@ -310,7 +310,7 @@ module hci_tb
             for(int i=0;i<4;i++) begin
               in_hwpe.wen  =   hwpe_intc[ii].wen;
               create_address_and_data_hwpe(hwpe_intc[ii].add,hwpe_intc[ii].data,i,in_hwpe.add,in_hwpe.data,rolls_over_check[ii],rolls_over_check[ii]);
-              queue_stimuli_hwpe[i+ii].push_back(in_hwpe);
+              queue_stimuli_hwpe[i+ii*4].push_back(in_hwpe);
             end
             while(1) begin
               if(hwpe_intc[ii].gnt) begin
@@ -465,6 +465,7 @@ module hci_tb
   //------------- write transactions --------------
 
   static logic           already_checked[N_HWPE] = '{default: 0};
+  static logic           STOP_CHECK = 0;
 
   generate 
     for(genvar ii=0;ii<N_BANKS;ii++) begin : checker_block_write
@@ -477,6 +478,7 @@ module hci_tb
           okay = 0;
           wait(queue_out_intc_to_mem_write[ii].size() != 0);
           skip = 0;
+          STOP_CHECK = 0;
           $display("BANK %0d: START CHECK WRITE, time:%0t",ii,$time);
           recreate_address(queue_out_intc_to_mem_write[ii][0].add,ii,recreated_queue.add);
           recreated_queue.data = queue_out_intc_to_mem_write[ii][0].data;
@@ -504,24 +506,38 @@ module hci_tb
           //hwpe check branch
           if (!okay) begin
             for(int k=0;k<N_HWPE;k++) begin
-              if(!already_checked[k]) begin
+              
                 for(int i=0;i<4;i++)  begin
                   $display("BANK %0d: TO CHECK WRITE add = %0b, time:%0t",ii,recreated_queue.add,$time);
-                  $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k][0].wen,queue_stimuli_hwpe[i+k][0].add,i+k,$time);
-                  if (recreated_queue == queue_stimuli_hwpe[i+k][0])  begin
-                    $display("BANK %0d: skip before %0d, time: %0t",ii,skip,$time);
-                    check_hwpe(i,ii,okay,queue_stimuli_hwpe[4*k+:4],queue_out_intc_to_mem_write,skip);
-                    $display("BANK %0d: skip after %0d, time: %0t",ii,skip,$time);
-                    //if(okay>0) begin
-                    //  $display("BANK %0d: FOUND CORRESPONDENCE, delete first element of queue_out_intc_to_mem_write = %b, time:%0t",ii,queue_out_intc_to_mem_write[ii][0],$time);
-                    //end
-                    if(okay && HIDE_HWPE[i]) begin
-                      $display("-----------------------------------------");
-                      $display("Time %0t:    Test ***FAILED*** \n",$time);
-                      $display("The arbiter prioritized the hwpe, but it should have given priority to the logarithmic branch", i);
-                      $finish();
+                  $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k*4][0].wen,queue_stimuli_hwpe[i+k*4][0].add,i+k*4,$time);
+                  if (recreated_queue == queue_stimuli_hwpe[i+k*4][0])  begin
+                    if(!already_checked[k]) begin
+                      $display("BANK %0d: skip before %0d, time: %0t",ii,skip,$time);
+                      check_hwpe(i,ii,okay,queue_stimuli_hwpe[4*k+:4],queue_out_intc_to_mem_write,skip);
+                      $display("BANK %0d: skip after %0d, time: %0t",ii,skip,$time);
+                      STOP_CHECK = 1;
+                      //if(okay>0) begin
+                      //  $display("BANK %0d: FOUND CORRESPONDENCE, delete first element of queue_out_intc_to_mem_write = %b, time:%0t",ii,queue_out_intc_to_mem_write[ii][0],$time);
+                      //end
+                      if(okay && HIDE_HWPE[i]) begin
+                        $display("-----------------------------------------");
+                        $display("Time %0t:    Test ***FAILED*** \n",$time);
+                        $display("The arbiter prioritized the hwpe, but it should have given priority to the logarithmic branch", i);
+                        $finish();
+                      end
+                      if(!skip) begin
+                        hwpe_check[k]++;
+                        already_checked[k] = 1;
+                        $display("BANK %0d: new value for hwpe_check[%0d] = %0d, time: %0t",ii,k,hwpe_check[k],$time);
+                        $display("BANK %0d: new value for already_checked[%0d] = %0d, time: %0t",ii,k,already_checked[k],$time);
+                      end
+                      break;
+                    end else begin
+                      hwpe_check[k]++;
+                      okay = 1;
+                      STOP_CHECK = 1;
+                      $display("BANK %0d: ALREADY CHECKED new value for hwpe_check[%0d] = %0d, time: %0t",ii,k,hwpe_check[k],$time);
                     end
-                    break;
                   end
                 end
                 // while(1) begin
@@ -530,24 +546,19 @@ module hci_tb
                 //       break;
                 //     end
                 //   end
-                if(!skip) begin
-                  hwpe_check[k]++;
-                  already_checked[k] = 1;
-                end
-              end else begin
-                hwpe_check[k]++;
-                okay = 1;
-              end
+            
               //$display("BANK %0d: write hwpe_check = %0d time:%0t",ii,hwpe_check,$time);
               if(hwpe_check[k] == 4) begin
                 hwpe_check[k] = 0;
                 already_checked[k] = 0;
                   for(int i=0;i<4;i++) begin
-                    $display("BANK %0d: DELETE queue_stimuli_hwpe[%0d][0] = %0b time:%0t",ii,i+k,queue_stimuli_hwpe[i+k][0],$time);
-                    queue_stimuli_hwpe[i+k].delete(0);
-                    $display("BANK %0d: AFTER DELETE queue_stimuli_hwpe[%0d][0] = %0b time:%0t",ii,i+k,queue_stimuli_hwpe[i+k][0],$time);
+                    $display("BANK %0d: DELETE queue_stimuli_hwpe[%0d][0] = %0b time:%0t",ii,i+k*4,queue_stimuli_hwpe[i+k*4][0],$time);
+                    queue_stimuli_hwpe[i+k*4].delete(0);
+                    $display("BANK %0d: AFTER DELETE queue_stimuli_hwpe[%0d][0] = %0b time:%0t",ii,i+k*4,queue_stimuli_hwpe[i+k*4][0],$time);
                   end
                 end
+                if(STOP_CHECK)
+                  break;
             end
           end
           $display("END CHECK, eliminate data = %0b add = %0b, BANK %0d",queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add,ii);
@@ -576,6 +587,8 @@ module hci_tb
 
   //------------- read transactions -------------
 
+static logic           STOP_CHECK_READ = 0;
+
   // Check address
   generate 
     for(genvar ii=0;ii<N_BANKS;ii++) begin
@@ -592,6 +605,7 @@ module hci_tb
         while (1) begin
             wait(queue_out_intc_to_mem_read[ii].size() != 0);
             skip = 0;
+            STOP_CHECK_READ = 0;
             $display("BANK %0d: START CHECK READ, time:%0t",ii,$time);
               NOT_FOUND = 1;
               DATA_MISMATCH = 1;
@@ -639,9 +653,10 @@ module hci_tb
                 for(int k=0;k<N_HWPE;k++) begin
                   for(int i=0; i<4;i++) begin
                     $display("BANK %0d: TO CHECK READ add = %0b, time:%0t",ii,recreated_address,$time);
-                    $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k][0].wen,queue_stimuli_hwpe[i+k][0].add,i+k,$time);
-                    if(queue_stimuli_hwpe[i+k][0].wen && (recreated_address == queue_stimuli_hwpe[i+k][0].add)) begin
+                    $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k*4][0].wen,queue_stimuli_hwpe[i+k*4][0].add,i+k*4,$time);
+                    if(queue_stimuli_hwpe[i+k*4][0].wen && (recreated_address == queue_stimuli_hwpe[i+k*4][0].add)) begin
                         NOT_FOUND = 0;
+                        STOP_CHECK_READ = 1;
                         check_hwpe_read_task(i,ii,queue_stimuli_hwpe[4*k+:4],queue_out_intc_to_mem_read,skip);
                         if(!skip) begin
                           // while(1) begin
@@ -673,7 +688,7 @@ module hci_tb
                               $display("BANK %0d: check_read_hwpe = 4. delete the first element of queue_read_maser_hwpe, time:%0t",ii,check_hwpe_read[k],$time);
                               $display("BANK %0d: before queue_read_maser_hwpe = %0b, time:%0t",ii,queue_read_master_hwpe[k][0],$time);
                               for(int j=0;j<4;j++) begin
-                                queue_stimuli_hwpe[k+j].delete(0);
+                                queue_stimuli_hwpe[4*k+j].delete(0);
                               end
                               queue_read_master_hwpe[k].delete(0);
                               check_hwpe_read[k] = 0;
@@ -686,6 +701,8 @@ module hci_tb
                         break;
                       end
                     end
+                    if(STOP_CHECK_READ)
+                      break;
                   end
               end
               if(NOT_FOUND) begin
@@ -970,9 +987,9 @@ END COMMENT*/
       //okay = 0;
       skip=1;
       WARNING = 1'b1;
-      $display("-----------------------------------------");
-      $display("Time %0t: ***WARNING*** \n",$time);
-      $display("the pieces of the HWPE wide word are not written in the same clock cycle\n",$time);
+      //$display("-----------------------------------------");
+      //$display("Time %0t: ***WARNING*** \n",$time);
+      //$display("the pieces of the HWPE wide word are not written in the same clock cycle\n",$time);
       //$display("Time %0t:    Test ***FAILED*** \n",$time);
       //$display("ERROR in hwpe branch during write-transaction check\n");
       //$display("Wide-word and address sent by hwpe: DATA %b%b%b%b ADD %b", queue_stimuli_hwpe[0][0].data,queue_stimuli_hwpe[1][0].data,queue_stimuli_hwpe[2][0].data,queue_stimuli_hwpe[3][0].data,queue_stimuli_hwpe[0][0].add);
@@ -1028,9 +1045,9 @@ END COMMENT*/
         //okay = 0;
         skip = 1;
         WARNING = 1'b1;
-        $display("-----------------------------------------");
-        $display("Time %0t: ***WARNING*** \n",$time);
-        $display("the pieces of the HWPE wide word are not read in the same clock cycle\n",$time);
+        //$display("-----------------------------------------");
+        //$display("Time %0t: ***WARNING*** \n",$time);
+        //$display("the pieces of the HWPE wide word are not read in the same clock cycle\n",$time);
         //$display("Time %0t:    Test ***FAILED*** \n",$time);
         //$display("ERROR in hwpe branch during write-transaction check\n");
         //$display("Wide-word and address sent by hwpe: DATA %b%b%b%b ADD %b", queue_stimuli_hwpe[0][0].data,queue_stimuli_hwpe[1][0].data,queue_stimuli_hwpe[2][0].data,queue_stimuli_hwpe[3][0].data,queue_stimuli_hwpe[0][0].add);
