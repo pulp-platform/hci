@@ -372,7 +372,9 @@ module hci_tb
         while(1) begin
           @(posedge clk);
           if(hwpe_intc[ii].r_valid && flag_read_hwpe[ii]) begin
+            $display("queue_read_master_hwpe before: %b,hwpe %0d,time %0t",queue_read_master_hwpe[ii][0],ii,$time);
             queue_read_master_hwpe[ii].push_back(hwpe_intc[ii].r_data);
+            $display("queue_read_master_hwpe after: %b,hwpe %0d,time %0t",queue_read_master_hwpe[ii][0],ii,$time);
           end
         end
       end
@@ -727,6 +729,8 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                           $display("BANK %0d: DELETE queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
                           queue_out_intc_to_mem_read[ii].delete(0);
                           $display("BANK %0d: AFTER queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
+                          wait(queue_read[ii].size() != 0);
+                          queue_read[ii].delete(0);
                           STOP_CHECK_READ = 1;
                         end
                         break;
@@ -1121,7 +1125,7 @@ END COMMENT*/
 
     file = $fopen("./verif/simvectors/stimuli_processed/master_log_0.txt","r");
     if (file == 0) begin
-      $dispay("ERROR: cannot open file master_log_0.txt");
+      $display("ERROR: cannot open file master_log_0.txt");
       $finish();
     end
 

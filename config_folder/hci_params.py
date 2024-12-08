@@ -3,7 +3,7 @@
 ##############################
 
 # Number of HWPEs attached to the port
-N_HWPE=2
+N_HWPE=1
 # Number of Core ports                                                  
 N_CORE=1
 # Number of DMA ports                                                  
