@@ -211,7 +211,7 @@ module hci_tb
   generate
     for(genvar ii=0; ii < N_HWPE ; ii++) begin: app_driver_hwpe
       application_driver#(
-        .MASTER_NUMBER(0),
+        .MASTER_NUMBER(ii),
         .IS_HWPE(1),
         .DATA_WIDTH(4*DATA_WIDTH),
         .ADD_WIDTH(ADD_WIDTH),
@@ -239,7 +239,7 @@ module hci_tb
   static int unsigned           n_correct = 0;
   static int unsigned           hwpe_check[N_HWPE] = '{default: 0};
   static int unsigned           check_hwpe_read[N_HWPE] = '{default: 0};
-  //static int unsigned           check_hwpe_read_add = 0;
+  static int unsigned           check_hwpe_read_add[N_HWPE] = '{default: 0};
   logic [4*N_HWPE-1:0]            HIDE_HWPE = '0;
   logic [N_MASTER-N_HWPE-1:0]   HIDE_LOG = '0;
 
@@ -310,6 +310,7 @@ module hci_tb
             for(int i=0;i<4;i++) begin
               in_hwpe.wen  =   hwpe_intc[ii].wen;
               create_address_and_data_hwpe(hwpe_intc[ii].add,hwpe_intc[ii].data,i,in_hwpe.add,in_hwpe.data,rolls_over_check[ii],rolls_over_check[ii]);
+              $display("HWPE %0d, add to the queue %0d the address %b, time: %0t",ii,i+ii*4,in_hwpe.add,$time);
               queue_stimuli_hwpe[i+ii*4].push_back(in_hwpe);
             end
             while(1) begin
@@ -508,6 +509,9 @@ module hci_tb
             for(int k=0;k<N_HWPE;k++) begin
               
                 for(int i=0;i<4;i++)  begin
+                  if (queue_stimuli_hwpe[i+k*4].size() == 0) begin
+                    continue;
+                  end
                   $display("BANK %0d: TO CHECK WRITE add = %0b, time:%0t",ii,recreated_queue.add,$time);
                   $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k*4][0].wen,queue_stimuli_hwpe[i+k*4][0].add,i+k*4,$time);
                   if (recreated_queue == queue_stimuli_hwpe[i+k*4][0])  begin
@@ -588,6 +592,7 @@ module hci_tb
   //------------- read transactions -------------
 
 static logic           STOP_CHECK_READ = 0;
+logic                  already_checked_read[N_HWPE] = '{default: 0};
 
   // Check address
   generate 
@@ -652,12 +657,20 @@ static logic           STOP_CHECK_READ = 0;
               if(hwpe_read) begin
                 for(int k=0;k<N_HWPE;k++) begin
                   for(int i=0; i<4;i++) begin
+                    if (queue_stimuli_hwpe[i+k*4].size() == 0) begin
+                      continue;
+                    end
                     $display("BANK %0d: TO CHECK READ add = %0b, time:%0t",ii,recreated_address,$time);
                     $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k*4][0].wen,queue_stimuli_hwpe[i+k*4][0].add,i+k*4,$time);
                     if(queue_stimuli_hwpe[i+k*4][0].wen && (recreated_address == queue_stimuli_hwpe[i+k*4][0].add)) begin
                         NOT_FOUND = 0;
                         STOP_CHECK_READ = 1;
-                        check_hwpe_read_task(i,ii,queue_stimuli_hwpe[4*k+:4],queue_out_intc_to_mem_read,skip);
+                        if(!already_checked_read[k]) begin
+                          check_hwpe_read_task(i,ii,queue_stimuli_hwpe[4*k+:4],queue_out_intc_to_mem_read,skip);
+                          already_checked_read[k] = !skip;
+                        end else begin
+                          skip = 0;
+                        end
                         if(!skip) begin
                           // while(1) begin
                           //   @(posedge clk);
@@ -665,15 +678,29 @@ static logic           STOP_CHECK_READ = 0;
                           //     break;
                           //   end
                           // end
-                          $display("BANK %0d: FOUND CORRESPONDENCE, delete first element of queue_out_intc_to_mem_read add = %b, queue_out_intc_to_mem_read data = %b, time:%0t",ii,queue_out_intc_to_mem_read[ii][0].add,queue_out_intc_to_mem_read[ii][0].data,$time);
+                          $display("BANK %0d: FOUND CORRESPONDENCE, time:%0t",ii,$time);
+                          check_hwpe_read_add[k]++;
+                          $display("BANK %0d: check_hwpe_read_add[%0d] = %0d, time:%0t",ii,k,check_hwpe_read_add[k],$time);
+                          if(check_hwpe_read_add[k] == 4) begin
+                            for(int j=0;j<4;j++) begin
+                              $display("BANK %0d: DELETE queue_stimuli_hwpe[%0d] = %b, time:%0t",ii,4*k+j,queue_stimuli_hwpe[4*k+j][0].add,$time);
+                                queue_stimuli_hwpe[4*k+j].delete(0);
+                                check_hwpe_read_add[k] = 0;
+                                $display("BANK %0d: AFTER queue_stimuli_hwpe[%0d] = %b, time:%0t",ii,4*k+j,queue_stimuli_hwpe[4*k+j][0].add,$time);
+                              end
+                              already_checked_read[k] = 0;
+                          end
                           //$display("BANK %0d: check_hwpe_read_add = %0d",ii,check_hwpe_read_add);
-                          $display("BANK %0d: AFTER DELETE queue_out_intc_to_mem_read add = %b, queue_out_intc_to_mem_read data = %b, time:%0t",ii,queue_out_intc_to_mem_read[ii][0].add,queue_out_intc_to_mem_read[ii][0].data,$time);
+                          //$display("BANK %0d: AFTER DELETE queue_out_intc_to_mem_read add = %b, queue_out_intc_to_mem_read data = %b, time:%0t",ii,queue_out_intc_to_mem_read[ii][0].add,queue_out_intc_to_mem_read[ii][0].data,$time);
                           if(HIDE_HWPE[i]) begin
                             $display("-----------------------------------------");
                             $display("Time %0t:    Test ***FAILED*** \n",$time);
                             $display("The arbiter prioritized the hwpe, but it should have given priority to the logarithmic branch");
                             $finish();
                           end
+                          $display("BANK %0d: DELETE queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
+                          queue_out_intc_to_mem_read[ii].delete(0);
+                          $display("BANK %0d: AFTER queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
                           wait(queue_read_master_hwpe[k].size() != 0 && queue_read[ii].size() != 0);
                           $display("BANK %0d: size queue read master hwpe !=0. queue_read_master_hwpe = %b, queue_read = %b, time:%0t",ii,queue_read_master_hwpe[0][0],queue_read[ii][0],$time);
                           if(queue_read_master_hwpe[k][0][i*DATA_WIDTH +: DATA_WIDTH] == queue_read[ii][0]) begin
@@ -687,17 +714,18 @@ static logic           STOP_CHECK_READ = 0;
                             if(check_hwpe_read[k] == 4) begin
                               $display("BANK %0d: check_read_hwpe = 4. delete the first element of queue_read_maser_hwpe, time:%0t",ii,check_hwpe_read[k],$time);
                               $display("BANK %0d: before queue_read_maser_hwpe = %0b, time:%0t",ii,queue_read_master_hwpe[k][0],$time);
-                              for(int j=0;j<4;j++) begin
-                                queue_stimuli_hwpe[4*k+j].delete(0);
-                              end
                               queue_read_master_hwpe[k].delete(0);
                               check_hwpe_read[k] = 0;
                               $display("BANK %0d: after queue_read_maser_hwpe = %0b, time:%0t",ii,queue_read_master_hwpe[k][0],$time);
                             end
                             
                           end
+                        end else begin
+                          $display("BANK %0d: DELETE queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
+                          queue_out_intc_to_mem_read[ii].delete(0);
+                          $display("BANK %0d: AFTER queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
+                          STOP_CHECK_READ = 1;
                         end
-                        queue_out_intc_to_mem_read[ii].delete(0);
                         break;
                       end
                     end
