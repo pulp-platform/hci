@@ -9,7 +9,8 @@ module application_driver #(
     hci_core_intf.initiator        master,
     input logic                    rst_ni,
     input logic                    clear_i,
-    input logic                    clk
+    input logic                    clk,
+    output logic                   end_stimuli
 );  
 
     initial begin: application_block // one application block for each master`s port must be instantiated in the tb
@@ -32,6 +33,7 @@ module application_driver #(
         master.r_ready = 1;
         master.user = 0;
         
+        end_stimuli = 1'b0;
 
         wait (rst_ni);
         if(IS_HWPE) begin
@@ -71,6 +73,8 @@ module application_driver #(
                 @(posedge clk);
             end
         end
+        $display("MASTER %0d, end stimuli. time: %0t",MASTER_NUMBER,$time);
+        end_stimuli = 1'b1;
         $fclose(stim);
     end
 endmodule

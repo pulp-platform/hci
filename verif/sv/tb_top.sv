@@ -188,6 +188,7 @@ module hci_tb
   //-              APPLICATION DRIVERS              -
   //-------------------------------------------------
 
+  static logic [0:N_MASTER-1]         END_STIMULI = '0;
   // CORES + DMA + EXT
   generate
     for(genvar ii=0; ii < N_MASTER - N_HWPE ; ii++) begin: app_driver
@@ -202,7 +203,8 @@ module hci_tb
         .master(all_except_hwpe[ii]),
         .rst_ni(rst_n),
         .clear_i(clear_i),
-        .clk(clk)
+        .clk(clk),
+        .end_stimuli(END_STIMULI[ii])
       );
     end
   endgenerate
@@ -221,7 +223,8 @@ module hci_tb
           .master(hwpe_intc[ii]),
           .rst_ni(rst_n),
           .clear_i(clear_i),
-          .clk(clk)
+          .clk(clk),
+          .end_stimuli(END_STIMULI[N_MASTER-N_HWPE+ii])
       );
     end
   endgenerate
@@ -884,12 +887,33 @@ END COMMENT*/
   end
 */
   //--------------------------------------------
+  //-             REAL BANDWIDTH               -
+  //--------------------------------------------
+  static real                 band_real;
+  initial begin
+    time                 start_time, end_time;
+    real                 tot_time,tot_data;
+    band_real = -1;
+    wait(rst_n);
+    start_time = $time;
+    $display("--------------------------START TIME : %0t",start_time);
+    wait(&END_STIMULI);
+    end_time = $time;
+    $display("--------------------------STOP TIME : %0t",end_time);
+    $display("START TIME: %f",start_time);
+    tot_time = end_time - start_time; // ns
+    $display("tot_time_real: %f",tot_time);
+    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER - N_HWPE) + (N_TEST * 4*DATA_WIDTH) * N_HWPE); // bit
+    $display("tot_data_real: %f",tot_data);
+    band_real = tot_data/tot_time; // Gbps
+    $display("band_real: %f",band_real);
+
+  end
+  //--------------------------------------------
   //-             END OF SIMULATION            -
   //--------------------------------------------
 
-
-
-
+ static real                   band_theo;
  logic                         WARNING = 1'b0;
   initial begin
     wait (n_checks >= N_TEST*(N_MASTER-N_HWPE)+N_HWPE*N_TEST*4);
@@ -903,6 +927,10 @@ END COMMENT*/
     $display("n_correct = %0d out of n_check = %0d",n_correct,n_checks);
     $display("expected n_check = %0d",N_TEST*(N_MASTER-N_HWPE)+N_HWPE*N_TEST*4);
     $display("note: each hwpe transaction consists of 4 checks");
+    calculate_theoretical_bandwidth(band_theo);
+    wait(band_real>=0);
+    $display("THEORETICAL BANDWIDTH: %f Gbps",band_theo);
+    $display("REAL BANDWIDTH: %f Gbps",band_real);
     if(WARNING) begin
       $display("WARNING: the pieces of the HWPE wide word are written multiple times in the banks\n");
     end
@@ -1085,5 +1113,33 @@ END COMMENT*/
     end
   endtask
 
+  task calculate_theoretical_bandwidth(output real band_theo);
+    
+    int file, line_count, ret_code;
+    real tot_time,tot_data;
+    string line;
+
+    file = $fopen("./verif/simvectors/stimuli_processed/master_log_0.txt","r");
+    if (file == 0) begin
+      $dispay("ERROR: cannot open file master_log_0.txt");
+      $finish();
+    end
+
+    line_count = 0;
+
+    while(!$feof(file)) begin
+      ret_code = $fgets(line,file);
+      line_count++;
+    end
+    $display("N_LINES: %f",line_count);
+    $fclose(file);
+
+    tot_time = line_count * CLK_PERIOD; // ns
+    $display("tot_time: %f",tot_time);
+    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER - N_HWPE) + (N_TEST * 4*DATA_WIDTH) * N_HWPE); // bit
+    $display("tot_data: %f",tot_data);
+    band_theo = tot_data/tot_time; // Gbps
+    $display("band_theo: %f",band_theo);
+  endtask
 
 endmodule
