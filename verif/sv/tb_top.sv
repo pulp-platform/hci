@@ -655,7 +655,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               end
               // HWPE branch
               if(hwpe_read) begin
-                for(int k=0;k<N_HWPE;k++) begin
+                for(int k=0;k<N_HWPE;k++) begin 
                   for(int i=0; i<4;i++) begin
                     if (queue_stimuli_hwpe[i+k*4].size() == 0) begin
                       continue;
