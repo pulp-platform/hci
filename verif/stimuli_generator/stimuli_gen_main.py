@@ -96,7 +96,7 @@ else:
         file.write('zero')
 
 if (N_EXT > 0):
-    for i in range(N_EXT):
+    for i in range(N_CORE,N_CORE + N_EXT):
         parser.add_argument(f'--master_log{i}', nargs='+', default=[], required=True, help=f"Specify the parameters for memory access related to master_log{i}:\n"
                                                                                             "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
                                                                                             "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
@@ -114,7 +114,7 @@ else:
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
 if (N_DMA > 0):
-    for i in range(N_DMA):
+    for i in range(N_CORE + N_EXT,N_CORE + N_EXT + N_DMA):
         parser.add_argument(f'--master_log{i}', nargs='+', default=[], required=True, help=f"Specify the parameters for memory access related to master_log{i}:\n"
                                                                                             "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
                                                                                             "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
@@ -134,7 +134,7 @@ else:
 
 if (N_HWPE > 0):
     for j in range(N_HWPE):
-        parser.add_argument(f'--master_hwpe{j}', nargs='+', default=[], required=True, help=f"Specify the parameters for memory access related to master_hwpe{i}:\n"
+        parser.add_argument(f'--master_hwpe{j}', nargs='+', default=[], required=True, help=f"Specify the parameters for memory access related to master_hwpe{j}:\n"
                                                                                             "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
                                                                                             "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
                                                                                             "   - Stride0 (required for linear, 2D, and 3D accesses)\n"
@@ -151,6 +151,7 @@ else:
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
 
+N_MASTER = N_CORE + N_DMA + N_EXT + N_HWPE
 
 args = parser.parse_args()
 #end argparse
@@ -187,7 +188,7 @@ for n in range(N_MASTER):
             master_name = f'master_hwpe{n-(N_MASTER-N_HWPE)}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_hwpe_{n-(N_MASTER-N_HWPE)}.txt"))
             master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,4*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER) # wide word for the hwpe
-    
+            
     config, start_address, stride0, len_d0, stride1, len_d1, stride2 = (getattr(args,master_name, None) + [0] * 7)[:7]
     stride0 = int(stride0)
     len_d0 = int(len_d0)

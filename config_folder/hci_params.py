@@ -3,9 +3,9 @@
 ##############################
 
 # Number of HWPEs attached to the port
-N_HWPE=0
+N_HWPE=8
 # Number of Core ports                                                  
-N_CORE=8
+N_CORE=0
 # Number of DMA ports                                                  
 N_DMA=0
 # Number of External ports                                               

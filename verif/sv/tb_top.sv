@@ -38,7 +38,10 @@ module hci_tb
   //---------------------------------------------
 
   // HCI parameters
-
+  localparam int unsigned N_HWPE_REAL             = `N_HWPE                                            ; // Number of HWPEs attached to the port
+  localparam int unsigned N_CORE_REAL             = `N_CORE                                            ; // Number of Core ports
+  localparam int unsigned N_DMA_REAL              = `N_DMA                                             ; // Number of DMA ports
+  localparam int unsigned N_EXT_REAL              = `N_EXT                                             ; // Number of External ports
   localparam int unsigned N_HWPE                  = (`N_HWPE == 0) ? 1 : `N_HWPE                       ; // Number of HWPEs attached to the port
   localparam int unsigned N_CORE                  = (`N_CORE == 0) ? 1 : `N_CORE                       ; // Number of Core ports
   localparam int unsigned N_DMA                   = (`N_DMA == 0) ? 1 : `N_DMA                         ; // Number of DMA ports
