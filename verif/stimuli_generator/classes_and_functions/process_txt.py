@@ -21,20 +21,25 @@ def unfold_raw_txt(folder_path_raw,folder_path_processed,IW,DATA_WIDTH,ADD_WIDTH
         with open(filepath_read, 'r', encoding = "ascii") as file_read:
             with open(filepath_write, 'w', encoding="ascii") as file_write:
                 for line in file_read:
-                    values = line.split()
-                    id = values[0]
-                    cycle_offset = values[1]               
-                    wen = values[2]
-                    data = values[3]
-                    add = values[4]
-                    if "log" in file:
-                        for _ in range(int(cycle_offset)-1):
-                            file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
+                    if line != 'zero':
+                        values = line.split()
+                        id = values[0]
+                        cycle_offset = values[1]               
+                        wen = values[2]
+                        data = values[3]
+                        add = values[4]
+                        if "log" in file:
+                            for _ in range(int(cycle_offset)-1):
+                                file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
+                        else:
+                            for _ in range(int(cycle_offset)-1):
+                                file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(4*DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
+                        file_write.write('1 ' + id + " " + wen + " " + data + " " + add + "\n")
                     else:
-                        for _ in range(int(cycle_offset)-1):
+                        if "log" in file:
+                            file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
+                        else:
                             file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(4*DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
-                    file_write.write('1 ' + id + " " + wen + " " + data + " " + add + "\n")
-
 
 
 # 2) ++PAD++ txt files to have the same number of lines

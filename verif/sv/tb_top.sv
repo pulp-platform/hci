@@ -9,7 +9,8 @@ module hci_tb
   ();
 
   // Simulation parameters 
-  localparam int unsigned     N_TEST             =          `N_TEST; 
+  localparam int unsigned     N_TEST             =          `N_TEST;
+  localparam int unsigned     TOT_CHECK          =          `N_TEST*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*`N_TEST*4;
   
   //--------------------------------------------
   //-             CLOCK AND RESET              -
@@ -37,10 +38,11 @@ module hci_tb
   //---------------------------------------------
 
   // HCI parameters
-  localparam int unsigned N_HWPE                  = `N_HWPE                                            ; // Number of HWPEs attached to the port
-  localparam int unsigned N_CORE                  = `N_CORE                                            ; // Number of Core ports
-  localparam int unsigned N_DMA                   = `N_DMA                                             ; // Number of DMA ports
-  localparam int unsigned N_EXT                   = `N_EXT                                             ; // Number of External ports
+
+  localparam int unsigned N_HWPE                  = (`N_HWPE == 0) ? 1 : `N_HWPE                       ; // Number of HWPEs attached to the port
+  localparam int unsigned N_CORE                  = (`N_CORE == 0) ? 1 : `N_CORE                       ; // Number of Core ports
+  localparam int unsigned N_DMA                   = (`N_DMA == 0) ? 1 : `N_DMA                         ; // Number of DMA ports
+  localparam int unsigned N_EXT                   = (`N_EXT == 0) ? 1 : `N_EXT                         ; // Number of External ports
   localparam int unsigned N_MASTER                = N_HWPE + N_CORE + N_DMA + N_EXT                    ; // Total number of masters
   localparam int unsigned TS_BIT                  = `TS_BIT                                            ; // TEST_SET_BIT (for Log Interconnect)
   localparam int unsigned IW                      = $clog2(N_TEST*N_MASTER)                            ; // ID Width
@@ -570,8 +572,7 @@ module hci_tb
                   break;
             end
           end
-          $display("END CHECK, eliminate data = %0b add = %0b, BANK %0d",queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add,ii);
-          $display("AFTER ELIMINATE data = %0b add = %0b, BANK %0d",queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add,ii);
+          $display("END CHECK, eliminate queue_out_intc_to_mem_write[%0d][0] data = %0b add = %0b, BANK %0d",ii,queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add,ii);
           $display("update n_correct, with okay = %0d, before n_correct = %0d",okay,n_correct);
           if(!okay && !skip) begin
               $display("-----------------------------------------");
@@ -589,6 +590,7 @@ module hci_tb
             $display("n_checks = %0d",n_checks);
           end
           queue_out_intc_to_mem_write[ii].delete(0);
+          $display("AFTER ELIMINATE data = %0b add = %0b, BANK %0d",queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add,ii);
         end
       end
     end
@@ -920,16 +922,16 @@ END COMMENT*/
  static real                   band_theo;
  logic                         WARNING = 1'b0;
   initial begin
-    wait (n_checks >= N_TEST*(N_MASTER-N_HWPE)+N_HWPE*N_TEST*4);
+    wait (n_checks >= TOT_CHECK);
     $display("n_checks final = %0d",n_checks);
     $display("------ Simulation End ------");
-    if(n_correct == N_TEST*(N_MASTER-N_HWPE)+N_HWPE*N_TEST*4) begin
+    if(n_correct == TOT_CHECK) begin
       $display("    Test ***PASSED*** \n");
     end else begin
       $display("    Test ***FAILED*** \n");
     end
     $display("n_correct = %0d out of n_check = %0d",n_correct,n_checks);
-    $display("expected n_check = %0d",N_TEST*(N_MASTER-N_HWPE)+N_HWPE*N_TEST*4);
+    $display("expected n_check = %0d",TOT_CHECK);
     $display("note: each hwpe transaction consists of 4 checks");
     calculate_theoretical_bandwidth(band_theo);
     wait(band_real>=0);

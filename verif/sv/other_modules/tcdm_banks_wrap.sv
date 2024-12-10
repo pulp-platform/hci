@@ -46,7 +46,7 @@ module tcdm_banks_wrap #(
         resp_id_q <= resp_id_d;
       end
     end
-
+/*
     // random generation of gnt signal
     always_ff @(posedge clk_i or negedge rst_ni) begin : gnt_gen
       if(~rst_ni) begin
@@ -55,7 +55,9 @@ module tcdm_banks_wrap #(
         tcdm_slave[i].gnt <= $urandom;
       end
     end
-
+*/
+    //gnt signal
+    assign tcdm_slave[i].gnt    =  1'b1;
 
 
 

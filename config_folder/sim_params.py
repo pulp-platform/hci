@@ -6,7 +6,7 @@
 N_TEST=100 
 # Maximum cycle offset: needed if you want to generate the list of the transaction with masters_main.py. It indicates the maximum number of clock cycles 
 # between two consecutive requests coming from the same master. Note: the minimum value for this parameter is 1.
-MAX_CYCLE_OFFSET=5
+MAX_CYCLE_OFFSET=1
 # Clock period in ns
 CLK_PERIOD=50
 # Application delay in ns
