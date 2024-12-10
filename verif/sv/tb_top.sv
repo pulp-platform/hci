@@ -593,7 +593,7 @@ module hci_tb
           $display("AFTER ELIMINATE data = %0b add = %0b, BANK %0d",queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add,ii);
         end
       end
-    end
+    end 
   endgenerate
 
   //------------- read transactions -------------
