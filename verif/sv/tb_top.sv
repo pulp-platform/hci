@@ -47,6 +47,7 @@ module hci_tb
   localparam int unsigned N_DMA                   = (`N_DMA == 0) ? 1 : `N_DMA                         ; // Number of DMA ports
   localparam int unsigned N_EXT                   = (`N_EXT == 0) ? 1 : `N_EXT                         ; // Number of External ports
   localparam int unsigned N_MASTER                = N_HWPE + N_CORE + N_DMA + N_EXT                    ; // Total number of masters
+  localparam int unsigned N_MASTER_REAL           = N_HWPE_REAL + N_CORE_REAL + N_DMA_REAL + N_EXT_REAL; // Total number of masters
   localparam int unsigned TS_BIT                  = `TS_BIT                                            ; // TEST_SET_BIT (for Log Interconnect)
   localparam int unsigned IW                      = $clog2(N_TEST*N_MASTER)                            ; // ID Width
   localparam int unsigned EXPFIFO                 = `EXPFIFO                                           ; // FIFO Depth for HWPE Interconnect
@@ -912,7 +913,7 @@ END COMMENT*/
     $display("START TIME: %f",start_time);
     tot_time = end_time - start_time; // ns
     $display("tot_time_real: %f",tot_time);
-    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER - N_HWPE) + (N_TEST * 4*DATA_WIDTH) * N_HWPE); // bit
+    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * 4*DATA_WIDTH) * N_HWPE_REAL); // bit
     $display("tot_data_real: %f",tot_data);
     band_real = tot_data/tot_time; // Gbps
     $display("band_real: %f",band_real);
@@ -1145,7 +1146,7 @@ END COMMENT*/
 
     tot_time = line_count * CLK_PERIOD; // ns
     $display("tot_time: %f",tot_time);
-    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER - N_HWPE) + (N_TEST * 4*DATA_WIDTH) * N_HWPE); // bit
+    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * 4*DATA_WIDTH) * N_HWPE_REAL); // bit
     $display("tot_data: %f",tot_data);
     band_theo = tot_data/tot_time; // Gbps
     $display("band_theo: %f",band_theo);
