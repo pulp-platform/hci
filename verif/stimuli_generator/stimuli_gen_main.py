@@ -92,6 +92,7 @@ else:
     CORE_ZERO_FLAG = 1
     N_CORE = 1 
     filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + "master_log_0.txt"))
+    os.makedirs(os.path.dirname(filepath),exist_ok=True)
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
 
@@ -111,6 +112,7 @@ else:
     EXT_ZERO_FLAG = 1
     N_EXT = 1
     filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{N_CORE}.txt"))
+    os.makedirs(os.path.dirname(filepath),exist_ok=True)
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
 if (N_DMA > 0):
@@ -129,6 +131,7 @@ else:
     DMA_ZERO_FLAG = 1
     N_DMA = 1
     filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{N_CORE+N_EXT}.txt"))
+    os.makedirs(os.path.dirname(filepath),exist_ok=True)
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
 
@@ -148,6 +151,7 @@ else:
     HWPE_ZERO_FLAG = 1
     N_HWPE = 1
     filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + "master_hwpe_0.txt"))
+    os.makedirs(os.path.dirname(filepath),exist_ok=True)
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
 
@@ -158,7 +162,9 @@ args = parser.parse_args()
 
 #generate the txt files containing the stimuli for the testbench
 next_start_id = 0
-LIST_OF_FORBIDDEN_ADDRESSES = []
+LIST_OF_FORBIDDEN_ADDRESSES_WRITE = []
+LIST_OF_FORBIDDEN_ADDRESSES_READ = []
+
 for n in range(N_MASTER): 
     if n < N_CORE:
         if CORE_ZERO_FLAG:
@@ -166,29 +172,29 @@ for n in range(N_MASTER):
         else:
             master_name = f'master_log{n}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER,n) #create the instance "master" from the class "stimuli generator"
     elif n < N_CORE + N_EXT:
         if EXT_ZERO_FLAG:
             continue
         else:
             master_name = f'master_log{n}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER,n) #create the instance "master" from the class "stimuli generator"
     elif n < N_CORE + N_EXT + N_DMA:
         if DMA_ZERO_FLAG:
             continue
         else:
             master_name = f'master_log{n}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER,n) #create the instance "master" from the class "stimuli generator"
     else:
         if HWPE_ZERO_FLAG:
             continue
         else:
             master_name = f'master_hwpe{n-(N_MASTER-N_HWPE)}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_hwpe_{n-(N_MASTER-N_HWPE)}.txt"))
-            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,4*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER) # wide word for the hwpe
-            
+            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,4*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER,n) # wide word for the hwpe
+
     config, start_address, stride0, len_d0, stride1, len_d1, stride2 = (getattr(args,master_name, None) + [0] * 7)[:7]
     stride0 = int(stride0)
     len_d0 = int(len_d0)
@@ -197,13 +203,13 @@ for n in range(N_MASTER):
     stride2 = int(stride2)
     match config:
         case '0':
-            next_start_id = master.random_gen(next_start_id,LIST_OF_FORBIDDEN_ADDRESSES)
+            next_start_id = master.random_gen(next_start_id,LIST_OF_FORBIDDEN_ADDRESSES_READ,LIST_OF_FORBIDDEN_ADDRESSES_WRITE)
         case '1':
-            next_start_id = master.linear_gen(stride0,start_address,next_start_id,LIST_OF_FORBIDDEN_ADDRESSES)
+            next_start_id = master.linear_gen(stride0,start_address,next_start_id,LIST_OF_FORBIDDEN_ADDRESSES_READ,LIST_OF_FORBIDDEN_ADDRESSES_WRITE)
         case '2':
-            next_start_id = master.gen_2d(stride0,len_d0,stride1,start_address,next_start_id,LIST_OF_FORBIDDEN_ADDRESSES)
+            next_start_id = master.gen_2d(stride0,len_d0,stride1,start_address,next_start_id,LIST_OF_FORBIDDEN_ADDRESSES_READ,LIST_OF_FORBIDDEN_ADDRESSES_WRITE)
         case '3':
-            next_start_id = master.gen_3d(stride0,len_d0,stride1,len_d1,stride2,start_address,next_start_id,LIST_OF_FORBIDDEN_ADDRESSES)
+            next_start_id = master.gen_3d(stride0,len_d0,stride1,len_d1,stride2,start_address,next_start_id,LIST_OF_FORBIDDEN_ADDRESSES_READ,LIST_OF_FORBIDDEN_ADDRESSES_WRITE)
     
 print("STEP 0 COMPLETED: created raw txt files")
 simvector_raw_path = os.path.dirname(filepath)

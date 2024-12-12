@@ -18,6 +18,7 @@ def unfold_raw_txt(folder_path_raw,folder_path_processed,IW,DATA_WIDTH,ADD_WIDTH
     for file in file_names:
         filepath_read = os.path.join(folder_path_raw,file)
         filepath_write = os.path.join(folder_path_processed, file)
+        os.makedirs(os.path.dirname(filepath_write),exist_ok=True)
         with open(filepath_read, 'r', encoding = "ascii") as file_read:
             with open(filepath_write, 'w', encoding="ascii") as file_write:
                 for line in file_read:

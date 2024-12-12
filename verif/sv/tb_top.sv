@@ -906,17 +906,17 @@ END COMMENT*/
     band_real = -1;
     wait(rst_n);
     start_time = $time;
-    $display("--------------------------START TIME : %0t",start_time);
+    //$display("--------------------------START TIME : %0t",start_time);
     wait(&END_STIMULI);
     end_time = $time;
-    $display("--------------------------STOP TIME : %0t",end_time);
-    $display("START TIME: %f",start_time);
+    //$display("--------------------------STOP TIME : %0t",end_time);
+    //$display("START TIME: %f",start_time);
     tot_time = end_time - start_time; // ns
-    $display("tot_time_real: %f",tot_time);
+    //$display("tot_time_real: %f",tot_time);
     tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * 4*DATA_WIDTH) * N_HWPE_REAL); // bit
-    $display("tot_data_real: %f",tot_data);
+    //$display("tot_data_real: %f",tot_data);
     band_real = tot_data/tot_time; // Gbps
-    $display("band_real: %f",band_real);
+    //$display("band_real: %f",band_real);
 
   end
   //--------------------------------------------
@@ -934,16 +934,19 @@ END COMMENT*/
     end else begin
       $display("    Test ***FAILED*** \n");
     end
+    $display("\\\\CHECKS\\\\");
     $display("n_correct = %0d out of n_check = %0d",n_correct,n_checks);
     $display("expected n_check = %0d",TOT_CHECK);
-    $display("note: each hwpe transaction consists of 4 checks");
-    calculate_theoretical_bandwidth(band_theo);
-    wait(band_real>=0);
-    $display("THEORETICAL BANDWIDTH: %f Gbps",band_theo);
-    $display("REAL BANDWIDTH: %f Gbps",band_real);
+    $display("note: each hwpe transaction consists of 4 checks \n");
     if(WARNING) begin
       $display("WARNING: the pieces of the HWPE wide word are written multiple times in the banks\n");
     end
+    calculate_theoretical_bandwidth(band_theo);
+    wait(band_real>=0);
+    $display("\\\\BANDWIDTH\\\\");
+    $display("THEORETICAL BANDWIDTH: %f Gbps",band_theo);
+    $display("REAL BANDWIDTH: %f Gbps",band_real);
+    $display("PERFORMANCE RATING %f%%", band_real/band_theo*100);
     $finish();
   end
 
@@ -1126,7 +1129,7 @@ END COMMENT*/
   task calculate_theoretical_bandwidth(output real band_theo);
     
     int file, line_count, ret_code;
-    real tot_time,tot_data;
+    real tot_time,tot_data,band_memory_limit;
     string line;
 
     file = $fopen("./verif/simvectors/stimuli_processed/master_log_0.txt","r");
@@ -1141,15 +1144,23 @@ END COMMENT*/
       ret_code = $fgets(line,file);
       line_count++;
     end
-    $display("N_LINES: %f",line_count);
+    //$display("N_LINES: %f",line_count);
     $fclose(file);
 
     tot_time = line_count * CLK_PERIOD; // ns
-    $display("tot_time: %f",tot_time);
+    //$display("tot_time: %f",tot_time);
     tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * 4*DATA_WIDTH) * N_HWPE_REAL); // bit
-    $display("tot_data: %f",tot_data);
+    //$display("tot_data: %f",tot_data);
     band_theo = tot_data/tot_time; // Gbps
-    $display("band_theo: %f",band_theo);
+    //$display("band_theo before: %f",band_theo);
+    //$display("N_BANKS = %0d, DATA_WIDTH = %0d, CLK_PERIOD = %0d",N_BANKS,DATA_WIDTH,CLK_PERIOD);
+    band_memory_limit = real'(N_BANKS * DATA_WIDTH) / CLK_PERIOD;
+    //$display("band_memory_limit: %f",band_memory_limit);
+    if (band_theo >= band_memory_limit) begin
+      band_theo = band_memory_limit;
+    end
+    //$display("band_theo after: %f",band_theo);
+
   endtask
 
 endmodule

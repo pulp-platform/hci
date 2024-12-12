@@ -39,6 +39,13 @@ Bender.lock:
 # Build and simulation #
 ########################
 
+# Python stimuli
+clean_stimuli:
+	rm -rf verif/simvectors
+
+stimuli_bandwidth: clean_stimuli
+	sed -i 
+# Questasim simulation
 clean:
 	rm -rf scripts/compile.tcl
 	rm -rf work

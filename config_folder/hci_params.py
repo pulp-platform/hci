@@ -3,13 +3,13 @@
 ##############################
 
 # Number of HWPEs attached to the port
-N_HWPE=0
+N_HWPE=3
 # Number of Core ports                                                  
-N_CORE=8
+N_CORE=1
 # Number of DMA ports                                                  
 N_DMA=0
 # Number of External ports                                               
-N_EXT=0
+N_EXT=1
 # TEST_SET_BIT (for Log Interconnect)                   
 TS_BIT=21
 # FIFO Depth for HWPE Interconnect                            
