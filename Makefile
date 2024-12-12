@@ -19,7 +19,7 @@ PYTHON_STIMULI_SCRIPT = verif/stimuli_generator/stimuli_gen_main.py
 
 N_CORE := $(shell grep -oP '^N_CORE=\K\d+' $(CONFIG_FILE_HCI))
 N_DMA := $(shell grep -oP '^N_DMA=\K\d+' $(CONFIG_FILE_HCI))
-N_EXT := $(shell grep -oP '^N_CORE=\K\d+' $(CONFIG_FILE_HCI))
+N_EXT := $(shell grep -oP '^N_EXT=\K\d+' $(CONFIG_FILE_HCI))
 N_HWPE := $(shell grep -oP '^N_HWPE=\K\d+' $(CONFIG_FILE_HCI))
 N_LOG := $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc)
 $(info N_LOG: $(N_LOG))
