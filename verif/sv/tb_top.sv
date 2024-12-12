@@ -272,13 +272,15 @@ module hci_tb
   out_intc_to_mem                                 queue_out_intc_to_mem_read[N_BANKS][$];
   logic [DATA_WIDTH-1:0]                          queue_read[N_BANKS][$];
   logic [DATA_WIDTH-1:0]                          queue_read_master[N_MASTER-N_HWPE][$];
-  logic [HWPE_WIDTH*DATA_WIDTH-1:0]                        queue_read_master_hwpe[N_HWPE][$];
+  logic [HWPE_WIDTH*DATA_WIDTH-1:0]               queue_read_master_hwpe[N_HWPE][$];
   logic [DATA_WIDTH-1:0]                          queue_read_hwpe[HWPE_WIDTH*N_HWPE][$];
   logic                                           rolls_over_check[N_HWPE];
   logic                                           flag_read[N_BANKS];
   logic                                           flag_read_master[N_MASTER-N_HWPE];
   logic                                           flag_read_hwpe[N_HWPE];
 
+  static real               LATENCY_LOG[N_MASTER-N_HWPE]= '{default: 0};
+  static real               LATENCY_HWPE[N_HWPE]= '{default: 0};
   //------------ input queues -----------
 
   // Add CORES + DMA + EXT transactions to input queues
@@ -286,8 +288,10 @@ module hci_tb
     for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin :  stimuli_queue_except_hwpe
       initial begin
         stimuli     in_except_hwpe;
+        int unsigned latency;
         wait(rst_n);
         while(1) begin
+          latency = 0;
           @(posedge clk);
           if(all_except_hwpe[ii].req) begin
             in_except_hwpe.wen  =   all_except_hwpe[ii].wen;
@@ -300,8 +304,10 @@ module hci_tb
                 break;
               end
               @(posedge clk);
+              latency++;
             end
           end
+          LATENCY_LOG[ii] = LATENCY_LOG[ii] + latency;
         end
       end
     end
@@ -312,8 +318,10 @@ module hci_tb
     for(genvar ii=0;ii<N_HWPE;ii++) begin :  stimuli_queue_hwpe
       initial begin
         stimuli     in_hwpe;
+        int unsigned latency;
         wait(rst_n);
         while(1) begin
+          latency = 0;
           @(posedge clk);
           if(hwpe_intc[ii].req) begin
             rolls_over_check[ii] = 0;
@@ -328,8 +336,10 @@ module hci_tb
                 break;
               end
               @(posedge clk);
+              latency++;
             end
           end
+          LATENCY_HWPE[ii] = LATENCY_HWPE[ii] + latency;
         end
       end
     end
@@ -927,6 +937,8 @@ END COMMENT*/
  static real                   band_theo;
  logic                         WARNING = 1'b0;
   initial begin
+    real average_latency;
+    average_latency = 0;
     wait (n_checks >= TOT_CHECK);
     $display("n_checks final = %0d",n_checks);
     $display("------ Simulation End ------");
@@ -942,12 +954,26 @@ END COMMENT*/
     if(WARNING) begin
       $display("WARNING: the pieces of the HWPE wide word are written multiple times in the banks\n");
     end
+
     calculate_theoretical_bandwidth(band_theo);
     wait(band_real>=0);
     $display("\\\\BANDWIDTH\\\\");
     $display("THEORETICAL BANDWIDTH: %f Gbps",band_theo);
     $display("REAL BANDWIDTH: %f Gbps",band_real);
-    $display("PERFORMANCE RATING %f%%", band_real/band_theo*100);
+    $display("PERFORMANCE RATING %f%%\n", band_real/band_theo*100);
+
+    calculate_latency(LATENCY_LOG,LATENCY_HWPE);
+    $display("\\\\LATENCY\\\\");
+    for(int i=0; i<N_MASTER_REAL-N_HWPE_REAL; i++) begin
+      $display("AVERAGE LATENCY for master_log_%0d: %f",i,LATENCY_LOG[i]);
+      average_latency += LATENCY_LOG[i];
+    end
+    for(int i=0; i<N_HWPE_REAL; i++) begin
+      $display("AVERAGE LATENCY for master_hwpe_%0d: %f",i,LATENCY_HWPE[i]);
+      average_latency += LATENCY_HWPE[i];
+    end
+    average_latency = average_latency/N_MASTER_REAL;
+    $display("AVERAGE LATENCY for all masters: %f",average_latency);
     $finish();
   end
 
@@ -1162,6 +1188,15 @@ END COMMENT*/
     end
     //$display("band_theo after: %f",band_theo);
 
+  endtask
+
+  task automatic calculate_latency (ref real LATENCY_LOG[N_MASTER-N_HWPE], ref real LATENCY_HWPE[N_HWPE]);
+    for(int i=0;i<N_MASTER-N_HWPE;i++) begin
+      LATENCY_LOG[i] = LATENCY_LOG[i] / N_TEST;
+    end
+    for(int i=0;i<N_HWPE;i++) begin
+      LATENCY_HWPE[i] = LATENCY_HWPE[i] / N_TEST;
+    end
   endtask
 
 endmodule
