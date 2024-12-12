@@ -2,8 +2,8 @@ ROOT_DIR      = $(strip $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST)))
 
 CONFIG_FILE_HCI := config_folder/hci_params.py
 CONFIG_FILE_SIM := config_folder/sim_params.py
-$(info ROOT_DIR: $(ROOT_DIR))
-$(info CONFIG_FILE_SIM: $(CONFIG_FILE_SIM))
+#$(info ROOT_DIR: $(ROOT_DIR))
+#$(info CONFIG_FILE_SIM: $(CONFIG_FILE_SIM))
 VLIB ?= vlib
 library ?= work
 VSIM ?= vsim
@@ -14,6 +14,15 @@ VLOG_ARGS += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233 -time
 MACROS_HCI += $(shell awk '!/^\#/ && NF {printf "\"+define+%s \"", $$0}' $(CONFIG_FILE_HCI))
 MACROS_SIM += $(shell awk '!/^\#/ && NF {printf "\"+define+%s \"", $$0}' $(CONFIG_FILE_SIM))
 
+PYTHON = python
+PYTHON_STIMULI_SCRIPT = verif/stimuli_generator/stimuli_gen_main.py
+
+N_CORE := $(shell grep -oP '^N_CORE=\K\d+' $(CONFIG_FILE_HCI))
+N_DMA := $(shell grep -oP '^N_DMA=\K\d+' $(CONFIG_FILE_HCI))
+N_EXT := $(shell grep -oP '^N_CORE=\K\d+' $(CONFIG_FILE_HCI))
+N_HWPE := $(shell grep -oP '^N_HWPE=\K\d+' $(CONFIG_FILE_HCI))
+N_LOG := $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc)
+$(info N_LOG: $(N_LOG))
 define generate_vsim
 	echo 'set ROOT [file normalize [file dirname [info script]]/$3]' > $1
 	bender script vsim --vlog-arg="$(VLOG_ARGS)" $2 --vlog-arg=$(MACROS_HCI) --vlog-arg=$(MACROS_SIM) | grep -v "set ROOT" >> $1
@@ -43,8 +52,14 @@ Bender.lock:
 clean_stimuli:
 	rm -rf verif/simvectors
 
+
+LOG_ARGS_BANDWIDTH := $(foreach i, $(shell seq 0 $(shell echo $(N_LOG) - 1 | bc)), --master_log$(i) 0)
+HWPE_ARGS_BANDWIDTH := $(foreach i, $(shell seq 0 $(shell echo $(N_HWPE) - 1 | bc)), --master_hwpe$(i) 0)
+
 stimuli_bandwidth: clean_stimuli
-	sed -i 
+	sed -i 's/^MAX_CYCLE_OFFSET.*$$/MAX_CYCLE_OFFSET=1/' $(CONFIG_FILE_SIM)
+	$(PYTHON) $(PYTHON_STIMULI_SCRIPT) $(LOG_ARGS_BANDWIDTH) $(HWPE_ARGS_BANDWIDTH)
+
 # Questasim simulation
 clean:
 	rm -rf scripts/compile.tcl
