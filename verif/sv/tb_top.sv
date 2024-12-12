@@ -10,7 +10,7 @@ module hci_tb
 
   // Simulation parameters 
   localparam int unsigned     N_TEST             =          `N_TEST;
-  localparam int unsigned     TOT_CHECK          =          `N_TEST*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*`N_TEST*4;
+  localparam int unsigned     TOT_CHECK          =          `N_TEST*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*`N_TEST*`HWPE_WIDTH;
   
   //--------------------------------------------
   //-             CLOCK AND RESET              -
@@ -54,6 +54,7 @@ module hci_tb
   localparam int unsigned SEL_LIC                 = `SEL_LIC                                           ; // Log interconnect type selector
 
   localparam int unsigned DATA_WIDTH              = `DATA_WIDTH                                        ; // Width of DATA in bits
+  localparam int unsigned HWPE_WIDTH              = `HWPE_WIDTH                                        ; // Widht of an HWPE wide-word (as a multiple of DATA_WIDTH)
   localparam int unsigned TOT_MEM_SIZE            = `TOT_MEM_SIZE                                      ; // Memory size (kB)
   localparam int unsigned ADD_WIDTH               = $clog2(TOT_MEM_SIZE*1000)                          ; // Width of ADDRESS in bits
   localparam int unsigned N_BANKS                 = `N_BANKS                                           ; // Number of memory banks
@@ -82,7 +83,7 @@ module hci_tb
     EHW: hci_package::DEFAULT_EHW
   };
   localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(hwpe) = '{     // HWPE parameters
-    DW:  4*DATA_WIDTH,
+    DW:  HWPE_WIDTH*DATA_WIDTH,
     AW:  ADD_WIDTH,
     BW:  hci_package::DEFAULT_BW,
     UW:  hci_package::DEFAULT_UW,
@@ -221,7 +222,7 @@ module hci_tb
       application_driver#(
         .MASTER_NUMBER(ii),
         .IS_HWPE(1),
-        .DATA_WIDTH(4*DATA_WIDTH),
+        .DATA_WIDTH(HWPE_WIDTH*DATA_WIDTH),
         .ADD_WIDTH(ADD_WIDTH),
         .APPL_DELAY(APPL_DELAY), //delay on the input signals
         .IW(IW)
@@ -249,7 +250,7 @@ module hci_tb
   static int unsigned           hwpe_check[N_HWPE] = '{default: 0};
   static int unsigned           check_hwpe_read[N_HWPE] = '{default: 0};
   static int unsigned           check_hwpe_read_add[N_HWPE] = '{default: 0};
-  logic [4*N_HWPE-1:0]            HIDE_HWPE = '0;
+  logic [HWPE_WIDTH*N_HWPE-1:0]            HIDE_HWPE = '0;
   logic [N_MASTER-N_HWPE-1:0]   HIDE_LOG = '0;
 
   // Declaration
@@ -266,13 +267,13 @@ module hci_tb
 
 
   stimuli                                         queue_stimuli_all_except_hwpe[N_MASTER-N_HWPE][$];
-  stimuli                                         queue_stimuli_hwpe[N_HWPE*4][$];
+  stimuli                                         queue_stimuli_hwpe[N_HWPE*HWPE_WIDTH][$];
   out_intc_to_mem                                 queue_out_intc_to_mem_write[N_BANKS][$];
   out_intc_to_mem                                 queue_out_intc_to_mem_read[N_BANKS][$];
   logic [DATA_WIDTH-1:0]                          queue_read[N_BANKS][$];
   logic [DATA_WIDTH-1:0]                          queue_read_master[N_MASTER-N_HWPE][$];
-  logic [4*DATA_WIDTH-1:0]                        queue_read_master_hwpe[N_HWPE][$];
-  logic [DATA_WIDTH-1:0]                          queue_read_hwpe[4*N_HWPE][$];
+  logic [HWPE_WIDTH*DATA_WIDTH-1:0]                        queue_read_master_hwpe[N_HWPE][$];
+  logic [DATA_WIDTH-1:0]                          queue_read_hwpe[HWPE_WIDTH*N_HWPE][$];
   logic                                           rolls_over_check[N_HWPE];
   logic                                           flag_read[N_BANKS];
   logic                                           flag_read_master[N_MASTER-N_HWPE];
@@ -316,11 +317,11 @@ module hci_tb
           @(posedge clk);
           if(hwpe_intc[ii].req) begin
             rolls_over_check[ii] = 0;
-            for(int i=0;i<4;i++) begin
+            for(int i=0;i<HWPE_WIDTH;i++) begin
               in_hwpe.wen  =   hwpe_intc[ii].wen;
               create_address_and_data_hwpe(hwpe_intc[ii].add,hwpe_intc[ii].data,i,in_hwpe.add,in_hwpe.data,rolls_over_check[ii],rolls_over_check[ii]);
-              $display("HWPE %0d, add to the queue %0d the address %b, time: %0t",ii,i+ii*4,in_hwpe.add,$time);
-              queue_stimuli_hwpe[i+ii*4].push_back(in_hwpe);
+              $display("HWPE %0d, add to the queue %0d the address %b, time: %0t",ii,i+ii*HWPE_WIDTH,in_hwpe.add,$time);
+              queue_stimuli_hwpe[i+ii*HWPE_WIDTH].push_back(in_hwpe);
             end
             while(1) begin
               if(hwpe_intc[ii].gnt) begin
@@ -519,16 +520,16 @@ module hci_tb
           if (!okay) begin
             for(int k=0;k<N_HWPE;k++) begin
               
-                for(int i=0;i<4;i++)  begin
-                  if (queue_stimuli_hwpe[i+k*4].size() == 0) begin
+                for(int i=0;i<HWPE_WIDTH;i++)  begin
+                  if (queue_stimuli_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                     continue;
                   end
                   $display("BANK %0d: TO CHECK WRITE add = %0b, time:%0t",ii,recreated_queue.add,$time);
-                  $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k*4][0].wen,queue_stimuli_hwpe[i+k*4][0].add,i+k*4,$time);
-                  if (recreated_queue == queue_stimuli_hwpe[i+k*4][0])  begin
+                  $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].wen,queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].add,i+k*HWPE_WIDTH,$time);
+                  if (recreated_queue == queue_stimuli_hwpe[i+k*HWPE_WIDTH][0])  begin
                     if(!already_checked[k]) begin
                       $display("BANK %0d: skip before %0d, time: %0t",ii,skip,$time);
-                      check_hwpe(i,ii,okay,queue_stimuli_hwpe[4*k+:4],queue_out_intc_to_mem_write,skip);
+                      check_hwpe(i,ii,okay,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_write,skip);
                       $display("BANK %0d: skip after %0d, time: %0t",ii,skip,$time);
                       STOP_CHECK = 1;
                       //if(okay>0) begin
@@ -563,13 +564,13 @@ module hci_tb
                 //   end
             
               //$display("BANK %0d: write hwpe_check = %0d time:%0t",ii,hwpe_check,$time);
-              if(hwpe_check[k] == 4) begin
+              if(hwpe_check[k] == HWPE_WIDTH) begin
                 hwpe_check[k] = 0;
                 already_checked[k] = 0;
-                  for(int i=0;i<4;i++) begin
-                    $display("BANK %0d: DELETE queue_stimuli_hwpe[%0d][0] = %0b time:%0t",ii,i+k*4,queue_stimuli_hwpe[i+k*4][0],$time);
-                    queue_stimuli_hwpe[i+k*4].delete(0);
-                    $display("BANK %0d: AFTER DELETE queue_stimuli_hwpe[%0d][0] = %0b time:%0t",ii,i+k*4,queue_stimuli_hwpe[i+k*4][0],$time);
+                  for(int i=0;i<HWPE_WIDTH;i++) begin
+                    $display("BANK %0d: DELETE queue_stimuli_hwpe[%0d][0] = %0b time:%0t",ii,i+k*HWPE_WIDTH,queue_stimuli_hwpe[i+k*HWPE_WIDTH][0],$time);
+                    queue_stimuli_hwpe[i+k*HWPE_WIDTH].delete(0);
+                    $display("BANK %0d: AFTER DELETE queue_stimuli_hwpe[%0d][0] = %0b time:%0t",ii,i+k*HWPE_WIDTH,queue_stimuli_hwpe[i+k*HWPE_WIDTH][0],$time);
                   end
                 end
                 if(STOP_CHECK)
@@ -615,7 +616,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
         int NOT_FOUND;
         int DATA_MISMATCH;
         logic hwpe_read;
-        logic [DATA_WIDTH*4-1 : 0] wide_word;
+        logic [DATA_WIDTH*HWPE_WIDTH-1 : 0] wide_word;
         int index_hwpe, index_master;
         wait (rst_n);
         while (1) begin
@@ -667,17 +668,17 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               // HWPE branch
               if(hwpe_read) begin
                 for(int k=0;k<N_HWPE;k++) begin 
-                  for(int i=0; i<4;i++) begin
-                    if (queue_stimuli_hwpe[i+k*4].size() == 0) begin
+                  for(int i=0; i<HWPE_WIDTH;i++) begin
+                    if (queue_stimuli_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                       continue;
                     end
                     $display("BANK %0d: TO CHECK READ add = %0b, time:%0t",ii,recreated_address,$time);
-                    $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k*4][0].wen,queue_stimuli_hwpe[i+k*4][0].add,i+k*4,$time);
-                    if(queue_stimuli_hwpe[i+k*4][0].wen && (recreated_address == queue_stimuli_hwpe[i+k*4][0].add)) begin
+                    $display("BANK %0d: OPTIONS wen = %0b add = %0b, HWPE %0d, time:%0t",ii,queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].wen,queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].add,i+k*HWPE_WIDTH,$time);
+                    if(queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].wen && (recreated_address == queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].add)) begin
                         NOT_FOUND = 0;
                         STOP_CHECK_READ = 1;
                         if(!already_checked_read[k]) begin
-                          check_hwpe_read_task(i,ii,queue_stimuli_hwpe[4*k+:4],queue_out_intc_to_mem_read,skip);
+                          check_hwpe_read_task(i,ii,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_read,skip);
                           already_checked_read[k] = !skip;
                         end else begin
                           skip = 0;
@@ -692,12 +693,12 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                           $display("BANK %0d: FOUND CORRESPONDENCE, time:%0t",ii,$time);
                           check_hwpe_read_add[k]++;
                           $display("BANK %0d: check_hwpe_read_add[%0d] = %0d, time:%0t",ii,k,check_hwpe_read_add[k],$time);
-                          if(check_hwpe_read_add[k] == 4) begin
-                            for(int j=0;j<4;j++) begin
-                              $display("BANK %0d: DELETE queue_stimuli_hwpe[%0d] = %b, time:%0t",ii,4*k+j,queue_stimuli_hwpe[4*k+j][0].add,$time);
-                                queue_stimuli_hwpe[4*k+j].delete(0);
+                          if(check_hwpe_read_add[k] == HWPE_WIDTH) begin
+                            for(int j=0;j<HWPE_WIDTH;j++) begin
+                              $display("BANK %0d: DELETE queue_stimuli_hwpe[%0d] = %b, time:%0t",ii,HWPE_WIDTH*k+j,queue_stimuli_hwpe[HWPE_WIDTH*k+j][0].add,$time);
+                                queue_stimuli_hwpe[HWPE_WIDTH*k+j].delete(0);
                                 check_hwpe_read_add[k] = 0;
-                                $display("BANK %0d: AFTER queue_stimuli_hwpe[%0d] = %b, time:%0t",ii,4*k+j,queue_stimuli_hwpe[4*k+j][0].add,$time);
+                                $display("BANK %0d: AFTER queue_stimuli_hwpe[%0d] = %b, time:%0t",ii,HWPE_WIDTH*k+j,queue_stimuli_hwpe[HWPE_WIDTH*k+j][0].add,$time);
                               end
                               already_checked_read[k] = 0;
                           end
@@ -722,8 +723,8 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                             check_hwpe_read[k]++;
                             queue_read[ii].delete(0);
                             $display("BANK %0d: check_read_hwpe = %0d, time:%0t",ii,check_hwpe_read[k],$time);
-                            if(check_hwpe_read[k] == 4) begin
-                              $display("BANK %0d: check_read_hwpe = 4. delete the first element of queue_read_maser_hwpe, time:%0t",ii,check_hwpe_read[k],$time);
+                            if(check_hwpe_read[k] == HWPE_WIDTH) begin
+                              $display("BANK %0d: check_read_hwpe = HWPE_WIDTH. delete the first element of queue_read_maser_hwpe, time:%0t",ii,check_hwpe_read[k],$time);
                               $display("BANK %0d: before queue_read_maser_hwpe = %0b, time:%0t",ii,queue_read_master_hwpe[k][0],$time);
                               queue_read_master_hwpe[k].delete(0);
                               check_hwpe_read[k] = 0;
@@ -799,7 +800,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
             calculate_bank_index(hwpe_intc.add,bank_index_hwpe);
             $display("Time: %0t, Start computing the priority check on master %0d, bank index log: %0d, bank index hwpe: %0d", $time,ii,bank_index_log,bank_index_hwpe);
             $display("Time: %0t, ctrl_i.invert_prio = %b, invert_prio_for_one_cycle = %b",$time,ctrl_i.invert_prio,invert_prio_for_one_cycle);
-            for(int i=0;i<4;i++) begin
+            for(int i=0;i<HWPE_WIDTH;i++) begin
               if(bank_index_log == bank_index_hwpe) begin // If conflict
                 if(!(ctrl_i.invert_prio ^ invert_prio_for_one_cycle)) begin // Control who has the priority
                 $display("Time: %0t, hide hwpe[%0d]",$time,i);
@@ -913,7 +914,7 @@ END COMMENT*/
     //$display("START TIME: %f",start_time);
     tot_time = end_time - start_time; // ns
     //$display("tot_time_real: %f",tot_time);
-    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * 4*DATA_WIDTH) * N_HWPE_REAL); // bit
+    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * HWPE_WIDTH*DATA_WIDTH) * N_HWPE_REAL); // bit
     //$display("tot_data_real: %f",tot_data);
     band_real = tot_data/tot_time; // Gbps
     //$display("band_real: %f",band_real);
@@ -937,7 +938,7 @@ END COMMENT*/
     $display("\\\\CHECKS\\\\");
     $display("n_correct = %0d out of n_check = %0d",n_correct,n_checks);
     $display("expected n_check = %0d",TOT_CHECK);
-    $display("note: each hwpe transaction consists of 4 checks \n");
+    $display("note: each hwpe transaction consists of HWPE_WIDTH checks \n");
     if(WARNING) begin
       $display("WARNING: the pieces of the HWPE wide word are written multiple times in the banks\n");
     end
@@ -1001,7 +1002,7 @@ END COMMENT*/
     end
   endtask
 
-  task create_address_and_data_hwpe(input logic[ADD_WIDTH-1:0] address_before,input logic [4*DATA_WIDTH-1:0] data_before, input int index, output logic [ADD_WIDTH-1:0] address_after, output logic [DATA_WIDTH-1:0] data_after, input rolls_over_check_before, output rolls_over_check_after);
+  task create_address_and_data_hwpe(input logic[ADD_WIDTH-1:0] address_before,input logic [HWPE_WIDTH*DATA_WIDTH-1:0] data_before, input int index, output logic [ADD_WIDTH-1:0] address_after, output logic [DATA_WIDTH-1:0] data_after, input rolls_over_check_before, output rolls_over_check_after);
     begin
       logic [BIT_BANK_INDEX-1:0] bank_index_before, bank_index_after;
       bank_index_before = address_before[BIT_BANK_INDEX-1 + 2 : 2];
@@ -1018,7 +1019,7 @@ END COMMENT*/
     end
   endtask
 
-  task check_hwpe(input int unsigned index_hwpe_already_checked, input int unsigned index_bank_already_checked,output int okay,input stimuli queue_stimuli_hwpe[4][$], input out_intc_to_mem queue_out_intc_to_mem_write[N_BANKS][$], output logic skip);
+  task check_hwpe(input int unsigned index_hwpe_already_checked, input int unsigned index_bank_already_checked,output int okay,input stimuli queue_stimuli_hwpe[HWPE_WIDTH][$], input out_intc_to_mem queue_out_intc_to_mem_write[N_BANKS][$], output logic skip);
   int signed index_hwpe_to_check;
   int signed index_bank_to_check;
   stimuli recreated_queue;
@@ -1028,13 +1029,13 @@ END COMMENT*/
   //$display("index_bank_already_checked %0d", index_bank_already_checked);
   skip = 0;
   okay = 1;
-  for(int i=1; i<4; i++) begin
+  for(int i=1; i<HWPE_WIDTH; i++) begin
     index_hwpe_to_check = index_hwpe_already_checked + i;
     index_bank_to_check = index_bank_already_checked + i;
-    if(index_hwpe_to_check > 3) begin
+    if(index_hwpe_to_check > HWPE_WIDTH-1) begin
       //$display("before index_bank_to_check %0d",index_bank_to_check);
-      index_hwpe_to_check = index_hwpe_to_check - 4;
-      index_bank_to_check = index_bank_to_check -4;
+      index_hwpe_to_check = index_hwpe_to_check - HWPE_WIDTH;
+      index_bank_to_check = index_bank_to_check -HWPE_WIDTH;
       //$display("after index_bank_to_check %0d",index_bank_to_check);
     end
     if(index_bank_to_check >= int'(N_BANKS)) begin 
@@ -1068,8 +1069,8 @@ END COMMENT*/
   end
   endtask
 /*
-  task create_wide_word_read_hwpe(input logic [DATA_WIDTH-1:0] queue_read_hwpe[4*N_HWPE][$], output logic [4*DATA_WIDTH-1:0] wide_word_to_add);
-    for(int i=0; i<4; i++) begin
+  task create_wide_word_read_hwpe(input logic [DATA_WIDTH-1:0] queue_read_hwpe[HWPE_WIDTH*N_HWPE][$], output logic [HWPE_WIDTH*DATA_WIDTH-1:0] wide_word_to_add);
+    for(int i=0; i<HWPE_WIDTH; i++) begin
       wide_word_to_add[i*DATA_WIDTH +: DATA_WIDTH] = queue_read_hwpe[i][0];
     end
   endtask
@@ -1078,20 +1079,20 @@ END COMMENT*/
     index = address[BIT_BANK_INDEX-1+2:2];
   endtask
 
-  task check_hwpe_read_task(input int unsigned index_hwpe_already_checked,input int unsigned index_bank_already_checked,input stimuli queue_stimuli_hwpe[4][$],input out_intc_to_mem queue_out_intc_to_mem_read[N_BANKS][$],output logic skip);
+  task check_hwpe_read_task(input int unsigned index_hwpe_already_checked,input int unsigned index_bank_already_checked,input stimuli queue_stimuli_hwpe[HWPE_WIDTH][$],input out_intc_to_mem queue_out_intc_to_mem_read[N_BANKS][$],output logic skip);
     int signed index_hwpe_to_check;
     int signed index_bank_to_check;
     stimuli recreated_queue;
     skip = 0;
     $display("BANK %0d: start checking adjacent banks for hwpe read",index_bank_already_checked);
     $display("BANK %0d: this bank corresponde to the %0d kwpe index",index_bank_already_checked,index_hwpe_already_checked);
-    for(int i=1; i<4; i++) begin
+    for(int i=1; i<HWPE_WIDTH; i++) begin
       index_hwpe_to_check = index_hwpe_already_checked + i;
       index_bank_to_check = index_bank_already_checked + i;
-      if(index_hwpe_to_check > 3) begin
+      if(index_hwpe_to_check > HWPE_WIDTH-1) begin
         //$display("before index_bank_to_check %0d",index_bank_to_check);
-        index_hwpe_to_check = index_hwpe_to_check - 4;
-        index_bank_to_check = index_bank_to_check -4;
+        index_hwpe_to_check = index_hwpe_to_check - HWPE_WIDTH;
+        index_bank_to_check = index_bank_to_check -HWPE_WIDTH;
         //$display("after index_bank_to_check %0d",index_bank_to_check);
       end
       if(index_bank_to_check >= int'(N_BANKS)) begin 
@@ -1149,7 +1150,7 @@ END COMMENT*/
 
     tot_time = line_count * CLK_PERIOD; // ns
     //$display("tot_time: %f",tot_time);
-    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * 4*DATA_WIDTH) * N_HWPE_REAL); // bit
+    tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * HWPE_WIDTH*DATA_WIDTH) * N_HWPE_REAL); // bit
     //$display("tot_data: %f",tot_data);
     band_theo = tot_data/tot_time; // Gbps
     //$display("band_theo before: %f",band_theo);

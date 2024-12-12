@@ -48,6 +48,7 @@ N_CORE = hci_params.N_CORE
 N_DMA = hci_params.N_DMA
 N_EXT = hci_params.N_EXT
 N_HWPE = hci_params.N_HWPE
+HWPE_WIDTH = hci_params.HWPE_WIDTH
 WIDTH_OF_MEMORY_BYTE = WIDTH_OF_MEMORY/8
 N_WORDS = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE
 if (not N_WORDS.is_integer()): #check if the number of words is an integer value
@@ -193,7 +194,7 @@ for n in range(N_MASTER):
         else:
             master_name = f'master_hwpe{n-(N_MASTER-N_HWPE)}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_hwpe_{n-(N_MASTER-N_HWPE)}.txt"))
-            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,4*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER,n) # wide word for the hwpe
+            master = stimuli_generator(WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,HWPE_WIDTH*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_MASTER,n) # wide word for the hwpe
 
     config, start_address, stride0, len_d0, stride1, len_d1, stride2 = (getattr(args,master_name, None) + [0] * 7)[:7]
     stride0 = int(stride0)
@@ -214,9 +215,9 @@ for n in range(N_MASTER):
 print("STEP 0 COMPLETED: created raw txt files")
 simvector_raw_path = os.path.dirname(filepath)
 simvector_processed_path = os.path.abspath(os.path.join(simvector_raw_path,"../stimuli_processed"))
-process.unfold_raw_txt(simvector_raw_path,simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH)
+process.unfold_raw_txt(simvector_raw_path,simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH)
 print("STEP 1 COMPLETED: unfolded txt files")
-process.pad_txt_files(simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH)
+process.pad_txt_files(simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH)
 print("STEP 2 COMPLETED: padded txt files")
 #process.check_write_address(simvector_processed_path,ADD_WIDTH)
 #print("STEP 3 COMPLETED: checked txt files")

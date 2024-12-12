@@ -5,7 +5,7 @@
 # Number of HWPEs attached to the port
 N_HWPE=1
 # Widht of an HWPE wide-word (as a multiple of DATA_WIDTH)
-HWPE_WIDTH=4
+HWPE_WIDTH=2
 # Number of Core ports                                                  
 N_CORE=1
 # Number of DMA ports                                                  
