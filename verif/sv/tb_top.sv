@@ -250,8 +250,8 @@ module hci_tb
   static int unsigned           hwpe_check[N_HWPE] = '{default: 0};
   static int unsigned           check_hwpe_read[N_HWPE] = '{default: 0};
   static int unsigned           check_hwpe_read_add[N_HWPE] = '{default: 0};
-  logic [HWPE_WIDTH*N_HWPE-1:0]            HIDE_HWPE = '0;
-  logic [N_MASTER-N_HWPE-1:0]   HIDE_LOG = '0;
+  logic                         HIDE_HWPE[N_BANKS] = '{default: 0};
+  logic                         HIDE_LOG[N_BANKS] = '{default: 0};
 
   // Declaration
   typedef struct packed {
@@ -517,10 +517,10 @@ module hci_tb
               $display("BANK %0d: FOUND CORRESPONDENCE, delete first element of queue_out_intc_to_mem_write = %b, time:%0t",ii,queue_out_intc_to_mem_write[ii][0],$time);
               queue_stimuli_all_except_hwpe[i].delete(0);
               $display("BANK %0d: AFTER DELETE queue_stimuli_all_except_hwpe = %b, time:%0t",ii,queue_stimuli_all_except_hwpe[i][0],$time);
-              if(HIDE_LOG[i]) begin
+              if(HIDE_LOG[ii]) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
-                $display("The arbiter prioritized Master %0d, but it should have given priority to the HWPE", i);
+                $display("The arbiter prioritized Master %0d in the LOG branch, but it should have given priority to the HWPE branch", i);
                 $finish();
               end
               $display("AFTER DELETE data = %0b add = %0b, MASTER %0d",queue_stimuli_all_except_hwpe[i][0].data,queue_stimuli_all_except_hwpe[i][0].add,i);
@@ -545,10 +545,10 @@ module hci_tb
                       //if(okay>0) begin
                       //  $display("BANK %0d: FOUND CORRESPONDENCE, delete first element of queue_out_intc_to_mem_write = %b, time:%0t",ii,queue_out_intc_to_mem_write[ii][0],$time);
                       //end
-                      if(okay && HIDE_HWPE[i]) begin
+                      if(okay && HIDE_HWPE[ii]) begin
                         $display("-----------------------------------------");
                         $display("Time %0t:    Test ***FAILED*** \n",$time);
-                        $display("The arbiter prioritized the hwpe, but it should have given priority to the logarithmic branch", i);
+                        $display("The arbiter prioritized the HWPE branch, but it should have given priority to the LOG branch");
                         $finish();
                       end
                       if(!skip) begin
@@ -655,7 +655,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                     queue_stimuli_all_except_hwpe[i].delete(0);
                     $display("BANK %0d: AFTER DELETE queue_stimuli_all_except_hwpe[i][0] add =%b, time:%0t",ii,queue_stimuli_all_except_hwpe[i][0].add,$time);
                     hwpe_read = 0;
-                    if(HIDE_LOG[i]) begin
+                    if(HIDE_LOG[ii]) begin
                       $display("-----------------------------------------");
                       $display("Time %0t:    Test ***FAILED*** \n",$time);
                       $display("The arbiter prioritized Master %0d, but it should have given priority to the HWPE", i);
@@ -687,6 +687,12 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                     if(queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].wen && (recreated_address == queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].add)) begin
                         NOT_FOUND = 0;
                         STOP_CHECK_READ = 1;
+                        if(HIDE_HWPE[ii]) begin
+                            $display("-----------------------------------------");
+                            $display("Time %0t:    Test ***FAILED*** \n",$time);
+                            $display("The arbiter prioritized the HWPE, but it should have given priority to the LOG branch");
+                            $finish();
+                          end
                         if(!already_checked_read[k]) begin
                           check_hwpe_read_task(i,ii,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_read,skip);
                           already_checked_read[k] = !skip;
@@ -714,12 +720,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                           end
                           //$display("BANK %0d: check_hwpe_read_add = %0d",ii,check_hwpe_read_add);
                           //$display("BANK %0d: AFTER DELETE queue_out_intc_to_mem_read add = %b, queue_out_intc_to_mem_read data = %b, time:%0t",ii,queue_out_intc_to_mem_read[ii][0].add,queue_out_intc_to_mem_read[ii][0].data,$time);
-                          if(HIDE_HWPE[i]) begin
-                            $display("-----------------------------------------");
-                            $display("Time %0t:    Test ***FAILED*** \n",$time);
-                            $display("The arbiter prioritized the hwpe, but it should have given priority to the logarithmic branch");
-                            $finish();
-                          end
                           $display("BANK %0d: DELETE queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
                           queue_out_intc_to_mem_read[ii].delete(0);
                           $display("BANK %0d: AFTER queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
@@ -789,6 +789,112 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   //--------------------------------------------
   //-             QoS: Arbiter                 -
   //--------------------------------------------
+
+// Compute the requests for each bank
+static logic LOG_REQ[0:N_BANKS-1] = '{default: 0};
+static logic HWPE_REQ[0:N_BANKS-1] = '{default: 0};
+
+generate
+for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
+  logic [BIT_BANK_INDEX-1:0] bank_index_log;
+  int unsigned bank_index_log_int;
+  initial begin
+    wait(rst_n);
+    while(1) begin
+      wait(all_except_hwpe[ii].req)
+        calculate_bank_index(all_except_hwpe[ii].add,bank_index_log);
+        bank_index_log_int = int'(bank_index_log);
+        LOG_REQ[bank_index_log_int] = 1'b1;
+        #1ps
+        while(1) begin
+          @(posedge clk);
+          if(all_except_hwpe[ii].gnt) begin
+            #1ps
+            LOG_REQ[bank_index_log_int] = 1'b0;
+            break;
+          end
+        end
+    end
+  end
+end
+
+for(genvar ii=0;ii<N_HWPE;ii++) begin
+  logic [BIT_BANK_INDEX-1:0] bank_index_hwpe;
+  int unsigned bank_index_hwpe_int;
+  initial begin
+    wait(rst_n);
+    while(1) begin
+      wait(hwpe_intc[ii].req);
+        calculate_bank_index(hwpe_intc[ii].add,bank_index_hwpe);
+        bank_index_hwpe_int = int'(bank_index_hwpe);
+        for(int i=0;i<HWPE_WIDTH;i++) begin
+          if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
+            HWPE_REQ[bank_index_hwpe_int + i - HWPE_WIDTH] = 1'b1; //rolls over
+          end else begin 
+            HWPE_REQ[bank_index_hwpe_int + i] = 1'b1;
+          end
+        end
+        #1ps;
+        while(1) begin
+          @(posedge clk);
+          if(hwpe_intc[ii].gnt) begin
+            #1ps;
+            for(int i=0;i<HWPE_WIDTH;i++) begin
+              if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
+                HWPE_REQ[bank_index_hwpe_int + i - HWPE_WIDTH] = 1'b0; //rolls over
+              end else begin 
+                HWPE_REQ[bank_index_hwpe_int + i] = 1'b0;
+              end
+            end
+            break;
+          end
+        end
+    end
+  end
+end
+endgenerate
+
+static logic [N_BANKS-1:0] CONFLICTS = '0;
+static logic prior;
+
+// Check conflicts and the number of stalls
+initial begin : check_conflicts
+  int stall;
+  stall = 0;
+  prior = ctrl_i.invert_prio;
+  wait(rst_n);
+  while(1) begin
+    @(negedge clk);
+    for(int i=0;i<N_BANKS;i++) begin
+      CONFLICTS[i] = LOG_REQ[i] && HWPE_REQ[i];
+    end
+    stall = stall*|CONFLICTS + |CONFLICTS;
+    if(prior == ctrl_i.invert_prio) begin
+      if(stall == ctrl_i.low_prio_max_stall) begin
+        prior = !prior;
+        stall = 0;
+      end
+    end else begin
+      prior = !prior;
+      stall = 0;
+    end
+  end
+end
+
+//Hide low priority branch in case of conflicts
+
+always_comb begin : HIDE
+  for(int i=0;i<N_BANKS;i++) begin
+    if(!prior) begin
+      HIDE_HWPE[i] = CONFLICTS[i];
+      HIDE_LOG[i] = 0;
+    end else begin
+      HIDE_HWPE[i] = 0;
+      HIDE_LOG[i] = CONFLICTS[i];
+    end
+  end
+end
+
 
 /*START COMMENT
 
