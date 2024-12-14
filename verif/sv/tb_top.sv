@@ -97,8 +97,8 @@ module hci_tb
   hci_interconnect_ctrl_t     ctrl_i;
 
   assign                      clear_i = 0;
-  assign                      ctrl_i.invert_prio = '0;
-  assign                      ctrl_i.low_prio_max_stall = 8'd10;
+  assign                      ctrl_i.invert_prio = `INVERT_PRIO;
+  assign                      ctrl_i.low_prio_max_stall = `LOW_PRIO_MAX_STALL;
 
   // HCI connections
   hci_core_intf #(

@@ -2,8 +2,7 @@
 #   PROCESS STIMULI TXT FILES   #
 #################################
 #
-# The verification suite should not verify cases where different masters are trying to write data to the same address.
-# This Python code provides a set of functions to easily correct .txt files where this problem might occur
+# This Python code provides a set of functions to easily process the raw .txt files.
 
 import numpy as np
 import os

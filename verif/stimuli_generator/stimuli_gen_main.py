@@ -11,23 +11,37 @@
 #
 # USAGE GUIDE:
 # 
-# After setting the correct parameters in the files hci_params.py and sim_params.py, you can run the 
-# command 'python masters_main.py', specifying the necessary arguments.
-# Each argument represent a master's memory access type (0 random, 1 linear)
-# The last argument you provide is for the HWPE, while the others represents the masters from the log branch of the HCI
+# 1) Set the correct parameters in the files hci_params.py and sim_params.py
+# 
+# 2) Run the command 'python stimuli_gen_main.py', specifying the necessary arguments.
+# Each argument is used to define the memory access type of a master, in particular it is possible to specify:
+#   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D)
+#   - Starting address in binary (required for linear, 2D, and 3D accesses)
+#   - Stride0 (required for linear, 2D, and 3D accesses)
+#   - Len_d0 (required for 2D and 3D accesses)
+#   - Stride1 (required for 2D and 3D accesses)
+#   - Len_d1 (required for 3D accesses)
+#   - Stride2 (required for 3D accesses)
+# note: There is no need to specify the "outer" length for linear, 2D, and 3D accesses,
+# as the program will automatically stop once the specified `N_TEST` vectors are reached.
+# 
+# For the masters in the logarithmic branch, use --master_log0 --master_log1 --master_log2 ecc...
+# The first arguments are used for the cores, then dma and ext.
+# For the masters in the hwpe branch (shallow interconnect), use --master_hwpe0 --master_hwpe1 ecc...
 #
 # EXAMPLE:
+# N_CORE = 1, N_DMA = 0, N_EXT = 1
+# python stimuli_gen_main.py --master_log0 0, --master_log1 1 0101001 2 --master_hwpe1 2 1100100 2 3 10
+# Running the script with these arguments will produce 3 .txt file, each containing:
+# - stimuli with random memory access pattern (CORE)
+# - stimuli with linear memory access pattern, starting address 0101001 and stride0 = 2 (EXT)
+# - stimuli with a 2D memory access pattern, starting address 1100100, stride0 = 2, led_d0 = 3, stride2 = 2 (HWPE)
 #
-# python stimuli_gen_main.py 0 1 1 0
-#
-# This command will generate several different .txt files that will be used in a verification suite with three masters in the logarithmic branch and one HWPE.
-# In particular for the logarithmic branch:
-# - First master: random access
-# - Second master: linear access
-# - Third master: linear access
-# For the HWPE:
-# - HWPE: random access
+# "MAKE" YOUR LIFE EASIER:
+# You can also use the makefile to configure the verification setup and automatically generate the correct stimuli for the most common scenarios. Otherwise, if a finer
+# and more specific simulation is needed, you can manually invoke this script.
 
+### Libraries, dependencies and parameters ###
 import random
 import os
 from pathlib import Path
@@ -40,7 +54,7 @@ config_directory = os.path.abspath(os.path.join(code_directory, "../../config_fo
 sys.path.append(config_directory)
 import hci_params
 import sim_params
-# N_MASTER = parameters.N_MASTER
+import argparse 
 N_BANKS = hci_params.N_BANKS
 TOT_MEM_SIZE = hci_params.TOT_MEM_SIZE
 WIDTH_OF_MEMORY = hci_params.WIDTH_OF_MEMORY
@@ -51,6 +65,7 @@ N_HWPE = hci_params.N_HWPE
 HWPE_WIDTH = hci_params.HWPE_WIDTH
 WIDTH_OF_MEMORY_BYTE = WIDTH_OF_MEMORY/8
 N_WORDS = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE
+
 if (not N_WORDS.is_integer()): #check if the number of words is an integer value
     print("ERROR: the number of words is not an integer value")
     sys.exit(1)
@@ -66,9 +81,9 @@ CORE_ZERO_FLAG = 0
 EXT_ZERO_FLAG = 0
 DMA_ZERO_FLAG = 0
 HWPE_ZERO_FLAG = 0
-#argpasre
-import argparse 
 
+
+### Argpasre ###
 if (N_MASTER < 1):
     print("ERROR: the number of masters must be > 0")
     sys.exit(1)
@@ -159,9 +174,8 @@ else:
 N_MASTER = N_CORE + N_DMA + N_EXT + N_HWPE
 
 args = parser.parse_args()
-#end argparse
 
-#generate the txt files containing the stimuli for the testbench
+### Generate the raw txt files ###
 next_start_id = 0
 LIST_OF_FORBIDDEN_ADDRESSES_WRITE = []
 LIST_OF_FORBIDDEN_ADDRESSES_READ = []
@@ -213,12 +227,12 @@ for n in range(N_MASTER):
             next_start_id = master.gen_3d(stride0,len_d0,stride1,len_d1,stride2,start_address,next_start_id,LIST_OF_FORBIDDEN_ADDRESSES_READ,LIST_OF_FORBIDDEN_ADDRESSES_WRITE)
     
 print("STEP 0 COMPLETED: created raw txt files")
+
+### Process the raw txt files ###
 simvector_raw_path = os.path.dirname(filepath)
 simvector_processed_path = os.path.abspath(os.path.join(simvector_raw_path,"../stimuli_processed"))
 process.unfold_raw_txt(simvector_raw_path,simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH)
 print("STEP 1 COMPLETED: unfolded txt files")
+
 process.pad_txt_files(simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH)
 print("STEP 2 COMPLETED: padded txt files")
-#process.check_write_address(simvector_processed_path,ADD_WIDTH)
-#print("STEP 3 COMPLETED: checked txt files")
-#print("FINISHED! Stimuli ready to be used")

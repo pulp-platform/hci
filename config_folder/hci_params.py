@@ -1,6 +1,7 @@
 ##############################
 # List of all HCI parameters #
 ##############################
+
 #### PARAMETERS TO BE MAUALLY INSERTED ####
 
 # Number of HWPEs attached to the port
@@ -27,3 +28,7 @@ TOT_MEM_SIZE=32
 N_BANKS=64
 # Width of a memory bank (bits)                                                  
 WIDTH_OF_MEMORY=32
+# Invert default priority in the hci_arbiter module
+INVERT_PRIO=0
+# Maximum number of stalls in the lower priority channel of the hci_arbiter
+LOW_PRIO_MAX_STALL=10
