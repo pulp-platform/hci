@@ -22,7 +22,6 @@ N_DMA := $(shell grep -oP '^N_DMA=\K\d+' $(CONFIG_FILE_HCI))
 N_EXT := $(shell grep -oP '^N_EXT=\K\d+' $(CONFIG_FILE_HCI))
 N_HWPE := $(shell grep -oP '^N_HWPE=\K\d+' $(CONFIG_FILE_HCI))
 N_LOG := $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc) 
-$(info N_LOG: $(N_LOG))
 define generate_vsim
 	echo 'set ROOT [file normalize [file dirname [info script]]/$3]' > $1
 	bender script vsim --vlog-arg="$(VLOG_ARGS)" $2 --vlog-arg=$(MACROS_HCI) --vlog-arg=$(MACROS_SIM) | grep -v "set ROOT" >> $1
@@ -53,12 +52,27 @@ clean_stimuli:
 	rm -rf verif/simvectors
 
 
-LOG_ARGS_BANDWIDTH := $(foreach i, $(shell seq 0 $(shell echo $(N_LOG) - 1 | bc)), --master_log$(i) 0)
-HWPE_ARGS_BANDWIDTH := $(foreach i, $(shell seq 0 $(shell echo $(N_HWPE) - 1 | bc)), --master_hwpe$(i) 0)
+LOG_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_LOG) - 1 | bc)), --master_log$(i) 0)
+HWPE_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_HWPE) - 1 | bc)), --master_hwpe$(i) 0)
 
-stimuli_bandwidth: clean_stimuli
+setup_bandwidth: 
 	sed -i 's/^MAX_CYCLE_OFFSET.*$$/MAX_CYCLE_OFFSET=1/' $(CONFIG_FILE_SIM)
-	$(PYTHON) $(PYTHON_STIMULI_SCRIPT) $(LOG_ARGS_BANDWIDTH) $(HWPE_ARGS_BANDWIDTH)
+	sed -i 's/^RANDOM_GNT.*$$/RANDOM_GNT=0/' $(CONFIG_FILE_SIM)
+	sed -i 's/^PRIORITY_CHECK.*$$/PRIORITY_CHECK=0/' $(CONFIG_FILE_SIM)
+
+setup_data_integ:
+	sed -i 's/^MAX_CYCLE_OFFSET.*$$/MAX_CYCLE_OFFSET=7/' $(CONFIG_FILE_SIM)
+	sed -i 's/^RANDOM_GNT.*$$/RANDOM_GNT=1/' $(CONFIG_FILE_SIM)
+	sed -i 's/^PRIORITY_CHECK.*$$/PRIORITY_CHECK=0/' $(CONFIG_FILE_SIM)
+
+setup_arbiter:
+	sed -i 's/^MAX_CYCLE_OFFSET.*$$/MAX_CYCLE_OFFSET=7/' $(CONFIG_FILE_SIM)
+	sed -i 's/^RANDOM_GNT.*$$/RANDOM_GNT=1/' $(CONFIG_FILE_SIM)
+	sed -i 's/^PRIORITY_CHECK.*$$/PRIORITY_CHECK=1/' $(CONFIG_FILE_SIM)
+
+stimuli: clean_stimuli
+	$(PYTHON) $(PYTHON_STIMULI_SCRIPT) $(LOG_ARGS) $(HWPE_ARGS)
+
 
 # Questasim simulation
 clean:

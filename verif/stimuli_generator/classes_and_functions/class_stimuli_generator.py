@@ -14,7 +14,7 @@ import numpy as np
 import os
 
 class stimuli_generator:
-    def __init__(self,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_TOT_MASTER,MASTER_NUMBER_IDENTIFICATION):
+    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_TOT_MASTER,MASTER_NUMBER_IDENTIFICATION):
         self.WIDTH_OF_MEMORY = WIDTH_OF_MEMORY
         self.WIDTH_OF_MEMORY_BYTE = int(WIDTH_OF_MEMORY/8)
         self.N_BANKS = N_BANKS
@@ -25,7 +25,7 @@ class stimuli_generator:
         os.makedirs(os.path.dirname(filepath),exist_ok=True)
         self.N_TEST = N_TEST
         self.MAX_CYCLE_OFFSET = MAX_CYCLE_OFFSET
-        self.IW = int(np.ceil(np.log2(N_TEST*N_TOT_MASTER)))
+        self.IW = IW
         self.MASTER_NUMBER_IDENTIFICATION = MASTER_NUMBER_IDENTIFICATION
     
     def random_data(self):

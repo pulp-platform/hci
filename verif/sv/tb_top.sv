@@ -18,7 +18,7 @@ module hci_tb
 
   // Timing parameters
   localparam time             CLK_PERIOD         =          `CLK_PERIOD;
-  localparam time             APPL_DELAY         =          `APPL_DELAY;
+  localparam time             APPL_DELAY         =          0;
   localparam unsigned         RST_CLK_CYCLES     =          `RST_CLK_CYCLES;
 
   // Clk and rst generation
@@ -790,111 +790,112 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   //-             QoS: Arbiter                 -
   //--------------------------------------------
 
-// Compute the requests for each bank
-static logic LOG_REQ[0:N_BANKS-1] = '{default: 0};
-static logic HWPE_REQ[0:N_BANKS-1] = '{default: 0};
+  `ifdef PRIOTITY_CHECK
+    // Compute the requests for each bank
+    static logic LOG_REQ[0:N_BANKS-1] = '{default: 0};
+    static logic HWPE_REQ[0:N_BANKS-1] = '{default: 0};
 
-generate
-for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
-  logic [BIT_BANK_INDEX-1:0] bank_index_log;
-  int unsigned bank_index_log_int;
-  initial begin
-    wait(rst_n);
-    while(1) begin
-      wait(all_except_hwpe[ii].req)
-        calculate_bank_index(all_except_hwpe[ii].add,bank_index_log);
-        bank_index_log_int = int'(bank_index_log);
-        LOG_REQ[bank_index_log_int] = 1'b1;
-        #1ps
+    generate
+    for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
+      logic [BIT_BANK_INDEX-1:0] bank_index_log;
+      int unsigned bank_index_log_int;
+      initial begin
+        wait(rst_n);
         while(1) begin
-          @(posedge clk);
-          if(all_except_hwpe[ii].gnt) begin
+          wait(all_except_hwpe[ii].req)
+            calculate_bank_index(all_except_hwpe[ii].add,bank_index_log);
+            bank_index_log_int = int'(bank_index_log);
+            LOG_REQ[bank_index_log_int] = 1'b1;
             #1ps
-            LOG_REQ[bank_index_log_int] = 1'b0;
-            break;
-          end
-        end
-    end
-  end
-end
-
-for(genvar ii=0;ii<N_HWPE;ii++) begin
-  logic [BIT_BANK_INDEX-1:0] bank_index_hwpe;
-  int unsigned bank_index_hwpe_int;
-  initial begin
-    wait(rst_n);
-    while(1) begin
-      wait(hwpe_intc[ii].req);
-        calculate_bank_index(hwpe_intc[ii].add,bank_index_hwpe);
-        bank_index_hwpe_int = int'(bank_index_hwpe);
-        for(int i=0;i<HWPE_WIDTH;i++) begin
-          if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
-            HWPE_REQ[bank_index_hwpe_int + i - HWPE_WIDTH] = 1'b1; //rolls over
-          end else begin 
-            HWPE_REQ[bank_index_hwpe_int + i] = 1'b1;
-          end
-        end
-        #1ps;
-        while(1) begin
-          @(posedge clk);
-          if(hwpe_intc[ii].gnt) begin
-            #1ps;
-            for(int i=0;i<HWPE_WIDTH;i++) begin
-              if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
-                HWPE_REQ[bank_index_hwpe_int + i - HWPE_WIDTH] = 1'b0; //rolls over
-              end else begin 
-                HWPE_REQ[bank_index_hwpe_int + i] = 1'b0;
+            while(1) begin
+              @(posedge clk);
+              if(all_except_hwpe[ii].gnt) begin
+                #1ps
+                LOG_REQ[bank_index_log_int] = 1'b0;
+                break;
               end
             end
-            break;
-          end
         end
-    end
-  end
-end
-endgenerate
-
-static logic [N_BANKS-1:0] CONFLICTS = '0;
-static logic prior;
-
-// Check conflicts and the number of stalls
-initial begin : check_conflicts
-  int stall;
-  stall = 0;
-  prior = ctrl_i.invert_prio;
-  wait(rst_n);
-  while(1) begin
-    @(negedge clk);
-    for(int i=0;i<N_BANKS;i++) begin
-      CONFLICTS[i] = LOG_REQ[i] && HWPE_REQ[i];
-    end
-    stall = stall*|CONFLICTS + |CONFLICTS;
-    if(prior == ctrl_i.invert_prio) begin
-      if(stall == ctrl_i.low_prio_max_stall) begin
-        prior = !prior;
-        stall = 0;
       end
-    end else begin
-      prior = !prior;
+    end
+
+    for(genvar ii=0;ii<N_HWPE;ii++) begin
+      logic [BIT_BANK_INDEX-1:0] bank_index_hwpe;
+      int unsigned bank_index_hwpe_int;
+      initial begin
+        wait(rst_n);
+        while(1) begin
+          wait(hwpe_intc[ii].req);
+            calculate_bank_index(hwpe_intc[ii].add,bank_index_hwpe);
+            bank_index_hwpe_int = int'(bank_index_hwpe);
+            for(int i=0;i<HWPE_WIDTH;i++) begin
+              if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
+                HWPE_REQ[bank_index_hwpe_int + i - HWPE_WIDTH] = 1'b1; //rolls over
+              end else begin 
+                HWPE_REQ[bank_index_hwpe_int + i] = 1'b1;
+              end
+            end
+            #1ps;
+            while(1) begin
+              @(posedge clk);
+              if(hwpe_intc[ii].gnt) begin
+                #1ps;
+                for(int i=0;i<HWPE_WIDTH;i++) begin
+                  if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
+                    HWPE_REQ[bank_index_hwpe_int + i - HWPE_WIDTH] = 1'b0; //rolls over
+                  end else begin 
+                    HWPE_REQ[bank_index_hwpe_int + i] = 1'b0;
+                  end
+                end
+                break;
+              end
+            end
+        end
+      end
+    end
+    endgenerate
+
+    static logic [N_BANKS-1:0] CONFLICTS = '0;
+    static logic prior;
+
+    // Check conflicts and the number of stalls
+    initial begin : check_conflicts
+      int stall;
       stall = 0;
+      prior = ctrl_i.invert_prio;
+      wait(rst_n);
+      while(1) begin
+        @(negedge clk);
+        for(int i=0;i<N_BANKS;i++) begin
+          CONFLICTS[i] = LOG_REQ[i] && HWPE_REQ[i];
+        end
+        stall = stall*|CONFLICTS + |CONFLICTS;
+        if(prior == ctrl_i.invert_prio) begin
+          if(stall == ctrl_i.low_prio_max_stall) begin
+            prior = !prior;
+            stall = 0;
+          end
+        end else begin
+          prior = !prior;
+          stall = 0;
+        end
+      end
     end
-  end
-end
 
-//Hide low priority branch in case of conflicts
+    //Hide low priority branch in case of conflicts
 
-always_comb begin : HIDE
-  for(int i=0;i<N_BANKS;i++) begin
-    if(!prior) begin
-      HIDE_HWPE[i] = CONFLICTS[i];
-      HIDE_LOG[i] = 0;
-    end else begin
-      HIDE_HWPE[i] = 0;
-      HIDE_LOG[i] = CONFLICTS[i];
+    always_comb begin : HIDE
+      for(int i=0;i<N_BANKS;i++) begin
+        if(!prior) begin
+          HIDE_HWPE[i] = CONFLICTS[i];
+          HIDE_LOG[i] = 0;
+        end else begin
+          HIDE_HWPE[i] = 0;
+          HIDE_LOG[i] = CONFLICTS[i];
+        end
+      end
     end
-  end
-end
-
+  `endif
 
 /*START COMMENT
 
