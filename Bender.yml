@@ -41,7 +41,7 @@ sources:
       - rtl/core/hci_core_mux_ooo.sv
       - rtl/core/hci_core_r_valid_filter.sv
       - rtl/core/hci_core_r_id_filter.sv
-      - rtl/core/hci_core_source.sv
+      - rtl/core/hci_core_source_v2.sv
       - rtl/core/hci_core_split.sv
       - rtl/ecc/hci_ecc_dec.sv
       - rtl/ecc/hci_ecc_enc.sv
@@ -57,6 +57,7 @@ sources:
       # Level 3
       - rtl/core/hci_core_sink.sv
       - rtl/ecc/hci_ecc_source.sv
+      - rtl/core/hci_core_sink_v2.sv
       - rtl/interco/hci_router.sv
       # Level 4
       - rtl/ecc/hci_ecc_interconnect.sv
