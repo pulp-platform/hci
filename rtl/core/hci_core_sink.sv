@@ -86,6 +86,7 @@ module hci_core_sink
   parameter int unsigned TCDM_FIFO_DEPTH = 0,
   parameter int unsigned TRANS_CNT       = 16,
   parameter int unsigned MISALIGNED_ACCESSES = 1,
+    parameter int unsigned JOB_FIFO_DEPTH = 4,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
@@ -105,13 +106,15 @@ module hci_core_sink
 
   localparam int unsigned DATA_WIDTH = `HCI_SIZE_GET_DW(tcdm);
   localparam int unsigned EHW        = `HCI_SIZE_GET_EHW(tcdm);
+  localparam JOB_WIDTH = 226; 
+
 
   hci_streamer_state_t cs, ns;
-  flags_fifo_t addr_fifo_flags;
+  flags_fifo_t addr_fifo_flags, job_fifo_flags;
 
   logic address_gen_en;
   logic address_gen_clr;
-  logic done;
+  logic job_pop_ready, presample;
 
   logic tcdm_inflight;
 
@@ -126,6 +129,38 @@ module hci_core_sink
   ) addr_pop (
     .clk ( clk_i )
   );
+
+  hwpe_stream_intf_stream #(
+    .DATA_WIDTH ( JOB_WIDTH )
+  ) job_push (
+    .clk ( clk_i )
+  );
+
+  hwpe_stream_intf_stream #(
+    .DATA_WIDTH ( JOB_WIDTH )
+  ) job_pop (
+    .clk ( clk_i )
+  );
+
+  assign job_push.data = ctrl_i.addressgen_ctrl;
+  assign job_push.valid = ctrl_i.valid;
+  assign flags_o.ready = job_push.ready;
+  assign job_push.strb = 29'b11111111111111111111111111111;
+
+  hwpe_stream_fifo #(
+    .DATA_WIDTH ( JOB_WIDTH ),
+    .FIFO_DEPTH ( JOB_FIFO_DEPTH  )
+  ) i_fifo_job (
+    .clk_i   ( clk_i           ),
+    .rst_ni  ( rst_ni          ),
+    .clear_i ( clear_i         ),
+    .flags_o ( job_fifo_flags  ),
+    .push_i  ( job_push        ),
+    .pop_o   ( job_pop         )
+  );
+
+
+    assign job_pop.ready = job_pop_ready;
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '{
     DW:  DATA_WIDTH,
@@ -143,9 +178,9 @@ module hci_core_sink
     .rst_ni      ( rst_ni                   ),
     .enable_i    ( address_gen_en           ),
     .clear_i     ( address_gen_clr          ),
-    .presample_i ( ctrl_i.req_start         ),
+    .presample_i ( presample          ),
     .addr_o      ( addr_push                ),
-    .ctrl_i      ( ctrl_i.addressgen_ctrl   ),
+    .ctrl_i      ( job_pop.data             ),
     .flags_o     ( flags_o.addressgen_flags )
   );
 
@@ -251,7 +286,7 @@ module hci_core_sink
 
   assign tcdm_inflight = tcdm.req;
 
-  always_ff @(posedge clk_i or negedge rst_ni)
+  /*always_ff @(posedge clk_i or negedge rst_ni)
   begin : done_sink_ff
     if(~rst_ni)
       flags_o.done <= 1'b0;
@@ -259,7 +294,7 @@ module hci_core_sink
       flags_o.done <= 1'b0;
     else if(enable_i)
       flags_o.done <= done;
-  end
+  end*/
 
   always_ff @(posedge clk_i, negedge rst_ni)
   begin : fsm_seq
@@ -277,33 +312,44 @@ module hci_core_sink
   always_comb
   begin : fsm_comb
     ns                  = cs;
-    done                = 1'b0;
-    flags_o.ready_start = 1'b0;
+    job_pop_ready                = 1'b0;
+    flags_o.done        = 1'b0;
     address_gen_en      = 1'b0;
+    presample = 1'b0;
     address_gen_clr     = clear_i;
     address_cnt_clr = 1'b0;
     case(cs)
       STREAMER_IDLE : begin
-        flags_o.ready_start = 1'b1;
-        if(ctrl_i.req_start) begin
-          ns = STREAMER_WORKING;
-          address_gen_en = 1'b1;
+        if(ctrl_i.valid) begin
+          ns = STREAMER_PRESAMPLE;
+          address_gen_en = 1'b0;
         end
       end
+      STREAMER_PRESAMPLE : begin
+        ns = STREAMER_WORKING;
+        address_gen_en = 1'b1;
+        presample = 1'b1;
+      end 
       STREAMER_WORKING : begin
         address_gen_en = 1'b1;
         if(flags_o.addressgen_flags.done) begin
           ns = STREAMER_DONE;
+          job_pop_ready = 1'b1;
         end
       end
       STREAMER_DONE : begin
         address_gen_en = 1'b1;
         if(address_cnt_q==ctrl_i.addressgen_ctrl.tot_len) begin
-          ns = STREAMER_IDLE;
-          done = 1'b1;
+          flags_o.done = 1'b1;
           address_gen_en  = 1'b0;
           address_gen_clr = 1'b1;
           address_cnt_clr = 1'b1;
+          if(job_pop.valid) begin
+            ns = STREAMER_PRESAMPLE;
+          end
+          else begin
+            ns = STREAMER_IDLE;
+          end  
         end
       end
     endcase
@@ -354,4 +400,4 @@ module hci_core_sink
 `endif
 `endif
 
-endmodule // hci_core_sink
+endmodule // hci_core_sink nuovo
