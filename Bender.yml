@@ -33,7 +33,7 @@ sources:
       - rtl/core/hci_core_mux_ooo.sv
       - rtl/core/hci_core_r_valid_filter.sv
       - rtl/core/hci_core_r_id_filter.sv
-      - rtl/core/hci_core_source.sv
+      - rtl/core/hci_core_source_v2.sv
       - rtl/core/hci_core_split.sv
       - rtl/interco/hci_log_interconnect.sv
       - rtl/interco/hci_log_interconnect_l2.sv
@@ -42,6 +42,7 @@ sources:
       - rtl/interco/hci_router_reorder.sv
       # Level 3
       - rtl/core/hci_core_sink.sv
+      - rtl/core/hci_core_sink_v2.sv
       - rtl/interco/hci_router.sv
       # Level 4
       - rtl/hci_interconnect.sv
