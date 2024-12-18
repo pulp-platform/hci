@@ -65,8 +65,19 @@ package hci_package;
     hwpe_stream_package::flags_addressgen_v3_t addressgen_flags;
   } hci_streamer_flags_t;
 
+  typedef struct packed {
+    logic                                     valid;
+    hwpe_stream_package::ctrl_addressgen_v3_t addressgen_ctrl;
+  } hci_streamer_v2_ctrl_t;
+
+  typedef struct packed {
+    logic                                      ready;
+    logic                                      done;
+    hwpe_stream_package::flags_addressgen_v3_t addressgen_flags;
+  } hci_streamer_v2_flags_t;
+
   typedef enum {
-    STREAMER_IDLE, STREAMER_WORKING, STREAMER_DONE
+    STREAMER_IDLE, STREAMER_PRESAMPLE ,STREAMER_WORKING, STREAMER_DONE
   } hci_streamer_state_t;
 
   typedef enum {
