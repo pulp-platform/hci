@@ -10,7 +10,8 @@ module application_driver #(
     input logic                    rst_ni,
     input logic                    clear_i,
     input logic                    clk,
-    output logic                   end_stimuli
+    output logic                   end_stimuli,
+    output logic                   end_latency
 );  
 
     initial begin: application_block // one application block for each master`s port must be instantiated in the tb
@@ -22,6 +23,7 @@ module application_driver #(
         logic wen, req;
         logic [DATA_WIDTH-1:0] data;
         logic [ADD_WIDTH-1:0]  add;
+        logic last_wen;
 
         master.id = -1;
         master.add = '0;
@@ -34,6 +36,7 @@ module application_driver #(
         master.user = 0;
         
         end_stimuli = 1'b0;
+        end_latency = 1'b0;
 
         wait (rst_ni);
         if(IS_HWPE) begin
@@ -57,6 +60,7 @@ module application_driver #(
             master.wen = wen;
             master.req = req;
             //#(ACQ_DELAY-APPL_DELAY);
+            last_wen = wen;
             if(req) begin
                 while(1) begin
                     @(posedge clk);
@@ -75,6 +79,16 @@ module application_driver #(
         end
         $display("MASTER %0d, end stimuli. time: %0t",MASTER_NUMBER,$time);
         end_stimuli = 1'b1;
+        if(last_wen) begin
+            while(1) begin
+                @(posedge clk);
+                if(master.r_valid) begin
+                    end_latency = 1'b1;
+                end
+            end
+        end else begin
+            end_latency = 1'b1;
+        end
         $fclose(stim);
     end
 endmodule
