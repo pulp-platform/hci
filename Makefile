@@ -1,3 +1,9 @@
+include config_folder/config.mk
+
+test:
+	echo $(ARGUMENT_PARAMETER)
+	$(python) --name $(ARGUMENT_PARAMETER)
+
 ROOT_DIR      = $(strip $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))) # set the absolute path of the directory where the makefile is located
 
 CONFIG_FILE_HCI := config_folder/hci_params.py
