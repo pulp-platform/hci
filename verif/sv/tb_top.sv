@@ -630,7 +630,8 @@ module hci_tb
                   if (recreated_queue == queue_stimuli_hwpe[i+k*HWPE_WIDTH][0])  begin
                     if(!already_checked[k]) begin
                       $display("BANK %0d: skip before %0d, time: %0t",ii,skip,$time);
-                      check_hwpe(i,ii,okay,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_write,skip);
+                      check_hwpe(i,ii,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_write,skip);
+                      okay = 1;
                       $display("BANK %0d: skip after %0d, time: %0t",ii,skip,$time);
                       STOP_CHECK = 1;
                       if(okay && HIDE_HWPE[ii]) begin
@@ -774,7 +775,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                             $finish();
                           end
                         if(!already_checked_read[k]) begin
-                          check_hwpe_read_task(i,ii,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_read,skip);
+                          check_hwpe(i,ii,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_read,skip);
                           already_checked_read[k] = !skip;
                         end else begin
                           skip = 0;
@@ -1152,44 +1153,11 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     end
   endtask
 
-  task check_hwpe(input int unsigned index_hwpe_already_checked, input int unsigned index_bank_already_checked,output int okay,input stimuli queue_stimuli_hwpe[HWPE_WIDTH][$], input out_intc_to_mem queue_out_intc_to_mem_write[N_BANKS][$], output logic skip);
-  int signed index_hwpe_to_check;
-  int signed index_bank_to_check;
-  stimuli recreated_queue;
-  $display("BANK %0d: start checking adjacent banks for hwpe write",index_bank_already_checked);
-  $display("BANK %0d: this bank corresponde to the %0d kwpe index",index_bank_already_checked,index_hwpe_already_checked);
-  skip = 0;
-  okay = 1;
-  for(int i=1; i<HWPE_WIDTH; i++) begin
-    index_hwpe_to_check = index_hwpe_already_checked + i;
-    index_bank_to_check = index_bank_already_checked + i;
-    if(index_hwpe_to_check > HWPE_WIDTH-1) begin
-      index_hwpe_to_check = index_hwpe_to_check - HWPE_WIDTH;
-      index_bank_to_check = index_bank_to_check -HWPE_WIDTH;
-    end
-    if(index_bank_to_check >= int'(N_BANKS)) begin 
-      index_bank_to_check = index_bank_to_check - N_BANKS;
-
-    end
-    if(index_bank_to_check < 0) begin
-      index_bank_to_check = index_bank_to_check + N_BANKS;
-    end
-    recreate_address(queue_out_intc_to_mem_write[index_bank_to_check][0].add,index_bank_to_check,recreated_queue.add);
-    recreated_queue.data = queue_out_intc_to_mem_write[index_bank_to_check][0].data;
-    $display("BANK %0d: checking adjacent bank %0d, recreated_queue.add = %0b",index_bank_already_checked,index_bank_to_check,recreated_queue.add);
-    $display("BANK %0d: checking %0d index hwpe, queue_stimuli_hwpe = %0b",index_bank_already_checked,index_hwpe_to_check,queue_stimuli_hwpe[index_hwpe_to_check][0].add);
-    if(recreated_queue != queue_stimuli_hwpe[index_hwpe_to_check][0] || queue_out_intc_to_mem_write[index_bank_to_check].size()==0) begin
-      skip=1;
-      WARNING = 1'b1;
-    end
-  end
-  endtask
-
   task calculate_bank_index(input logic [ADD_WIDTH-1:0] address, output logic [BIT_BANK_INDEX-1:0] index);
     index = address[BIT_BANK_INDEX-1+2:2];
   endtask
 
-  task check_hwpe_read_task(input int unsigned index_hwpe_already_checked,input int unsigned index_bank_already_checked,input stimuli queue_stimuli_hwpe[HWPE_WIDTH][$],input out_intc_to_mem queue_out_intc_to_mem_read[N_BANKS][$],output logic skip);
+  task check_hwpe(input int unsigned index_hwpe_already_checked,input int unsigned index_bank_already_checked,input stimuli queue_stimuli_hwpe[HWPE_WIDTH][$],input out_intc_to_mem queue_out_intc_to_mem_read[N_BANKS][$],output logic skip);
     int signed index_hwpe_to_check;
     int signed index_bank_to_check;
     stimuli recreated_queue;
