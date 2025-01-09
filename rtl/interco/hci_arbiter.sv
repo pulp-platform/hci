@@ -57,7 +57,8 @@
 module hci_arbiter
   import hci_package::*;
 #(
-  parameter int unsigned NB_CHAN = 2
+  parameter int unsigned NB_CHAN = 2,
+  parameter int unsigned MODE = 0
 )
 (
   input  logic                   clk_i,
@@ -77,110 +78,219 @@ module hci_arbiter
   logic ls_req_d;
   logic switch_channels_d;
   logic unsigned [7:0] ls_stall_ctr_d;
-
-  // priority_req is the OR of all requests coming out of the log interconnect.
-  // it should be simplified to simply an OR of all requests coming *into* the
-  // log interconnect directly within the synthesis tool.
-  always_comb
-  begin
-    hs_req_d = |hs_req_in;
-    ls_req_d = |ls_req_in;
-    if (ctrl_i.low_prio_max_stall > 0) //Set to 0 to disable this functionality
-    begin
-      if (ls_stall_ctr_d >= ctrl_i.low_prio_max_stall)
-        hs_req_d = 0; //Let low side through for once
-    end
-  end
-  
-  //Low side stall counter
-	always_ff @(posedge clk_i or negedge rst_ni)
-	begin
-		if (~rst_ni)
-			ls_stall_ctr_d <= 0;
-		else if (hs_req_d & ls_req_d)
-			ls_stall_ctr_d <= ls_stall_ctr_d + 1;
-    else
-			ls_stall_ctr_d <= 0;
-	end
-  
-  assign switch_channels_d = ctrl_i.invert_prio;
-
-  // Req mapping
   generate
-    for(genvar ii=0; ii<NB_CHAN; ii++) begin: req_mapping
-
-      // switch_channels_d could switch priorities -> in_low is priority request
+    if(MODE == 0) begin
+      // priority_req is the OR of all requests coming out of the log interconnect.
+      // it should be simplified to simply an OR of all requests coming *into* the
+      // log interconnect directly within the synthesis tool.
       always_comb
       begin
-        if (switch_channels_d)
+        hs_req_d = |hs_req_in;
+        ls_req_d = |ls_req_in;
+        if (ctrl_i.low_prio_max_stall > 0) //Set to 0 to disable this functionality
         begin
-          ls_req_in[ii] = in_high[ii].req;
-          hs_req_in[ii] = in_low[ii].req;
-        end
-        else 
-        begin
-          hs_req_in[ii] = in_high[ii].req;
-          ls_req_in[ii] = in_low[ii].req;
+          if (ls_stall_ctr_d >= ctrl_i.low_prio_max_stall)
+            hs_req_d = 0; //Let low side through for once
         end
       end
-    end // req_mapping
-  endgenerate
-
-  // Side select
-  generate
-    for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
-      assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
-    end // side_select
-  endgenerate
-
-  // tcdm ports binding
-  generate
-    for(genvar ii=0; ii<NB_CHAN; ii++) begin: tcdm_binding
-      always_comb
+      
+      //Low side stall counter
+      always_ff @(posedge clk_i or negedge rst_ni)
       begin
-        in_high[ii].gnt = '0;
-        in_low [ii].gnt = '0;
-        if(hs_pass_d[ii]) 
-        begin
-          out[ii].req     = in_high[ii].req;
-          out[ii].add     = in_high[ii].add;
-          out[ii].wen     = in_high[ii].wen;
-          out[ii].be      = in_high[ii].be;
-          out[ii].data    = in_high[ii].data;
-          out[ii].id      = in_high[ii].id;
-          out[ii].user    = in_high[ii].user;
-          out[ii].ecc     = in_high[ii].ecc;
-          in_high[ii].gnt = out[ii].gnt;
-        end 
+        if (~rst_ni)
+          ls_stall_ctr_d <= 0;
+        else if (hs_req_d & ls_req_d)
+          ls_stall_ctr_d <= ls_stall_ctr_d + 1;
         else
-        begin
-          out[ii].req    = in_low[ii].req;
-          out[ii].add    = in_low[ii].add;
-          out[ii].wen    = in_low[ii].wen;
-          out[ii].be     = in_low[ii].be;
-          out[ii].data   = in_low[ii].data;
-          out[ii].id     = in_low[ii].id;
-          out[ii].user   = in_low[ii].user;
-          out[ii].ecc    = in_low[ii].ecc;
-          in_low[ii].gnt = out[ii].gnt;
-        end
-        in_high[ii].r_data = out[ii].r_data;
-        in_low [ii].r_data = out[ii].r_data;
-        in_high[ii].r_id   = out[ii].r_id;
-        in_low [ii].r_id   = out[ii].r_id;
-        in_high[ii].r_opc  = out[ii].r_opc;
-        in_low [ii].r_opc  = out[ii].r_opc;
-        in_high[ii].r_user = out[ii].r_user;
-        in_low [ii].r_user = out[ii].r_user;
-        in_high[ii].r_ecc  = out[ii].r_ecc;
-        in_low [ii].r_ecc  = out[ii].r_ecc;
-        // r_valid signals are NOT propagated by the arbiter, they are generated at
-        // routing stage. In previous HCI versions, we used a r_valid-less version
-        // of the protocol here.
-        in_high[ii].r_valid = '0;
-        in_low [ii].r_valid = '0;
+          ls_stall_ctr_d <= 0;
       end
-    end // tcdm_binding
+      
+      assign switch_channels_d = ctrl_i.invert_prio;
+
+      // Req mapping
+      generate
+        for(genvar ii=0; ii<NB_CHAN; ii++) begin: req_mapping
+
+          // switch_channels_d could switch priorities -> in_low is priority request
+          always_comb
+          begin
+            if (switch_channels_d)
+            begin
+              ls_req_in[ii] = in_high[ii].req;
+              hs_req_in[ii] = in_low[ii].req;
+            end
+            else 
+            begin
+              hs_req_in[ii] = in_high[ii].req;
+              ls_req_in[ii] = in_low[ii].req;
+            end
+          end
+        end // req_mapping
+      endgenerate
+
+      // Side select
+      generate
+        for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
+          assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
+        end // side_select
+      endgenerate
+
+      // tcdm ports binding
+      generate
+        for(genvar ii=0; ii<NB_CHAN; ii++) begin: tcdm_binding
+          always_comb
+          begin
+            in_high[ii].gnt = '0;
+            in_low [ii].gnt = '0;
+            if(hs_pass_d[ii]) 
+            begin
+              out[ii].req     = in_high[ii].req;
+              out[ii].add     = in_high[ii].add;
+              out[ii].wen     = in_high[ii].wen;
+              out[ii].be      = in_high[ii].be;
+              out[ii].data    = in_high[ii].data;
+              out[ii].id      = in_high[ii].id;
+              out[ii].user    = in_high[ii].user;
+              out[ii].ecc     = in_high[ii].ecc;
+              in_high[ii].gnt = out[ii].gnt;
+            end 
+            else
+            begin
+              out[ii].req    = in_low[ii].req;
+              out[ii].add    = in_low[ii].add;
+              out[ii].wen    = in_low[ii].wen;
+              out[ii].be     = in_low[ii].be;
+              out[ii].data   = in_low[ii].data;
+              out[ii].id     = in_low[ii].id;
+              out[ii].user   = in_low[ii].user;
+              out[ii].ecc    = in_low[ii].ecc;
+              in_low[ii].gnt = out[ii].gnt;
+            end
+            in_high[ii].r_data = out[ii].r_data;
+            in_low [ii].r_data = out[ii].r_data;
+            in_high[ii].r_id   = out[ii].r_id;
+            in_low [ii].r_id   = out[ii].r_id;
+            in_high[ii].r_opc  = out[ii].r_opc;
+            in_low [ii].r_opc  = out[ii].r_opc;
+            in_high[ii].r_user = out[ii].r_user;
+            in_low [ii].r_user = out[ii].r_user;
+            in_high[ii].r_ecc  = out[ii].r_ecc;
+            in_low [ii].r_ecc  = out[ii].r_ecc;
+            // r_valid signals are NOT propagated by the arbiter, they are generated at
+            // routing stage. In previous HCI versions, we used a r_valid-less version
+            // of the protocol here.
+            in_high[ii].r_valid = '0;
+            in_low [ii].r_valid = '0;
+          end
+        end // tcdm_binding
+      endgenerate
+    end
+    if (MODE == 1) begin
+
+      assign conflict = |(hs_req_in & ls_req_in);
+
+      always_comb
+      begin
+        hs_req_d = |hs_req_in;
+        ls_req_d = |ls_req_in;
+        if (ctrl_i.low_prio_max_stall > 0) //Set to 0 to disable this functionality
+        begin
+          if (ls_stall_ctr_d >= ctrl_i.low_prio_max_stall)
+            hs_req_d = 0; //Let low side through for once
+        end
+      end
+      
+      //Low side stall counter
+      always_ff @(posedge clk_i or negedge rst_ni)
+      begin
+        if (~rst_ni)
+          ls_stall_ctr_d <= 0;
+        else if (conflict)
+          ls_stall_ctr_d <= ls_stall_ctr_d + 1;
+        else
+          ls_stall_ctr_d <= 0;
+      end
+      
+      assign switch_channels_d = ctrl_i.invert_prio;
+
+      // Req mapping
+      generate
+        for(genvar ii=0; ii<NB_CHAN; ii++) begin: req_mapping
+
+          // switch_channels_d could switch priorities -> in_low is priority request
+          always_comb
+          begin
+            if (switch_channels_d)
+            begin
+              ls_req_in[ii] = in_high[ii].req;
+              hs_req_in[ii] = in_low[ii].req;
+            end
+            else 
+            begin
+              hs_req_in[ii] = in_high[ii].req;
+              ls_req_in[ii] = in_low[ii].req;
+            end
+          end
+        end // req_mapping
+      endgenerate
+
+      // Side select
+      generate
+        for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
+          assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
+        end // side_select
+      endgenerate
+
+      // tcdm ports binding
+      generate
+        for(genvar ii=0; ii<NB_CHAN; ii++) begin: tcdm_binding
+          always_comb
+          begin
+            in_high[ii].gnt = '0;
+            in_low [ii].gnt = '0;
+            if(hs_pass_d[ii]) 
+            begin
+              out[ii].req     = in_high[ii].req;
+              out[ii].add     = in_high[ii].add;
+              out[ii].wen     = in_high[ii].wen;
+              out[ii].be      = in_high[ii].be;
+              out[ii].data    = in_high[ii].data;
+              out[ii].id      = in_high[ii].id;
+              out[ii].user    = in_high[ii].user;
+              out[ii].ecc     = in_high[ii].ecc;
+              in_high[ii].gnt = out[ii].gnt;
+            end 
+            else
+            begin
+              out[ii].req    = in_low[ii].req;
+              out[ii].add    = in_low[ii].add;
+              out[ii].wen    = in_low[ii].wen;
+              out[ii].be     = in_low[ii].be;
+              out[ii].data   = in_low[ii].data;
+              out[ii].id     = in_low[ii].id;
+              out[ii].user   = in_low[ii].user;
+              out[ii].ecc    = in_low[ii].ecc;
+              in_low[ii].gnt = out[ii].gnt;
+            end
+            in_high[ii].r_data = out[ii].r_data;
+            in_low [ii].r_data = out[ii].r_data;
+            in_high[ii].r_id   = out[ii].r_id;
+            in_low [ii].r_id   = out[ii].r_id;
+            in_high[ii].r_opc  = out[ii].r_opc;
+            in_low [ii].r_opc  = out[ii].r_opc;
+            in_high[ii].r_user = out[ii].r_user;
+            in_low [ii].r_user = out[ii].r_user;
+            in_high[ii].r_ecc  = out[ii].r_ecc;
+            in_low [ii].r_ecc  = out[ii].r_ecc;
+            // r_valid signals are NOT propagated by the arbiter, they are generated at
+            // routing stage. In previous HCI versions, we used a r_valid-less version
+            // of the protocol here.
+            in_high[ii].r_valid = '0;
+            in_low [ii].r_valid = '0;
+          end
+        end // tcdm_binding
+      endgenerate
+    end
   endgenerate
 
 endmodule // hci_arbiter

@@ -5,7 +5,7 @@
 #### PARAMETERS TO BE MAUALLY INSERTED ####
 
 # Number of HWPEs attached to the port
-N_HWPE=0
+N_HWPE=2
 # Widht of an HWPE wide-word (as a multiple of DATA_WIDTH)
 HWPE_WIDTH=4
 # Number of Core ports                                                  

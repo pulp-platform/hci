@@ -4,7 +4,7 @@
 
 #### PARAMETERS TO BE MANUALLY INSERTED ####
 # Number of tests for each master
-N_TEST=3 
+N_TEST=300 
 # Clock period in ns
 CLK_PERIOD=50
 # Number of clock cycles after which the reset signal is deasserted
