@@ -451,71 +451,6 @@ module hci_tb
     end
     end
   endgenerate
-  /*
-  generate
-      for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
-        initial begin
-          int unsigned latency;
-          wait(rst_n);
-          while(1) begin
-            latency = 1;
-            @(posedge clk);
-            if(all_except_hwpe[ii].req) begin
-              if(all_except_hwpe[ii].wen) begin
-                while(1) begin
-                  latency++;
-                  @(posedge clk);
-                  if(all_except_hwpe[ii].r_valid) begin
-                    break;
-                  end
-                end
-              end else begin
-                while(1) begin
-                  if(all_except_hwpe[ii].gnt) begin
-                    break;
-                  end
-                  @(posedge clk);
-                  latency++;
-                  end
-              end
-              LATENCY_LOG[ii] = LATENCY_LOG[ii] + latency;
-            end
-          end
-        end
-      end
-
-      for(genvar ii=0;ii<N_HWPE;ii++) begin
-        initial begin
-          int unsigned latency;
-          wait(rst_n);
-          while(1) begin
-            latency = 1;
-            @(posedge clk);
-            if(hwpe_intc[ii].req) begin
-              if(hwpe_intc[ii].wen) begin
-                while(1) begin
-                  latency++;
-                  @(posedge clk);
-                  if(hwpe_intc[ii].r_valid) begin
-                    break;
-                  end
-                end
-              end else begin
-                while(1) begin
-                  if(hwpe_intc[ii].gnt) begin
-                    break;
-                  end
-                  @(posedge clk);
-                  latency++;
-                  end
-              end
-              LATENCY_HWPE[ii] = LATENCY_HWPE[ii] + latency;
-            end
-          end
-        end
-      end
-  endgenerate*/
-
   // Read transactions: Add r_data to a queue (master side)
 
   generate 
@@ -606,19 +541,6 @@ module hci_tb
   // Read transactions: Add r_data to a queue (TCDM side)
   generate
     for(genvar ii=0;ii<N_BANKS;ii++) begin : flag
-      /*initial begin
-      wait(rst_n);
-        while(1) begin
-            if(intc_mem_wiring[ii].req && intc_mem_wiring[ii].gnt && intc_mem_wiring[ii].wen) begin
-              flag_read[ii] = 1'b1;
-            end
-            else begin
-              flag_read[ii] = '0;
-            end
-            @(posedge clk);
-          end
-        end*/
-
     always_ff @(posedge clk or negedge rst_n)
 	  begin
       if (~rst_n)
@@ -637,9 +559,6 @@ module hci_tb
         int index_hwpe, index_master;
         wait (rst_n);
               while(1) begin
-                //if(ii == 6)
-                  //$display("intc_mem_wiring[6].r_valid = %b: time %0t",intc_mem_wiring[ii].r_valid,$time);
-                  //$display("flag_read[%0d]=%b",ii,flag_read[ii]);
                 @(posedge clk);
                 if(intc_mem_wiring[ii].r_valid && flag_read[ii]) begin
                   $display("queue_read before: %b,bank %0d,time %0t",queue_read[ii][0],ii,$time);
@@ -714,9 +633,6 @@ module hci_tb
                       check_hwpe(i,ii,okay,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_write,skip);
                       $display("BANK %0d: skip after %0d, time: %0t",ii,skip,$time);
                       STOP_CHECK = 1;
-                      //if(okay>0) begin
-                      //  $display("BANK %0d: FOUND CORRESPONDENCE, delete first element of queue_out_intc_to_mem_write = %b, time:%0t",ii,queue_out_intc_to_mem_write[ii][0],$time);
-                      //end
                       if(okay && HIDE_HWPE[ii]) begin
                         $display("-----------------------------------------");
                         $display("Time %0t:    Test ***FAILED*** \n",$time);
@@ -738,14 +654,6 @@ module hci_tb
                     end
                   end
                 end
-                // while(1) begin
-                //   @(posedge clk);
-                //     if(hwpe_intc.gnt) begin
-                //       break;
-                //     end
-                //   end
-            
-              //$display("BANK %0d: write hwpe_check = %0d time:%0t",ii,hwpe_check,$time);
               if(hwpe_check[k] == HWPE_WIDTH) begin
                 hwpe_check[k] = 0;
                 already_checked[k] = 0;
@@ -872,12 +780,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                           skip = 0;
                         end
                         if(!skip) begin
-                          // while(1) begin
-                          //   @(posedge clk);
-                          //   if(hwpe_intc.gnt) begin
-                          //     break;
-                          //   end
-                          // end
                           $display("BANK %0d: FOUND CORRESPONDENCE, time:%0t",ii,$time);
                           check_hwpe_read_add[k]++;
                           $display("BANK %0d: check_hwpe_read_add[%0d] = %0d, time:%0t",ii,k,check_hwpe_read_add[k],$time);
@@ -890,8 +792,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                               end
                               already_checked_read[k] = 0;
                           end
-                          //$display("BANK %0d: check_hwpe_read_add = %0d",ii,check_hwpe_read_add);
-                          //$display("BANK %0d: AFTER DELETE queue_out_intc_to_mem_read add = %b, queue_out_intc_to_mem_read data = %b, time:%0t",ii,queue_out_intc_to_mem_read[ii][0].add,queue_out_intc_to_mem_read[ii][0].data,$time);
                           $display("BANK %0d: DELETE queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
                           queue_out_intc_to_mem_read[ii].delete(0);
                           $display("BANK %0d: AFTER queue_out_intc_to_mem_read[%0d] = %b, time:%0t",ii,ii,queue_out_intc_to_mem_read[ii][0].add,$time);
@@ -980,11 +880,11 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               calculate_bank_index(all_except_hwpe[ii].add,bank_index_log);
               bank_index_log_int = int'(bank_index_log);
               LOG_REQ_EACH_MASTER[bank_index_log_int][ii] = 1'b1;
-              #1ps
+              #(CLK_PERIOD/100)
               while(1) begin
                 @(posedge clk);
                 if(all_except_hwpe[ii].gnt) begin
-                  #1ps
+                  #(CLK_PERIOD/100)
                   LOG_REQ_EACH_MASTER[bank_index_log_int][ii] = 1'b0;
                   break;
                 end
@@ -1013,11 +913,11 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                   HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i][ii] = 1'b1;
                 end
               end
-              #1ps;
+              #(CLK_PERIOD/100);
               while(1) begin
                 @(posedge clk);
                 if(hwpe_intc[ii].gnt) begin
-                  #1ps;
+                  #(CLK_PERIOD/100);
                   for(int i=0;i<HWPE_WIDTH;i++) begin
                     if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
                       HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i - HWPE_WIDTH][ii] = 1'b0; //rolls over
@@ -1096,7 +996,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       end
     end
 
-      //Hide low priority branch in case of conflicts
+    //Hide low priority branch in case of conflicts
     if(`PRIORITY_CHECK_NO_STALL == 1 || `PRIORITY_CHECK_STALL == 1) begin
       always_comb begin : HIDE
         for(int i=0;i<N_BANKS;i++) begin
@@ -1112,126 +1012,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     end
 
     endgenerate
-
-
-
-/*START COMMENT
-
-  logic [7:0] stall_count = '0;
-  logic invert_prio_for_one_cycle;
-  //logic [N_MASTER-N_HWPE-1:0] PRIO;
-
-  // Check at every cycle if there are any conflicts
-  generate
-    for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
-      initial begin
-        logic [BIT_BANK_INDEX-1:0] bank_index_log;
-        logic [BIT_BANK_INDEX-1:0] bank_index_hwpe;
-        //PRIO[ii] = 1'b0;
-        wait(rst_n);
-        while(1) begin
-          wait(all_except_hwpe[ii].req && hwpe_intc.req) begin
-            calculate_bank_index(all_except_hwpe[ii].add,bank_index_log);
-            calculate_bank_index(hwpe_intc.add,bank_index_hwpe);
-            $display("Time: %0t, Start computing the priority check on master %0d, bank index log: %0d, bank index hwpe: %0d", $time,ii,bank_index_log,bank_index_hwpe);
-            $display("Time: %0t, ctrl_i.invert_prio = %b, invert_prio_for_one_cycle = %b",$time,ctrl_i.invert_prio,invert_prio_for_one_cycle);
-            for(int i=0;i<HWPE_WIDTH;i++) begin
-              if(bank_index_log == bank_index_hwpe) begin // If conflict
-                if(!(ctrl_i.invert_prio ^ invert_prio_for_one_cycle)) begin // Control who has the priority
-                $display("Time: %0t, hide hwpe[%0d]",$time,i);
-                  HIDE_HWPE[i] = 1'b1;
-                  //PRIO[ii] = 1'b1;
-                  for(int j=0;j<ctrl_i.low_prio_max_stall;j++) begin
-                      @(posedge clk);
-                      if(all_except_hwpe[ii].gnt) begin
-                        $display("Time: %0t, show hwpe[%0d]",$time,i);
-                        #1ps;
-                        break;
-                      end
-                  end
-                  //PRIO[ii] = 1'b0;
-                  HIDE_HWPE[i] = 1'b0;
-                end else begin
-                  $display("Time: %0t, hide master %0d",$time,ii);
-                  HIDE_LOG[ii] = 1'b1;
-                  for(int j=0;j<ctrl_i.low_prio_max_stall;j++) begin
-                    @(posedge clk);
-                    if(all_except_hwpe[ii].gnt) begin
-                      #1ps;
-                      break;
-                    end
-                  end
-                  HIDE_LOG[ii] = 1'b0;
-                end
-                break;
-              end
-              bank_index_hwpe++;
-              if(bank_index_hwpe >= N_BANKS ) begin
-                bank_index_hwpe = bank_index_hwpe - N_BANKS;
-              end
-              if(i == 3) begin
-                @(posedge clk);
-              end
-            end
-          end
-        end
-      end
-    end
-  endgenerate
-
-  // Count the number of stalls
-  always_ff @(posedge clk or negedge rst_n)
-	begin
-		if (~rst_n)
-			stall_count <= '0;
-    else if (invert_prio_for_one_cycle)
-      stall_count <= '0;
-		else if ((|HIDE_HWPE) || (|HIDE_LOG)) begin
-			stall_count <= stall_count + 1'b1;
-      $display("STAL COUNT = %0d, time %0t",stall_count,$time);
-    end else
-			stall_count <= '0;
-	end
-
-  initial begin
-    if (ctrl_i.low_prio_max_stall > 0)  begin : invert_prio_for_one_cycle_initial
-      invert_prio_for_one_cycle = 1'b0;
-      wait(rst_n);
-      while(1) begin
-        wait(stall_count > ctrl_i.low_prio_max_stall - 2);
-        invert_prio_for_one_cycle = 1'b1;
-        @(posedge clk);
-        invert_prio_for_one_cycle = 1'b0;
-        // $display("-----------------------------------------");
-        // $display("Time %0t:    Test ***FAILED*** \n",$time);
-        // $display("The channel with lower priority was stalled for %b (%0d), but the signal ctrl_i.low_prio_max_stall is %b (%0d), check = %b",stall_count,stall_count,ctrl_i.low_prio_max_stall,ctrl_i.low_prio_max_stall,stall_count > ctrl_i.low_prio_max_stall);
-        // $finish();
-
-
-
-    end
-  end
-  end
-
-
-
-END COMMENT*/
-
-
-
-
-  /*// Check low_prio_max_stall
-  initial begin
-    if (ctrl_i.low_prio_max_stall > 0)  begin
-      wait(rst_n);
-      wait(stall_count > ctrl_i.low_prio_max_stall);
-      $display("-----------------------------------------");
-      $display("Time %0t:    Test ***FAILED*** \n",$time);
-      $display("The channel with lower priority was stalled for %b (%0d), but the signal ctrl_i.low_prio_max_stall is %b (%0d), check = %b",stall_count,stall_count,ctrl_i.low_prio_max_stall,ctrl_i.low_prio_max_stall,stall_count > ctrl_i.low_prio_max_stall);
-      $finish();
-    end
-  end
-*/
   //-----------------------------------------
   //-         REAL BANDWIDTH                -
   //-----------------------------------------
@@ -1242,20 +1022,14 @@ END COMMENT*/
     real                 tot_time,tot_data;
     band_real = -1;
     wait(rst_n);
-    #1ps;
+    #(CLK_PERIOD/100);
     @(posedge clk);
     start_time = $time;
-    //$display("--------------------------START TIME : %0t",start_time);
     wait(&END_STIMULI);
     end_time = $time;
-    //$display("--------------------------STOP TIME : %0t",end_time);
-    //$display("START TIME: %f",start_time);
     tot_time = (end_time - start_time)/CLK_PERIOD; // ns
-    //$display("tot_time_real: %f",tot_time);
     tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * HWPE_WIDTH*DATA_WIDTH) * N_HWPE_REAL); // bit
-    //$display("tot_data_real: %f",tot_data);
     band_real = tot_data/tot_time; // Gbps
-    //$display("band_real: %f",band_real);
   end
 
   //--------------------------------------------
@@ -1267,7 +1041,7 @@ END COMMENT*/
       initial begin
         time                 start_time, end_time;
         wait(rst_n);
-        #1ps;
+        #(CLK_PERIOD/100);
         @(posedge clk);
         start_time = $time;
         wait(END_LATENCY[ii]);
@@ -1280,7 +1054,7 @@ END COMMENT*/
   initial begin
       time                 start_time, end_time;
       wait(rst_n);
-      #1ps;
+      #(CLK_PERIOD/100);
       @(posedge clk);
       start_time = $time;
       wait(&END_LATENCY);
@@ -1347,41 +1121,6 @@ END COMMENT*/
     $finish();
   end
 
-/*
-  //--------------------------------------------
-  //-       CHECK ERRORS IN APP DRIVERS        -
-  //--------------------------------------------
-  generate
-    for(genvar i=0;i<N_MASTER-N_HWPE;i++) begin
-      for(genvar j=i+1;j<N_MASTER-N_HWPE;j++) begin
-        initial begin
-          while(1) begin
-            @(posedge clk);
-            if(all_except_hwpe[i].req &&all_except_hwpe[j].req) begin
-              assert (all_except_hwpe[i].add[ADD_WIDTH-1:2] != all_except_hwpe[j].add[ADD_WIDTH-1:2])
-                else begin
-                  $warning("Master %0d and Master %0d are attempting to make a request to the same address.",i,j);
-                  //all_except_hwpe[i].add[ADD_WIDTH-1:2] = all_except_hwpe[j].add[ADD_WIDTH-1:2] + 1;
-                end
-            end
-          end
-        end
-      end
-      initial begin
-        while(1) begin
-          @(posedge clk);
-          if(all_except_hwpe[i].req && hwpe_intc.req) begin
-            assert (all_except_hwpe[i].add[ADD_WIDTH-1:2] != hwpe_intc.add[ADD_WIDTH-1:2])
-              else begin
-                $warning("Master %0d and HWPE are attempting to make a request to the same address. Added 1 to Master%0d's address",i,i);
-                //all_except_hwpe[i].add[ADD_WIDTH-1:2] = all_except_hwpe[i].add[ADD_WIDTH-1:2] + 1;
-              end
-          end
-        end
-      end
-    end
-  endgenerate
-*/
   //--------------------------------------------------------------------------------------------------------------------------------------------------------------
   //--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1410,8 +1149,6 @@ END COMMENT*/
       address_after = {address_before[ADD_WIDTH-1:BIT_BANK_INDEX + 2]+rolls_over_check_after,bank_index_after,address_before[1:0]};
 
       data_after = data_before[index*DATA_WIDTH +: DATA_WIDTH];
-      //$display("queue hwpe before: data = %0b add = %0b rolls_before = %b rolls_after = %b",data_before,address_before,rolls_over_check_before,rolls_over_check_after);
-      //$display("queue hwpe after: data = %0b add = %0b",data_after,address_after);
     end
   endtask
 
@@ -1421,56 +1158,33 @@ END COMMENT*/
   stimuli recreated_queue;
   $display("BANK %0d: start checking adjacent banks for hwpe write",index_bank_already_checked);
   $display("BANK %0d: this bank corresponde to the %0d kwpe index",index_bank_already_checked,index_hwpe_already_checked);
-  //$display("index_hwpe_already_checked %0d", index_hwpe_already_checked);
-  //$display("index_bank_already_checked %0d", index_bank_already_checked);
   skip = 0;
   okay = 1;
   for(int i=1; i<HWPE_WIDTH; i++) begin
     index_hwpe_to_check = index_hwpe_already_checked + i;
     index_bank_to_check = index_bank_already_checked + i;
     if(index_hwpe_to_check > HWPE_WIDTH-1) begin
-      //$display("before index_bank_to_check %0d",index_bank_to_check);
       index_hwpe_to_check = index_hwpe_to_check - HWPE_WIDTH;
       index_bank_to_check = index_bank_to_check -HWPE_WIDTH;
-      //$display("after index_bank_to_check %0d",index_bank_to_check);
     end
     if(index_bank_to_check >= int'(N_BANKS)) begin 
       index_bank_to_check = index_bank_to_check - N_BANKS;
 
     end
     if(index_bank_to_check < 0) begin
-      //$display("before index_bank_to_check %0d",index_bank_to_check);
       index_bank_to_check = index_bank_to_check + N_BANKS;
-      //$display("added N_BANKS %0d, now index_bank_to_check = %0d",N_BANKS,index_bank_to_check);
     end
     recreate_address(queue_out_intc_to_mem_write[index_bank_to_check][0].add,index_bank_to_check,recreated_queue.add);
     recreated_queue.data = queue_out_intc_to_mem_write[index_bank_to_check][0].data;
-    //$display("Bank to check %0d: wen = %b data = %b address = %b", index_bank_to_check, queue_out_intc_to_mem_write[index_bank_to_check][0].wen,queue_out_intc_to_mem_write[index_bank_to_check][0].data,queue_out_intc_to_mem_write[index_bank_to_check][0].add);
-    //$display("Bank to check %0d", index_bank_to_check);
     $display("BANK %0d: checking adjacent bank %0d, recreated_queue.add = %0b",index_bank_already_checked,index_bank_to_check,recreated_queue.add);
     $display("BANK %0d: checking %0d index hwpe, queue_stimuli_hwpe = %0b",index_bank_already_checked,index_hwpe_to_check,queue_stimuli_hwpe[index_hwpe_to_check][0].add);
     if(recreated_queue != queue_stimuli_hwpe[index_hwpe_to_check][0] || queue_out_intc_to_mem_write[index_bank_to_check].size()==0) begin
-      //okay = 0;
       skip=1;
       WARNING = 1'b1;
-      //$display("-----------------------------------------");
-      //$display("Time %0t: ***WARNING*** \n",$time);
-      //$display("the pieces of the HWPE wide word are not written in the same clock cycle\n",$time);
-      //$display("Time %0t:    Test ***FAILED*** \n",$time);
-      //$display("ERROR in hwpe branch during write-transaction check\n");
-      //$display("Wide-word and address sent by hwpe: DATA %b%b%b%b ADD %b", queue_stimuli_hwpe[0][0].data,queue_stimuli_hwpe[1][0].data,queue_stimuli_hwpe[2][0].data,queue_stimuli_hwpe[3][0].data,queue_stimuli_hwpe[0][0].add);
-      // $display("Wrong piece received by bank %0d: DATA %b ADD %b \n",index_bank_to_check,recreated_queue.data,recreated_queue.add);
-      //$finish();
     end
   end
   endtask
-/*
-  task create_wide_word_read_hwpe(input logic [DATA_WIDTH-1:0] queue_read_hwpe[HWPE_WIDTH*N_HWPE][$], output logic [HWPE_WIDTH*DATA_WIDTH-1:0] wide_word_to_add);
-    for(int i=0; i<HWPE_WIDTH; i++) begin
-      wide_word_to_add[i*DATA_WIDTH +: DATA_WIDTH] = queue_read_hwpe[i][0];
-    end
-  endtask
-*/
+
   task calculate_bank_index(input logic [ADD_WIDTH-1:0] address, output logic [BIT_BANK_INDEX-1:0] index);
     index = address[BIT_BANK_INDEX-1+2:2];
   endtask
@@ -1486,39 +1200,24 @@ END COMMENT*/
       index_hwpe_to_check = index_hwpe_already_checked + i;
       index_bank_to_check = index_bank_already_checked + i;
       if(index_hwpe_to_check > HWPE_WIDTH-1) begin
-        //$display("before index_bank_to_check %0d",index_bank_to_check);
         index_hwpe_to_check = index_hwpe_to_check - HWPE_WIDTH;
         index_bank_to_check = index_bank_to_check -HWPE_WIDTH;
-        //$display("after index_bank_to_check %0d",index_bank_to_check);
       end
       if(index_bank_to_check >= int'(N_BANKS)) begin 
         index_bank_to_check = index_bank_to_check - N_BANKS;
 
       end
       if(index_bank_to_check < 0) begin
-        //$display("before index_bank_to_check %0d",index_bank_to_check);
         index_bank_to_check = index_bank_to_check + N_BANKS;
-        //$display("added N_BANKS %0d, now index_bank_to_check = %0d",N_BANKS,index_bank_to_check);
       end
       recreate_address(queue_out_intc_to_mem_read[index_bank_to_check][0].add,index_bank_to_check,recreated_queue.add);
       recreated_queue.data = queue_out_intc_to_mem_read[index_bank_to_check][0].data;
-      //$display("Bank to check %0d: wen = %b data = %b address = %b", index_bank_to_check, queue_out_intc_to_mem_write[index_bank_to_check][0].wen,queue_out_intc_to_mem_write[index_bank_to_check][0].data,queue_out_intc_to_mem_write[index_bank_to_check][0].add);
-      //$display("Bank to check %0d", index_bank_to_check);
       $display("BANK %0d: checking adjacent bank %0d, recreated_queue add = %0b",index_bank_already_checked,index_bank_to_check,recreated_queue);
       $display("BANK %0d: checking %0d index hwpe, queue_stimuli_hwpe = %0b",index_bank_already_checked,index_hwpe_to_check,queue_stimuli_hwpe[index_hwpe_to_check][0].add);
       $display("BANK %0d: queue_out_intc_to_mem_read[index_bank_to_check].size() = %0d",index_bank_already_checked,queue_out_intc_to_mem_read[index_bank_to_check].size());
       if(recreated_queue != queue_stimuli_hwpe[index_hwpe_to_check][0] || queue_out_intc_to_mem_read[index_bank_to_check].size()==0) begin
-        //okay = 0;
         skip = 1;
         WARNING = 1'b1;
-        //$display("-----------------------------------------");
-        //$display("Time %0t: ***WARNING*** \n",$time);
-        //$display("the pieces of the HWPE wide word are not read in the same clock cycle\n",$time);
-        //$display("Time %0t:    Test ***FAILED*** \n",$time);
-        //$display("ERROR in hwpe branch during write-transaction check\n");
-        //$display("Wide-word and address sent by hwpe: DATA %b%b%b%b ADD %b", queue_stimuli_hwpe[0][0].data,queue_stimuli_hwpe[1][0].data,queue_stimuli_hwpe[2][0].data,queue_stimuli_hwpe[3][0].data,queue_stimuli_hwpe[0][0].add);
-        // $display("Wrong piece received by bank %0d: DATA %b ADD %b \n",index_bank_to_check,recreated_queue.data,recreated_queue.add);
-        //$finish();
       end
     end
   endtask
@@ -1528,32 +1227,9 @@ END COMMENT*/
     int file, line_count, ret_code;
     real tot_time,tot_data,band_memory_limit;
     string line;
-
-    // file = $fopen("./verif/simvectors/stimuli_processed/master_log_0.txt","r");
-    // if (file == 0) begin
-    //   $display("ERROR: cannot open file master_log_0.txt");
-    //   $finish();
-    // end
-
-    // line_count = 0;
-
-    // while(!$feof(file)) begin
-    //   ret_code = $fgets(line,file);
-    //   line_count++;
-    // end
-    // $display("N_LINES: %f",line_count);
-    // $fclose(file);
-
-    //tot_time = N_TEST * CLK_PERIOD; // ns
-    //$display("tot_time: %f",tot_time);
     tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * HWPE_WIDTH*DATA_WIDTH) * N_HWPE_REAL); // bit
-    //$display("tot_data: %f",tot_data);
     band_theo = tot_data/N_TEST; // Gbps
-    //$display("band_theo: %f",band_theo);
-    //$display("band_theo before: %f",band_theo);
-    //$display("N_BANKS = %0d, DATA_WIDTH = %0d, CLK_PERIOD = %0d",N_BANKS,DATA_WIDTH,CLK_PERIOD);
     band_memory_limit = real'(N_BANKS * DATA_WIDTH);
-    //$display("band_memory_limit: %f",band_memory_limit);
     if (band_theo >= band_memory_limit) begin
       band_theo = band_memory_limit;
     end
