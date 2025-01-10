@@ -12,6 +12,8 @@ module hci_tb
   localparam int unsigned     N_TEST             =          `N_TEST;
   localparam int unsigned     TOT_CHECK          =          `N_TEST*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*`N_TEST*`HWPE_WIDTH;
   
+
+
   //--------------------------------------------
   //-             CLOCK AND RESET              -
   //--------------------------------------------
@@ -31,6 +33,7 @@ module hci_tb
       .clk_o (clk),
       .rst_no(rst_n)
   );
+
 
 
   //---------------------------------------------
@@ -165,13 +168,6 @@ module hci_tb
 
 
 
-
-
-
-
-
-
-
   //------------------------------------------------
   //-                     TCDM                     -
   //------------------------------------------------
@@ -191,6 +187,8 @@ module hci_tb
     .tcdm_slave(intc_mem_wiring)
   );
 
+
+
   //-------------------------------------------------
   //-              APPLICATION DRIVERS              -
   //-------------------------------------------------
@@ -199,7 +197,7 @@ module hci_tb
   static logic [0:N_MASTER-1]         END_LATENCY = '0;
   // CORES + DMA + EXT
   generate
-    for(genvar ii=0; ii < N_MASTER - N_HWPE ; ii++) begin: app_driver
+    for(genvar ii=0; ii < N_MASTER - N_HWPE ; ii++) begin: app_driver_log
       application_driver#(
         .MASTER_NUMBER(ii),
         .IS_HWPE(0),
@@ -238,8 +236,6 @@ module hci_tb
       );
     end
   endgenerate
-
-
 
 
 
@@ -282,8 +278,8 @@ module hci_tb
   logic                                           flag_read_master[N_MASTER-N_HWPE];
   logic                                           flag_read_hwpe[N_HWPE];
 
-  static real               LATENCY_LOG[N_MASTER-N_HWPE]= '{default: 0};
-  static real               LATENCY_HWPE[N_HWPE]= '{default: 0};
+  static real               SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]= '{default: 0};
+  static real               SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]= '{default: 0};
   //------------ input queues -----------
 
   // Add CORES + DMA + EXT transactions to input queues
@@ -342,120 +338,11 @@ module hci_tb
       end
     end
   endgenerate
-
-  // Measure overhead-conflicts
-  localparam int unsigned MAX_CYCLES_BETWEEN_GNT_RVALID             = `MAX_CYCLES_BETWEEN_GNT_RVALID + 2            ; // Maximum expected number of cycles between the gnt signal and the r_valid signal
-  static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0]     START_COMPUTE_LATENCY;
-  static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0]     FINISH_COMPUTE_LATENCY;
-  generate
-    for(genvar test=0;test<MAX_CYCLES_BETWEEN_GNT_RVALID-1;test++) begin
-      for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
-        initial begin
-          int unsigned latency;
-          logic STOP;
-          START_COMPUTE_LATENCY[ii][0] = 1'b1;
-          wait(rst_n);
-          while(1) begin
-            STOP=0;
-            wait(START_COMPUTE_LATENCY[ii][test]);
-            FINISH_COMPUTE_LATENCY[ii][test]=0;
-            latency = 1;
-            @(posedge clk);
-            if(all_except_hwpe[ii].req && START_COMPUTE_LATENCY[ii][test]) begin
-              $display("START COMPUTE LATENCY LOG, time:%0t, master %0d, test %0d",$time,ii,test);
-              while(1) begin
-                if(all_except_hwpe[ii].gnt) begin
-                  if(all_except_hwpe[ii].wen) begin
-                    if(test==0) begin
-                      START_COMPUTE_LATENCY[ii][test+1] = 1;
-                    end else if (test==1) begin
-                      START_COMPUTE_LATENCY[ii][test+1] = |FINISH_COMPUTE_LATENCY[ii][0];
-                    end else begin
-                      START_COMPUTE_LATENCY[ii][test+1] = |FINISH_COMPUTE_LATENCY[ii][test-1:0];
-                    end
-                    while(1) begin
-                      latency++;
-                      @(posedge clk);
-                      if(all_except_hwpe[ii].r_valid) begin
-                        START_COMPUTE_LATENCY[ii][test+1] = 1'b0;
-                        STOP=1;
-                        break;
-                      end
-                    end
-                  end else begin
-                    break;
-                  end
-                  if(STOP)
-                    break;
-                end
-                @(posedge clk);
-                latency++;
-              end
-              FINISH_COMPUTE_LATENCY[ii][test]=1;
-              $display("COMPUTED LATENCY LOG = %0d, time:%0t, master %0d, test %0d",latency,$time,ii,test);
-              LATENCY_LOG[ii] = LATENCY_LOG[ii] + latency;
-          end
-        end
-      end
-      end
-    end
-    for(genvar test=0;test<MAX_CYCLES_BETWEEN_GNT_RVALID-1;test++) begin
-      for(genvar ii=0;ii<N_HWPE;ii++) begin
-        initial begin
-          int unsigned latency;
-          logic STOP;
-          START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][0] = 1'b1;
-          wait(rst_n);
-          while(1) begin
-            STOP=0;
-            wait(START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test]);
-            FINISH_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test]=0;
-            latency = 1;
-            @(posedge clk);
-            if(hwpe_intc[ii].req && START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test]) begin
-              $display("START COMPUTE LATENCY HWPE, time:%0t, master %0d, test %0d",$time,ii,test);
-              while(1) begin
-                if(hwpe_intc[ii].gnt) begin
-                  if(hwpe_intc[ii].wen) begin
-                    if(test==0) begin
-                      START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test+1] = 1;
-                    end else if (test==1) begin
-                      START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test+1] = |FINISH_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][0];
-                    end else begin
-                      START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test+1] = |FINISH_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test-1:0];
-                    end
-                    while(1) begin
-                      latency++;
-                      @(posedge clk);
-                      if(hwpe_intc[ii].r_valid) begin
-                        START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test+1] = 1'b0;
-                        STOP=1;
-                        break;
-                      end
-                    end
-                  end else begin
-                    break;
-                  end
-                  if(STOP)
-                    break;
-                end
-                @(posedge clk);
-                latency++;
-              end
-              FINISH_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test]=1;
-              $display("COMPUTED LATENCY HWPE= %0d, time:%0t, master %0d, test %0d",latency,$time,ii,test);
-              LATENCY_HWPE[ii] = LATENCY_HWPE[ii] + latency;
-          end
-        end
-      end
-    end
-    end
-  endgenerate
   // Read transactions: Add r_data to a queue (master side)
 
   generate 
     //LOG branch
-    for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
+    for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin : queue_rdata_master_side
       always_ff @(posedge clk or negedge rst_n)
       begin
         if (~rst_n)
@@ -510,8 +397,8 @@ module hci_tb
 
   // Add transactions received by each BANK to different output queues
   generate
-    for(genvar ii=0;ii<N_BANKS;ii++) begin: out_intc_write_queue
-      initial begin: acquisition_out_intc
+    for(genvar ii=0;ii<N_BANKS;ii++) begin: queue_out_intc_write
+      initial begin:
         out_intc_to_mem         out_intc_write;
         out_intc_to_mem         out_intc_read;
         wait (rst_n);
@@ -540,36 +427,35 @@ module hci_tb
 
   // Read transactions: Add r_data to a queue (TCDM side)
   generate
-    for(genvar ii=0;ii<N_BANKS;ii++) begin : flag
-    always_ff @(posedge clk or negedge rst_n)
-	  begin
-      if (~rst_n)
-        flag_read[ii] <= 0;
-      else if (intc_mem_wiring[ii].req && intc_mem_wiring[ii].gnt && intc_mem_wiring[ii].wen)
-        flag_read[ii] <= 1'b1;
-      else
-        flag_read[ii] <= 0;
-	  end
-  end
+    for(genvar ii=0;ii<N_BANKS;ii++) begin: flag
+      always_ff @(posedge clk or negedge rst_n)
+      begin
+        if (~rst_n)
+          flag_read[ii] <= 0;
+        else if (intc_mem_wiring[ii].req && intc_mem_wiring[ii].gnt && intc_mem_wiring[ii].wen)
+          flag_read[ii] <= 1'b1;
+        else
+          flag_read[ii] <= 0;
+      end
+    end
   endgenerate 
 
   generate 
-    for(genvar ii=0;ii<N_BANKS;ii++) begin
-      initial begin: add_queue_read_tcdm 
+    for(genvar ii=0;ii<N_BANKS;ii++) begin: queue_read_tcdm 
+      initial begin
         int index_hwpe, index_master;
         wait (rst_n);
-              while(1) begin
-                @(posedge clk);
-                if(intc_mem_wiring[ii].r_valid && flag_read[ii]) begin
-                  $display("queue_read before: %b,bank %0d,time %0t",queue_read[ii][0],ii,$time);
-                  queue_read[ii].push_back(intc_mem_wiring[ii].r_data);
-                  $display("queue_read new element: %b,bank %0d,time %0t",queue_read[ii][0],ii,$time);
-                  wait(queue_out_intc_to_mem_read[ii].size() == 0);
-                end
-              end
-          
+        while(1) begin
+          @(posedge clk);
+          if(intc_mem_wiring[ii].r_valid && flag_read[ii]) begin
+            $display("queue_read before: %b,bank %0d,time %0t",queue_read[ii][0],ii,$time);
+            queue_read[ii].push_back(intc_mem_wiring[ii].r_data);
+            $display("queue_read new element: %b,bank %0d,time %0t",queue_read[ii][0],ii,$time);
+            wait(queue_out_intc_to_mem_read[ii].size() == 0);
+          end
         end
       end
+    end
   endgenerate
 
   //-----------------------------------------------
@@ -699,7 +585,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
 
   // Check address
   generate 
-    for(genvar ii=0;ii<N_BANKS;ii++) begin
+    for(genvar ii=0;ii<N_BANKS;ii++) begin : checker_block_write
       initial begin: add_queue_read 
         logic [ADD_WIDTH - 1 : 0] recreated_address;
         logic skip;
@@ -863,15 +749,15 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   //-             QoS: Arbiter                 -
   //--------------------------------------------
 
-    // Compute the requests for each bank
     static logic [N_BANKS-1:0]   LOG_REQ;
     static logic [N_BANKS-1:0]   HWPE_REQ;
     static logic [N_BANKS-1:0][N_MASTER-N_HWPE-1:0]   LOG_REQ_EACH_MASTER = '{default: '0};
     static logic [N_BANKS-1:0][N_HWPE-1:0]   HWPE_REQ_EACH_MASTER = '{default: '0};
 
     generate
-    if(`PRIORITY_CHECK_STALL == 1 || `PRIORITY_CHECK_NO_STALL == 1) begin
-      for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
+    if(`PRIORITY_CHECK_MODE_ONE == 1 || `PRIORITY_CHECK_MODE_ZERO == 1) begin
+      // Compute the requests for each bank
+      for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin: req_per_bank_per_log_master
         logic [BIT_BANK_INDEX-1:0] bank_index_log;
         int unsigned bank_index_log_int;
         initial begin
@@ -898,7 +784,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
         assign LOG_REQ[ii] = |LOG_REQ_EACH_MASTER[ii];
       end
 
-      for(genvar ii=0;ii<N_HWPE;ii++) begin
+      for(genvar ii=0;ii<N_HWPE;ii++) begin: req_per_bank_per_hwpe_master
         logic [BIT_BANK_INDEX-1:0] bank_index_hwpe;
         int unsigned bank_index_hwpe_int;
         initial begin
@@ -942,7 +828,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     static logic prior;
 
     generate 
-    if(`PRIORITY_CHECK_STALL == 1) begin
+    if(`PRIORITY_CHECK_MODE_ONE == 1) begin
       // Check conflicts and the number of stalls
       initial begin : check_conflicts
         int stall;
@@ -967,7 +853,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
         end
       end
     end
-    if(`PRIORITY_CHECK_NO_STALL == 1) begin
+    if(`PRIORITY_CHECK_MODE_ZERO == 1) begin
       initial begin : check_conflicts
         int stall;
         stall = 0;
@@ -998,7 +884,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     end
 
     //Hide low priority branch in case of conflicts
-    if(`PRIORITY_CHECK_NO_STALL == 1 || `PRIORITY_CHECK_STALL == 1) begin
+    if(`PRIORITY_CHECK_MODE_ZERO == 1 || `PRIORITY_CHECK_MODE_ONE == 1) begin
       always_comb begin : HIDE
         for(int i=0;i<N_BANKS;i++) begin
           if(!prior) begin
@@ -1011,17 +897,17 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
         end
       end
     end
-
     endgenerate
+    
   //-----------------------------------------
-  //-         REAL BANDWIDTH                -
+  //-         REAL TROUGHPUT                -
   //-----------------------------------------
-  static real                 band_real;
+  static real                 troughput_real;
   static real                 tot_latency;
   initial begin
     time                 start_time, end_time;
     real                 tot_time,tot_data;
-    band_real = -1;
+    troughput_real = -1;
     wait(rst_n);
     #(CLK_PERIOD/100);
     @(posedge clk);
@@ -1030,7 +916,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     end_time = $time;
     tot_time = (end_time - start_time)/CLK_PERIOD; // ns
     tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * HWPE_WIDTH*DATA_WIDTH) * N_HWPE_REAL); // bit
-    band_real = tot_data/tot_time; // Gbps
+    troughput_real = tot_data/tot_time; // Gbps
   end
 
   //--------------------------------------------
@@ -1063,13 +949,126 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       tot_latency = (end_time - start_time)/CLK_PERIOD;
 
   end
+
+  //-----------------------------------------------------------
+  //-               LATENCY PER TRANSACTION                   -
+  //-----------------------------------------------------------
+
+  localparam int unsigned MAX_CYCLES_BETWEEN_GNT_RVALID             = `MAX_CYCLES_BETWEEN_GNT_RVALID + 2            ; // Maximum expected number of cycles between the gnt signal and the r_valid signal
+  static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0]     START_COMPUTE_LATENCY;
+  static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0]     FINISH_COMPUTE_LATENCY;
+  generate
+    for(genvar test=0;test<MAX_CYCLES_BETWEEN_GNT_RVALID-1;test++) begin
+      for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin
+        initial begin
+          int unsigned latency;
+          logic STOP;
+          START_COMPUTE_LATENCY[ii][0] = 1'b1;
+          wait(rst_n);
+          while(1) begin
+            STOP=0;
+            wait(START_COMPUTE_LATENCY[ii][test]);
+            FINISH_COMPUTE_LATENCY[ii][test]=0;
+            latency = 1;
+            @(posedge clk);
+            if(all_except_hwpe[ii].req && START_COMPUTE_LATENCY[ii][test]) begin
+              $display("START COMPUTE LATENCY LOG, time:%0t, master %0d, test %0d",$time,ii,test);
+              while(1) begin
+                if(all_except_hwpe[ii].gnt) begin
+                  if(all_except_hwpe[ii].wen) begin
+                    if(test==0) begin
+                      START_COMPUTE_LATENCY[ii][test+1] = 1;
+                    end else if (test==1) begin
+                      START_COMPUTE_LATENCY[ii][test+1] = |FINISH_COMPUTE_LATENCY[ii][0];
+                    end else begin
+                      START_COMPUTE_LATENCY[ii][test+1] = |FINISH_COMPUTE_LATENCY[ii][test-1:0];
+                    end
+                    while(1) begin
+                      latency++;
+                      @(posedge clk);
+                      if(all_except_hwpe[ii].r_valid) begin
+                        START_COMPUTE_LATENCY[ii][test+1] = 1'b0;
+                        STOP=1;
+                        break;
+                      end
+                    end
+                  end else begin
+                    break;
+                  end
+                  if(STOP)
+                    break;
+                end
+                @(posedge clk);
+                latency++;
+              end
+              FINISH_COMPUTE_LATENCY[ii][test]=1;
+              $display("COMPUTED LATENCY LOG = %0d, time:%0t, master %0d, test %0d",latency,$time,ii,test);
+              SUM_LATENCY_PER_TRANSACTION_LOG[ii] = SUM_LATENCY_PER_TRANSACTION_LOG[ii] + latency;
+          end
+        end
+      end
+      end
+    end
+    for(genvar test=0;test<MAX_CYCLES_BETWEEN_GNT_RVALID-1;test++) begin
+      for(genvar ii=0;ii<N_HWPE;ii++) begin
+        initial begin
+          int unsigned latency;
+          logic STOP;
+          START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][0] = 1'b1;
+          wait(rst_n);
+          while(1) begin
+            STOP=0;
+            wait(START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test]);
+            FINISH_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test]=0;
+            latency = 1;
+            @(posedge clk);
+            if(hwpe_intc[ii].req && START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test]) begin
+              $display("START COMPUTE LATENCY HWPE, time:%0t, master %0d, test %0d",$time,ii,test);
+              while(1) begin
+                if(hwpe_intc[ii].gnt) begin
+                  if(hwpe_intc[ii].wen) begin
+                    if(test==0) begin
+                      START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test+1] = 1;
+                    end else if (test==1) begin
+                      START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test+1] = |FINISH_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][0];
+                    end else begin
+                      START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test+1] = |FINISH_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test-1:0];
+                    end
+                    while(1) begin
+                      latency++;
+                      @(posedge clk);
+                      if(hwpe_intc[ii].r_valid) begin
+                        START_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test+1] = 1'b0;
+                        STOP=1;
+                        break;
+                      end
+                    end
+                  end else begin
+                    break;
+                  end
+                  if(STOP)
+                    break;
+                end
+                @(posedge clk);
+                latency++;
+              end
+              FINISH_COMPUTE_LATENCY[ii+N_MASTER-N_HWPE][test]=1;
+              $display("COMPUTED LATENCY HWPE= %0d, time:%0t, master %0d, test %0d",latency,$time,ii,test);
+              SUM_LATENCY_PER_TRANSACTION_HWPE[ii] = SUM_LATENCY_PER_TRANSACTION_HWPE[ii] + latency;
+          end
+        end
+      end
+    end
+    end
+  endgenerate
+
   //--------------------------------------------
   //-             END OF SIMULATION            -
   //--------------------------------------------
 
- static real                   band_theo;
  logic                         WARNING = 1'b0;
   initial begin
+    real troughput_theo;
     real average_latency;
     average_latency = 0;
     wait (n_checks >= TOT_CHECK);
@@ -1088,37 +1087,35 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       $display("WARNING: the pieces of the HWPE wide word are written multiple times in the banks\n");
     end
 
-    calculate_theoretical_bandwidth(band_theo);
-    wait(band_real>=0);
+    calculate_theoretical_throughput(troughput_theo);
+    wait(troughput_real>=0);
     $display("\\\\THROUGHPUT\\\\");
-    $display("THEORETICAL THROUGHPUT: %f bit per cycle",band_theo);
-    $display("REAL THROUGHPUT: %f bit per cycle",band_real);
-    $display("PERFORMANCE RATING %f%%\n", band_real/band_theo*100);
+    $display("THEORETICAL THROUGHPUT: %f bit per cycle",troughput_theo);
+    $display("REAL THROUGHPUT: %f bit per cycle",troughput_real);
+    $display("PERFORMANCE RATING %f%%\n", troughput_real/troughput_theo*100);
 
     wait(tot_latency>=0);
     $display("\\\\LATENCY\\\\");
     $display("TOTAL LATENCY: %0d cycles", tot_latency);
     for(int i=0; i<N_MASTER_REAL-N_HWPE_REAL; i++) begin
       $display("TOTAL LATENCY for master_log_%0d: %f",i,latency_per_master[i]);
-      average_latency += LATENCY_LOG[i];
     end
     for(int i=N_MASTER-N_HWPE; i<N_MASTER-N_HWPE+N_HWPE_REAL; i++) begin
       $display("TOTAL LATENCY for master_hwpe_%0d: %f",i,latency_per_master[i]);
-      average_latency += LATENCY_HWPE[i];
     end
 
-    calculate_latency(LATENCY_LOG,LATENCY_HWPE);
-    $display("\n\\\\CONFLICTS OVERHEAD\\\\");
+    calculate_average_latency(SUM_LATENCY_PER_TRANSACTION_LOG,SUM_LATENCY_PER_TRANSACTION_HWPE);
+    $display("\n\\\\LATENCY PER TRANSACTION\\\\");
     for(int i=0; i<N_MASTER_REAL-N_HWPE_REAL; i++) begin
-      $display("Average cycles required for each transaction for master_log_%0d: %f",i,LATENCY_LOG[i]);
-      average_latency += LATENCY_LOG[i];
+      $display("Average latency for each transaction in master_log_%0d: %f",i,SUM_LATENCY_PER_TRANSACTION_LOG[i]);
+      average_latency += SUM_LATENCY_PER_TRANSACTION_LOG[i];
     end
     for(int i=0; i<N_HWPE_REAL; i++) begin
-      $display("Average cycles required for each transaction for master_hwpe_%0d: %f",i,LATENCY_HWPE[i]);
-      average_latency += LATENCY_HWPE[i];
+      $display("Average latency for each transaction in master_hwpe_%0d: %f",i,SUM_LATENCY_PER_TRANSACTION_HWPE[i]);
+      average_latency += SUM_LATENCY_PER_TRANSACTION_HWPE[i];
     end
     average_latency = average_latency/N_MASTER_REAL;
-    $display("Average cycles required for each transaction for all masters: %f",average_latency);
+    $display("Average latency for each transaction (all masters): %f",average_latency);
     $finish();
   end
 
@@ -1190,27 +1187,26 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     end
   endtask
 
-  task calculate_theoretical_bandwidth(output real band_theo);
+  task calculate_theoretical_throughput(output real troughput_theo);
     
-    int file, line_count, ret_code;
-    real tot_time,tot_data,band_memory_limit;
+    real tot_data,band_memory_limit;
     string line;
     tot_data = ((N_TEST * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST * HWPE_WIDTH*DATA_WIDTH) * N_HWPE_REAL); // bit
-    band_theo = tot_data/N_TEST; // Gbps
+    troughput_theo = tot_data/N_TEST; // bit per cycle
     band_memory_limit = real'(N_BANKS * DATA_WIDTH);
-    if (band_theo >= band_memory_limit) begin
-      band_theo = band_memory_limit;
+    if (troughput_theo >= band_memory_limit) begin
+      troughput_theo = band_memory_limit;
     end
     
 
   endtask
 
-  task automatic calculate_latency (ref real LATENCY_LOG[N_MASTER-N_HWPE], ref real LATENCY_HWPE[N_HWPE]);
+  task automatic calculate_average_latency (ref real SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE], ref real SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]);
     for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-      LATENCY_LOG[i] = LATENCY_LOG[i] / N_TEST;
+      SUM_LATENCY_PER_TRANSACTION_LOG[i] = SUM_LATENCY_PER_TRANSACTION_LOG[i] / N_TEST;
     end
     for(int i=0;i<N_HWPE;i++) begin
-      LATENCY_HWPE[i] = LATENCY_HWPE[i] / N_TEST;
+      SUM_LATENCY_PER_TRANSACTION_HWPE[i] = SUM_LATENCY_PER_TRANSACTION_HWPE[i] / N_TEST;
     end
   endtask
 
