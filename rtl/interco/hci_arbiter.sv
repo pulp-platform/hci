@@ -25,7 +25,7 @@
  * the input channels has by default access to most of the bandwidth guaranteed
  * by the output channels. To prevent starvation effects, depending on the control
  * settings, the other input channel is always granted after a given number
- * of stall cycles.
+ * of consecutive cycles with at least one request in both the high and low priority channel.
  * For more details, see:
  *  - https://ieeexplore.ieee.org/document/9903915, Sec. II-A (open-access);
  *  - https://ieeexplore.ieee.org/document/10247945 , Sec. II-A, III-B, and III-C.
@@ -44,13 +44,13 @@
  * .. _hci_arbiter_ctrl:
  * .. table:: **hci_arbiter** input control signals.
  *
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | **Name**             | **Type**               | **Description**                                               |
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | *invert_prio*        | `logic`                | When 1, invert priorities between `in_high` and `in_low`.     |
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | *low_prio_max_stall* | `logic[7:0]`           | Maximum number of consecutive stalls on low-priority channel. |
- *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------------------+
+ *   | **Name**             | **Type**               | **Description**                                                                                           |
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------------------+
+ *   | *invert_prio*        | `logic`                | When 1, invert priorities between `in_high` and `in_low`.                                                 |
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------------------+
+ *   | *low_prio_max_stall* | `logic[7:0]`           | Maximum number of consecutive cycles with at least one request in both the high and low priority channel. |
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------------------+
  *
  */
  
