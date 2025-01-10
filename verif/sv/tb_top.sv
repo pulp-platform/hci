@@ -392,7 +392,7 @@ module hci_tb
   // Add transactions received by each BANK to different output queues
   generate
     for(genvar ii=0;ii<N_BANKS;ii++) begin: queue_out_intc_write
-      initial begin:
+      initial begin
         out_intc_to_mem         out_intc_write;
         out_intc_to_mem         out_intc_read;
         wait (rst_n);
@@ -551,7 +551,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
 
   // Check address
   generate 
-    for(genvar ii=0;ii<N_BANKS;ii++) begin : checker_block_write
+    for(genvar ii=0;ii<N_BANKS;ii++) begin : checker_block_read
       initial begin: add_queue_read 
         logic [ADD_WIDTH - 1 : 0] recreated_address;
         logic skip;
