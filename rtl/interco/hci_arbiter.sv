@@ -194,11 +194,11 @@ module hci_arbiter
           ls_stall_ctr_d <= 0;
       end
       // Side select
-      generate
-        for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
-          assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
-        end // side_select
-      endgenerate
+
+      for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
+        assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
+      end // side_select
+
     end
 
  //------------------------------------------------------------------
@@ -233,11 +233,11 @@ module hci_arbiter
       end
 
       // Side select
-      generate
-        for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
-          assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
-        end // side_select
-      endgenerate
+
+      for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
+        assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
+      end // side_select
+
     end
 
   //------------------------------------------------------------------
@@ -270,11 +270,11 @@ module hci_arbiter
       end
 
       // Side select
-      generate
-        for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
-          assign hs_pass_d[ii] = (!invert_prio_one_cycle & hs_req_in[ii]) ^ switch_channels_d;
-        end // side_select
-      endgenerate
+
+      for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
+        assign hs_pass_d[ii] = (!invert_prio_one_cycle & hs_req_in[ii]) ^ switch_channels_d;
+      end // side_select
+
     end
   endgenerate
 
