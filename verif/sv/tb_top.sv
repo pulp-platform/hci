@@ -65,7 +65,9 @@ module hci_tb
   localparam int unsigned WIDTH_OF_MEMORY_BYTE    = WIDTH_OF_MEMORY/8                                  ; // Width of a memory bank (bytes)
   localparam int unsigned BIT_BANK_INDEX          = $clog2(N_BANKS)                                    ; // Bits of the Bank index
   localparam int unsigned AddrMemWidth            = ADD_WIDTH - BIT_BANK_INDEX                         ; // Number of address bits per TCDM bank
-  localparam int unsigned N_WORDS                 = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE   ; // Number of words in a bank                                                   ; // Number of tests to be executeds
+  localparam int unsigned N_WORDS                 = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE   ; // Number of words in a bank
+
+  localparam int unsigned ARBITER_MODE            = (`PRIORITY_CHECK_MODE_ONE == 1) ? 1 : 0            ; // Choosen mode for the arbiter
 
   localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '{    // CORE + DMA + EXT parameters
     DW:  DATA_WIDTH,
@@ -151,6 +153,7 @@ module hci_tb
       .IW(IW),                              // ID Width
       .EXPFIFO(EXPFIFO),                    // FIFO Depth for HWPE Interconnect
       .SEL_LIC(SEL_LIC),                    // Log interconnect type selector
+      .ARBITER_MODE(ARBITER_MODE),          // Chosen mode for the arbiter 
       .HCI_SIZE_cores(HCI_SIZE_cores),
       .HCI_SIZE_mems(HCI_SIZE_mems),
       .HCI_SIZE_hwpe(HCI_SIZE_hwpe)
@@ -727,9 +730,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
             wait(hwpe_intc[ii].req);
               calculate_bank_index(hwpe_intc[ii].add,bank_index_hwpe);
               bank_index_hwpe_int = int'(bank_index_hwpe);
+              $display("hwpe%0d, bank index hwpe %0d, time : %0t",ii,bank_index_hwpe_int,$time);
               for(int i=0;i<HWPE_WIDTH;i++) begin
-                if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
-                  HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i - HWPE_WIDTH][ii] = 1'b1; //rolls over
+                if(bank_index_hwpe_int + i >= N_BANKS) begin
+                  HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i - N_BANKS][ii] = 1'b1; //rolls over
                 end else begin 
                   HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i][ii] = 1'b1;
                 end
@@ -740,8 +744,8 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                 if(hwpe_intc[ii].gnt) begin
                   #(CLK_PERIOD/100);
                   for(int i=0;i<HWPE_WIDTH;i++) begin
-                    if(bank_index_hwpe_int + i >= HWPE_WIDTH) begin
-                      HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i - HWPE_WIDTH][ii] = 1'b0; //rolls over
+                    if(bank_index_hwpe_int + i >= N_BANKS) begin
+                      HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i - N_BANKS][ii] = 1'b0; //rolls over
                     end else begin 
                       HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i][ii] = 1'b0;
                     end
@@ -773,8 +777,11 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
           @(negedge clk);
           for(int i=0;i<N_BANKS;i++) begin
             CONFLICTS[i] = LOG_REQ[i] && HWPE_REQ[i];
+            $display("BANK %0d: conflict %0d, time %0t",i,CONFLICTS[i],$time);
+            $display("BANK %0d: HWPE_REQ_EACH_MASTER %0d, time %0t",i,HWPE_REQ_EACH_MASTER[i][1],$time);
           end
           stall = stall*|CONFLICTS + |CONFLICTS;
+          $display("stall: %0d, time %0t",stall,$time);
           if(prior == ctrl_i.invert_prio) begin
             if(stall == ctrl_i.low_prio_max_stall+1) begin
               prior = !prior;
@@ -782,7 +789,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
             end
           end else begin
             prior = !prior;
-            stall = 0;
+            //stall = 0;
           end
         end
       end
@@ -797,8 +804,11 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
           @(negedge clk);
           for(int i=0;i<N_BANKS;i++) begin
             CONFLICTS[i] = LOG_REQ[i] && HWPE_REQ[i];
+            $display("BANK %0d: conflict %0d, time %0t",i,CONFLICTS[i],$time);
+            $display("BANK %0d: HWPE_REQ_EACH_MASTER %0d, time %0t",i,HWPE_REQ_EACH_MASTER[i][1],$time);
           end
           stall = stall*(|LOG_REQ && |HWPE_REQ) + (|LOG_REQ && |HWPE_REQ); // we improperly consider a stall when there is at least 1 req in both the high and low priority channel
+          $display("stall: %0d, time %0t",stall,$time);
           if(prior == ctrl_i.invert_prio) begin
             if(stall == ctrl_i.low_prio_max_stall+1) begin
               prior = !prior;

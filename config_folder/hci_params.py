@@ -29,6 +29,6 @@ N_BANKS=8
 # Width of a memory bank (bits)                                                  
 WIDTH_OF_MEMORY=32
 # Invert default priority in the hci_arbiter module
-INVERT_PRIO=1
+INVERT_PRIO=0
 # Maximum number of stalls in the lower priority channel of the hci_arbiter
 LOW_PRIO_MAX_STALL=10
