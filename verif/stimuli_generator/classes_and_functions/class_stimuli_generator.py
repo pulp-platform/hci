@@ -14,7 +14,7 @@ import numpy as np
 import os
 
 class stimuli_generator:
-    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,N_TOT_MASTER,MASTER_NUMBER_IDENTIFICATION):
+    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,CYCLE_OFFSET,MASTER_NUMBER_IDENTIFICATION):
         self.WIDTH_OF_MEMORY = WIDTH_OF_MEMORY
         self.WIDTH_OF_MEMORY_BYTE = int(WIDTH_OF_MEMORY/8)
         self.N_BANKS = N_BANKS
@@ -25,6 +25,7 @@ class stimuli_generator:
         os.makedirs(os.path.dirname(filepath),exist_ok=True)
         self.N_TEST = N_TEST
         self.MAX_CYCLE_OFFSET = MAX_CYCLE_OFFSET
+        self.CYCLE_OFFSET = CYCLE_OFFSET
         self.IW = IW
         self.MASTER_NUMBER_IDENTIFICATION = MASTER_NUMBER_IDENTIFICATION
     
@@ -40,7 +41,10 @@ class stimuli_generator:
 
     def data_wen_offset(self):
         wen = random.randint(0,1) # write enable signal (1 = read, 0 = write)
-        cycle_offset = random.randint(1,self.MAX_CYCLE_OFFSET) # handshake request signal
+        if (self.MAX_CYCLE_OFFSET != 0):
+            cycle_offset = random.randint(1,self.MAX_CYCLE_OFFSET) # handshake request signal
+        else:
+            cycle_offset = self.CYCLE_OFFSET 
         if wen:
             data = self.data_for_read_transaction()
         else:
