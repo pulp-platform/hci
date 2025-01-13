@@ -407,8 +407,8 @@ module hci_ecc_interconnect
 
       for(genvar ii=0; ii<N_MEM; ii++) begin: no_hwpe_mem_binding
         hci_core_assign i_mem_assign (
-          .tcdm_target    ( all_except_hwpe_mem [ii] ),
-          .tcdm_initiator ( mems                [ii] )
+          .tcdm_target    ( all_except_hwpe_mem_enc [ii] ),
+          .tcdm_initiator ( mems                    [ii] )
         );
       end
 
