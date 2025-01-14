@@ -559,7 +559,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   generate 
     for(genvar ii=0;ii<N_BANKS;ii++) begin : checker_block_read
       initial begin: add_queue_read 
-        logic [ADD_WIDTH - 1 : 0] recreated_address;
+        stimuli recreated_queue;
         logic skip;
         int okay;
         int NOT_FOUND;
@@ -577,12 +577,14 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               okay = 0;
               hwpe_read = 1;
               // LOG branch
-              recreate_address(queue_out_intc_to_mem_read[ii][0].add,ii,recreated_address);
+              recreate_address(queue_out_intc_to_mem_read[ii][0].add,ii,recreated_queue.add);
+              recreated_queue.data = queue_out_intc_to_mem_read[ii][0].data;
+              recreated_queue.wen = 1'b1;
               for(int i=0;i<N_MASTER-N_HWPE;i++) begin
                 if (queue_stimuli_all_except_hwpe[i].size() == 0) begin
                   continue;
                 end
-                  if (queue_stimuli_all_except_hwpe[i][0].wen && (recreated_address == queue_stimuli_all_except_hwpe[i][0].add)) begin
+                  if (queue_stimuli_all_except_hwpe[i][0].wen && (recreated_queue == queue_stimuli_all_except_hwpe[i][0])) begin
                     NOT_FOUND = 0;
                     queue_out_intc_to_mem_read[ii].delete(0);
                     queue_stimuli_all_except_hwpe[i].delete(0);
@@ -610,7 +612,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                     if (queue_stimuli_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                       continue;
                     end
-                    if(queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].wen && (recreated_address == queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].add)) begin
+                    if(queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].wen && (recreated_queue == queue_stimuli_hwpe[i+k*HWPE_WIDTH][0])) begin
                         NOT_FOUND = 0;
                         STOP_CHECK_READ = 1;
                         if(HIDE_HWPE[ii]) begin
@@ -663,7 +665,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               if(NOT_FOUND) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
-                $display("Bank %0d received a read req to address %b, but there's no correspondence among the one sent by the masters", ii,recreated_address);
+                $display("Bank %0d received a read req to address %b, but there's no correspondence among the one sent by the masters", ii,recreated_queue.add);
                 $display("The address may be wrong or the transaction does not arrive in the correct order");
                 $display("first element of the 1 queue_stimuli_all_except_hwpe add:%b, data: %b, wen:%b",queue_stimuli_all_except_hwpe[1][0].add,queue_stimuli_all_except_hwpe[1][0].data,queue_stimuli_all_except_hwpe[1][0].wen);
                 $finish();
