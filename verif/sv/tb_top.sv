@@ -688,7 +688,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   //--------------------------------------------
   //-             QoS: Arbiter                 -
   //--------------------------------------------
-
+/*
     static logic [N_BANKS-1:0]   LOG_REQ;
     static logic [N_BANKS-1:0]   HWPE_REQ;
     static logic [N_BANKS-1:0][N_MASTER-N_HWPE-1:0]   LOG_REQ_EACH_MASTER = '{default: '0};
@@ -839,7 +839,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       end
     end
     endgenerate
-    
+*/    
   //-----------------------------------------
   //-         REAL TROUGHPUT                -
   //-----------------------------------------
@@ -884,9 +884,11 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       wait(rst_n);
       #(CLK_PERIOD/100);
       @(posedge clk);
+      $display("start latency: %0t",$time);
       start_time = $time;
       wait(&END_LATENCY);
       end_time = $time;
+      $display("stop latency: %0t",$time);
       tot_latency = (end_time - start_time)/CLK_PERIOD;
 
   end
@@ -1007,6 +1009,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   initial begin
     real troughput_theo;
     real average_latency;
+    int j;
     average_latency = 0;
     wait (n_checks >= TOT_CHECK);
     $display("n_checks final = %0d",n_checks);
@@ -1037,8 +1040,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     for(int i=0; i<N_MASTER_REAL-N_HWPE_REAL; i++) begin
       $display("TOTAL LATENCY for master_log_%0d: %f",i,latency_per_master[i]);
     end
+    j=0;
     for(int i=N_MASTER-N_HWPE; i<N_MASTER-N_HWPE+N_HWPE_REAL; i++) begin
-      $display("TOTAL LATENCY for master_hwpe_%0d: %f",i,latency_per_master[i]);
+      $display("TOTAL LATENCY for master_hwpe_%0d: %f",j,latency_per_master[i]);
+      j++;
     end
 
     calculate_average_latency(SUM_LATENCY_PER_TRANSACTION_LOG,SUM_LATENCY_PER_TRANSACTION_HWPE);

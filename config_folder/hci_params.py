@@ -5,11 +5,11 @@
 #### PARAMETERS TO BE MAUALLY INSERTED ####
 
 # Number of HWPEs attached to the port
-N_HWPE=0
+N_HWPE=1
 # Widht of an HWPE wide-word (as a multiple of DATA_WIDTH)
 HWPE_WIDTH=4
 # Number of Core ports                                                  
-N_CORE=1
+N_CORE=4
 # Number of DMA ports                                                  
 N_DMA=0
 # Number of External ports                                               
@@ -31,4 +31,4 @@ WIDTH_OF_MEMORY=32
 # Invert default priority in the hci_arbiter module
 INVERT_PRIO=0
 # Maximum number of stalls in the lower priority channel of the hci_arbiter
-LOW_PRIO_MAX_STALL=10
+LOW_PRIO_MAX_STALL=5

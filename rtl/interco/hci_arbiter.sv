@@ -226,7 +226,7 @@ module hci_arbiter
       begin
         if (~rst_ni)
           ls_stall_ctr_d <= 0;
-        else if (conflict && hs_req_d)
+        else if (conflict & hs_req_d)
           ls_stall_ctr_d <= ls_stall_ctr_d + 1;
         else
           ls_stall_ctr_d <= 0;
@@ -263,7 +263,7 @@ module hci_arbiter
       begin
         if (~rst_ni)
           ls_stall_ctr_d <= 0;
-        else if (conflict)
+        else if (conflict & !invert_prio_one_cycle)
           ls_stall_ctr_d <= ls_stall_ctr_d + 1;
         else
           ls_stall_ctr_d <= 0;

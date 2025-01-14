@@ -77,7 +77,6 @@ module application_driver #(
                 @(posedge clk);
             end
         end
-        $display("MASTER %0d, end stimuli. time: %0t",MASTER_NUMBER,$time);
         end_stimuli = 1'b1;
         if(last_wen) begin
             while(1) begin
