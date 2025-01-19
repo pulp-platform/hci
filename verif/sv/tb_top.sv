@@ -9,10 +9,10 @@ module hci_tb
   ();
 
   // Simulation parameters
-  localparam int unsigned     N_TEST_LOG         =          `N_TEST_LOG;
-  localparam int unsigned     TEST_RATIO         =          `TEST_RATIO;
-  localparam int unsigned     N_TEST_HWPE        =          int'(N_TEST_LOG*`TEST_RATIO);
-  localparam int unsigned     TOT_CHECK          =          N_TEST_LOG*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*N_TEST_HWPE*`HWPE_WIDTH;
+  localparam int unsigned     N_TRANSACTION_LOG         =          `N_TRANSACTION_LOG;
+  localparam int unsigned     TRANSACTION_RATIO         =          `TRANSACTION_RATIO;
+  localparam int unsigned     N_TRANSACTION_HWPE        =          int'(N_TRANSACTION_LOG*`TRANSACTION_RATIO);
+  localparam int unsigned     TOT_CHECK          =          N_TRANSACTION_LOG*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*N_TRANSACTION_HWPE*`HWPE_WIDTH;
   
 
 
@@ -43,33 +43,33 @@ module hci_tb
   //---------------------------------------------
 
   // HCI parameters
-  localparam int unsigned N_HWPE_REAL             = `N_HWPE                                                                       ; // Number of HWPEs attached to the port
-  localparam int unsigned N_CORE_REAL             = `N_CORE                                                                       ; // Number of Core ports
-  localparam int unsigned N_DMA_REAL              = `N_DMA                                                                        ; // Number of DMA ports
-  localparam int unsigned N_EXT_REAL              = `N_EXT                                                                        ; // Number of External ports
-  localparam int unsigned N_HWPE                  = (`N_HWPE == 0) ? 1 : `N_HWPE                                                  ; // Number of HWPEs attached to the port
-  localparam int unsigned N_CORE                  = (`N_CORE == 0) ? 1 : `N_CORE                                                  ; // Number of Core ports
-  localparam int unsigned N_DMA                   = (`N_DMA == 0) ? 1 : `N_DMA                                                    ; // Number of DMA ports
-  localparam int unsigned N_EXT                   = (`N_EXT == 0) ? 1 : `N_EXT                                                    ; // Number of External ports
-  localparam int unsigned N_MASTER                = N_HWPE + N_CORE + N_DMA + N_EXT                                               ; // Total number of masters
-  localparam int unsigned N_MASTER_REAL           = N_HWPE_REAL + N_CORE_REAL + N_DMA_REAL + N_EXT_REAL                           ; // Total number of masters
-  localparam int unsigned TS_BIT                  = `TS_BIT                                                                       ; // TEST_SET_BIT (for Log Interconnect)
-  localparam int unsigned IW                      = $clog2(N_TEST_LOG*(N_MASTER_REAL-N_HWPE_REAL)+N_TEST_HWPE*N_HWPE_REAL)        ; // ID Width
-  localparam int unsigned EXPFIFO                 = `EXPFIFO                                                                      ; // FIFO Depth for HWPE Interconnect
-  localparam int unsigned SEL_LIC                 = `SEL_LIC                                                                      ; // Log interconnect type selector
+  localparam int unsigned N_HWPE_REAL             = `N_HWPE                                                                                   ; // Number of HWPEs attached to the port
+  localparam int unsigned N_CORE_REAL             = `N_CORE                                                                                   ; // Number of Core ports
+  localparam int unsigned N_DMA_REAL              = `N_DMA                                                                                    ; // Number of DMA ports
+  localparam int unsigned N_EXT_REAL              = `N_EXT                                                                                    ; // Number of External ports
+  localparam int unsigned N_HWPE                  = (`N_HWPE == 0) ? 1 : `N_HWPE                                                              ; // Number of HWPEs attached to the port
+  localparam int unsigned N_CORE                  = (`N_CORE == 0) ? 1 : `N_CORE                                                              ; // Number of Core ports
+  localparam int unsigned N_DMA                   = (`N_DMA == 0) ? 1 : `N_DMA                                                                ; // Number of DMA ports
+  localparam int unsigned N_EXT                   = (`N_EXT == 0) ? 1 : `N_EXT                                                                ; // Number of External ports
+  localparam int unsigned N_MASTER                = N_HWPE + N_CORE + N_DMA + N_EXT                                                           ; // Total number of masters
+  localparam int unsigned N_MASTER_REAL           = N_HWPE_REAL + N_CORE_REAL + N_DMA_REAL + N_EXT_REAL                                       ; // Total number of masters
+  localparam int unsigned TS_BIT                  = `TS_BIT                                                                                   ; // TEST_SET_BIT (for Log Interconnect)
+  localparam int unsigned IW                      = $clog2(N_TRANSACTION_LOG*(N_MASTER_REAL-N_HWPE_REAL)+N_TRANSACTION_HWPE*N_HWPE_REAL)        ; // ID Width
+  localparam int unsigned EXPFIFO                 = `EXPFIFO                                                                                  ; // FIFO Depth for HWPE Interconnect
+  localparam int unsigned SEL_LIC                 = `SEL_LIC                                                                                  ; // Log interconnect type selector
 
-  localparam int unsigned DATA_WIDTH              = `DATA_WIDTH                                                                   ; // Width of DATA in bits
-  localparam int unsigned HWPE_WIDTH              = `HWPE_WIDTH                                                                   ; // Widht of an HWPE wide-word (as a multiple of DATA_WIDTH)
-  localparam int unsigned TOT_MEM_SIZE            = `TOT_MEM_SIZE                                                                 ; // Memory size (kB)
-  localparam int unsigned ADD_WIDTH               = $clog2(TOT_MEM_SIZE*1000)                                                     ; // Width of ADDRESS in bits
-  localparam int unsigned N_BANKS                 = `N_BANKS                                                                      ; // Number of memory banks
-  localparam int unsigned WIDTH_OF_MEMORY         = `WIDTH_OF_MEMORY                                                              ; // Width of a memory bank (bits)
-  localparam int unsigned WIDTH_OF_MEMORY_BYTE    = WIDTH_OF_MEMORY/8                                                             ; // Width of a memory bank (bytes)
-  localparam int unsigned BIT_BANK_INDEX          = $clog2(N_BANKS)                                                               ; // Bits of the Bank index
-  localparam int unsigned AddrMemWidth            = ADD_WIDTH - BIT_BANK_INDEX                                                    ; // Number of address bits per TCDM bank
-  localparam int unsigned N_WORDS                 = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE                              ; // Number of words in a bank
+  localparam int unsigned DATA_WIDTH              = `DATA_WIDTH                                                                               ; // Width of DATA in bits
+  localparam int unsigned HWPE_WIDTH              = `HWPE_WIDTH                                                                               ; // Widht of an HWPE wide-word (as a multiple of DATA_WIDTH)
+  localparam int unsigned TOT_MEM_SIZE            = `TOT_MEM_SIZE                                                                             ; // Memory size (kB)
+  localparam int unsigned ADD_WIDTH               = $clog2(TOT_MEM_SIZE*1000)                                                                 ; // Width of ADDRESS in bits
+  localparam int unsigned N_BANKS                 = `N_BANKS                                                                                  ; // Number of memory banks
+  localparam int unsigned WIDTH_OF_MEMORY         = `WIDTH_OF_MEMORY                                                                          ; // Width of a memory bank (bits)
+  localparam int unsigned WIDTH_OF_MEMORY_BYTE    = WIDTH_OF_MEMORY/8                                                                         ; // Width of a memory bank (bytes)
+  localparam int unsigned BIT_BANK_INDEX          = $clog2(N_BANKS)                                                                           ; // Bits of the Bank index
+  localparam int unsigned AddrMemWidth            = ADD_WIDTH - BIT_BANK_INDEX                                                                ; // Number of address bits per TCDM bank
+  localparam int unsigned N_WORDS                 = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE                                          ; // Number of words in a bank
 
-  localparam int unsigned ARBITER_MODE            = (`PRIORITY_CHECK_MODE_ONE == 1) ? 1 : 0                                       ; // Choosen mode for the arbiter
+  localparam int unsigned ARBITER_MODE            = (`PRIORITY_CHECK_MODE_ONE == 1) ? 1 : 0                                                   ; // Choosen mode for the arbiter
 
   localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '{    // CORE + DMA + EXT parameters
     DW:  DATA_WIDTH,
@@ -867,7 +867,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     wait(&END_STIMULI);
     end_time = $time;
     tot_time = (end_time - start_time)/CLK_PERIOD; // ns
-    tot_data = ((N_TEST_LOG * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST_HWPE * HWPE_WIDTH * DATA_WIDTH) * N_HWPE_REAL); // bit
+    tot_data = ((N_TRANSACTION_LOG * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TRANSACTION_HWPE * HWPE_WIDTH * DATA_WIDTH) * N_HWPE_REAL); // bit
     troughput_real = tot_data/tot_time; // Gbps
   end
 
@@ -1140,13 +1140,13 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     
     real tot_data,band_memory_limit,tot_time;
     string line;
-    if(TEST_RATIO>=1) begin
-      tot_time = N_TEST_HWPE;
+    if(TRANSACTION_RATIO>=1) begin
+      tot_time = N_TRANSACTION_HWPE;
     end else begin
-      tot_time = N_TEST_LOG;
+      tot_time = N_TRANSACTION_LOG;
     end
 
-    tot_data = ((N_TEST_LOG * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TEST_HWPE * HWPE_WIDTH * DATA_WIDTH) * N_HWPE_REAL); // bit
+    tot_data = ((N_TRANSACTION_LOG * DATA_WIDTH) * (N_MASTER_REAL - N_HWPE_REAL) + (N_TRANSACTION_HWPE * HWPE_WIDTH * DATA_WIDTH) * N_HWPE_REAL); // bit
     troughput_theo = tot_data/tot_time; // bit per cycle
     band_memory_limit = real'(N_BANKS * DATA_WIDTH);
     if (troughput_theo >= band_memory_limit) begin
@@ -1156,10 +1156,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
 
   task automatic calculate_average_latency (ref real SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE], ref real SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]);
     for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-      SUM_LATENCY_PER_TRANSACTION_LOG[i] = SUM_LATENCY_PER_TRANSACTION_LOG[i] / N_TEST_LOG;
+      SUM_LATENCY_PER_TRANSACTION_LOG[i] = SUM_LATENCY_PER_TRANSACTION_LOG[i] / N_TRANSACTION_LOG;
     end
     for(int i=0;i<N_HWPE;i++) begin
-      SUM_LATENCY_PER_TRANSACTION_HWPE[i] = SUM_LATENCY_PER_TRANSACTION_HWPE[i] / N_TEST_LOG;
+      SUM_LATENCY_PER_TRANSACTION_HWPE[i] = SUM_LATENCY_PER_TRANSACTION_HWPE[i] / N_TRANSACTION_LOG;
     end
   endtask
 

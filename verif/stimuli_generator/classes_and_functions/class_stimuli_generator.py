@@ -14,7 +14,7 @@ import numpy as np
 import os
 
 class stimuli_generator:
-    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,CYCLE_OFFSET,MASTER_NUMBER_IDENTIFICATION,IS_HWPE,HWPE_WIDTH):
+    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET,MASTER_NUMBER_IDENTIFICATION,IS_HWPE,HWPE_WIDTH):
         self.WIDTH_OF_MEMORY = WIDTH_OF_MEMORY
         self.WIDTH_OF_MEMORY_BYTE = int(WIDTH_OF_MEMORY/8)
         self.N_BANKS = N_BANKS
@@ -24,7 +24,7 @@ class stimuli_generator:
         self.filepath = filepath
         os.makedirs(os.path.dirname(filepath),exist_ok=True)
         self.N_TEST = N_TEST
-        self.MAX_CYCLE_OFFSET = MAX_CYCLE_OFFSET
+        self.EXACT_OR_MAX_OFFSET = EXACT_OR_MAX_OFFSET
         self.CYCLE_OFFSET = CYCLE_OFFSET
         self.IW = IW
         self.MASTER_NUMBER_IDENTIFICATION = MASTER_NUMBER_IDENTIFICATION
@@ -47,8 +47,8 @@ class stimuli_generator:
 
     def data_wen_offset(self):
         wen = random.randint(0,1) # write enable signal (1 = read, 0 = write)
-        if (self.MAX_CYCLE_OFFSET != 0):
-            cycle_offset = random.randint(1,self.MAX_CYCLE_OFFSET) # handshake request signal
+        if (self.EXACT_OR_MAX_OFFSET):
+            cycle_offset = random.randint(1,self.CYCLE_OFFSET)
         else:
             cycle_offset = self.CYCLE_OFFSET 
         if wen:

@@ -12,8 +12,8 @@ TRANSACTION_RATIO?=1
 # If EXACT_OR_MAX_OFFSET = 1 ---> CYCLE_OFFSET defines the maximum number of clock cycles between two consecutive requests (the exact value is determined randomly)
 # NOTE: the minimum value for CYCLE_OFFSET is 1
 EXACT_OR_MAX_OFFSET?=1
-CYCLE_OFFSET_LOG?=7
-CYCLE_OFFSET_HWPE?=7
+CYCLE_OFFSET_LOG?=2
+CYCLE_OFFSET_HWPE?=10
 # Clock period in ns
 CLK_PERIOD?=50
 # Number of clock cycles after which the reset signal is deasserted

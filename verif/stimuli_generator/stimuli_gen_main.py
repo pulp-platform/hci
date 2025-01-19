@@ -72,7 +72,7 @@ parser.add_argument(f'--sim_and_hardware_params', nargs='+', default=[], require
                                                                                                                 "   - HWPE_WIDTH\n"
                                                                                                                 "   - TEST_RATIO\n"
                                                                                                                 "   - N_TEST_LOG\n"
-                                                                                                                "   - MAX_CYCLE_OFFSET")
+                                                                                                                "   - CYCLE_OFFSET")
 
 parser.add_argument(f'--master_log', nargs='*', default=[], action="extend", help=f"Specify the parameters for memory access related to masters in log branch:\n"
                                                                                             "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
@@ -101,7 +101,7 @@ args = parser.parse_args()
 ### PARAMETERS ###
 N_BANKS, TOT_MEM_SIZE, WIDTH_OF_MEMORY, N_CORE, N_DMA,\
 N_EXT, N_HWPE, HWPE_WIDTH, TEST_RATIO,\
-N_TEST_LOG, MAX_CYCLE_OFFSET= getattr(args,"sim_and_hardware_params")
+N_TEST_LOG, CYCLE_OFFSET_LOG, CYCLE_OFFSET_HWPE, EXACT_OR_MAX_OFFSET= getattr(args,"sim_and_hardware_params")
 WIDTH_OF_MEMORY_BYTE = WIDTH_OF_MEMORY/8
 N_WORDS = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE
 ADD_WIDTH = int(np.ceil(np.log2(TOT_MEM_SIZE*1000))) # Each memory address point to a byte
@@ -114,12 +114,6 @@ CORE_ZERO_FLAG = 0
 EXT_ZERO_FLAG = 0
 DMA_ZERO_FLAG = 0
 HWPE_ZERO_FLAG = 0
-if(TEST_RATIO>=1):
-    CYCLE_OFFSET_LOG = TEST_RATIO
-    CYCLE_OFFSET_HWPE = 1
-else:
-    CYCLE_OFFSET_LOG = 1
-    CYCLE_OFFSET_HWPE = int(1/TEST_RATIO)
 
 ### CHECKS AND ERRORS ###
 if (not N_WORDS.is_integer()):
@@ -128,7 +122,7 @@ if (not N_WORDS.is_integer()):
 if (N_MASTER < 1):
     print("ERROR: the number of masters must be > 0")
     sys.exit(1)
-if (len(args.sim_and_hardware_params) != 11):
+if (len(args.sim_and_hardware_params) != 13):
     print("ERROR: Incorrect number of parameters in --sim_and_hardware_params")
     print("Expected: 11 parameters")
     print("Passed: ", len(args.sim_and_hardware_params), "parameters")
@@ -186,28 +180,28 @@ for n in range(N_MASTER):
             continue
         else:
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
             config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     elif n < N_CORE + N_DMA:
         if DMA_ZERO_FLAG:
             continue
         else:
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
             config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     elif n < N_CORE + N_DMA + N_EXT:
         if EXT_ZERO_FLAG:
             continue
         else:
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
             config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     else:
         if HWPE_ZERO_FLAG:
             continue
         else:
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_hwpe_{n-(N_MASTER-N_HWPE)}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,HWPE_WIDTH*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_HWPE,MAX_CYCLE_OFFSET,CYCLE_OFFSET_HWPE,n,1,HWPE_WIDTH) # wide word for the hwpe
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,HWPE_WIDTH*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_HWPE,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_HWPE,n,1,HWPE_WIDTH) # wide word for the hwpe
             config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_hwpe")[n-(N_MASTER-N_HWPE):n-(N_MASTER-N_HWPE)+7]
     stride0 = int(stride0)
     len_d0 = int(len_d0)
