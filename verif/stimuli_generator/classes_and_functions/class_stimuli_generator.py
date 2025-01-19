@@ -14,7 +14,7 @@ import numpy as np
 import os
 
 class stimuli_generator:
-    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,CYCLE_OFFSET,MASTER_NUMBER_IDENTIFICATION):
+    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,MAX_CYCLE_OFFSET,CYCLE_OFFSET,MASTER_NUMBER_IDENTIFICATION,IS_HWPE,HWPE_WIDTH):
         self.WIDTH_OF_MEMORY = WIDTH_OF_MEMORY
         self.WIDTH_OF_MEMORY_BYTE = int(WIDTH_OF_MEMORY/8)
         self.N_BANKS = N_BANKS
@@ -28,6 +28,8 @@ class stimuli_generator:
         self.CYCLE_OFFSET = CYCLE_OFFSET
         self.IW = IW
         self.MASTER_NUMBER_IDENTIFICATION = MASTER_NUMBER_IDENTIFICATION
+        self.IS_HWPE = IS_HWPE
+        self.HWPE_WIDTH = HWPE_WIDTH
     
     def random_data(self):
         data_decimal = random.randint(0, (2**(self.DATA_WIDTH))-1) # generate random data
@@ -36,7 +38,11 @@ class stimuli_generator:
     
     def data_for_read_transaction(self):
         data_decimal = self.MASTER_NUMBER_IDENTIFICATION
-        data = bin(data_decimal)[2:].zfill(self.DATA_WIDTH)
+        if self.IS_HWPE:
+            data = bin(data_decimal)[2:].zfill(int(self.DATA_WIDTH/self.HWPE_WIDTH))
+            data = self.HWPE_WIDTH*data
+        else:
+            data = bin(data_decimal)[2:].zfill(self.DATA_WIDTH)
         return data
 
     def data_wen_offset(self):

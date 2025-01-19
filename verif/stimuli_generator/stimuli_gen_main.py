@@ -41,7 +41,7 @@
 # You can also use the makefile to configure the verification setup and automatically generate the correct stimuli for the most common scenarios. Otherwise, if a finer
 # and more specific simulation is needed, you can manually invoke this script.
 
-### Libraries, dependencies and parameters ###
+### LIBRARIES AND DEPENDENCIES ###
 import random
 import os
 from pathlib import Path
@@ -52,127 +52,121 @@ import classes_and_functions.process_txt as process
 code_directory = os.path.dirname(os.path.abspath(__file__))
 config_directory = os.path.abspath(os.path.join(code_directory, "../../config_folder"))
 sys.path.append(config_directory)
-import hci_params
-import sim_params
 import argparse 
-N_BANKS = hci_params.N_BANKS
-TOT_MEM_SIZE = hci_params.TOT_MEM_SIZE
-WIDTH_OF_MEMORY = hci_params.WIDTH_OF_MEMORY
-N_CORE = hci_params.N_CORE
-N_DMA = hci_params.N_DMA
-N_EXT = hci_params.N_EXT
-N_LOG = N_CORE+N_DMA+N_EXT
-N_HWPE = hci_params.N_HWPE
-HWPE_WIDTH = hci_params.HWPE_WIDTH
+
+### ARGPARSE ###
+parser = argparse.ArgumentParser(description="This script generates .txt files containing stimuli for use in the HCI verification suite.\n\n"
+                                 "USAGE EXAMPLE:\n"
+                                 "python stimuli_gen_main.py --master_log0 0, --master_log1 1 0101001 2 --master_hwpe0 2 1001010 3 10 2",
+                                 formatter_class=argparse.RawTextHelpFormatter,)
+
+parser.add_argument(f'--sim_and_hardware_params', nargs='+', default=[], required=True, type=int, help=f"Specify the software and hardware parameters used to generate the stimuli:\n"
+                                                                                                                "   - N_BANKS \n"
+                                                                                                                "   - TOT_MEM_SIZE \n"
+                                                                                                                "   - WIDTH_OF_MEMORY \n"
+                                                                                                                "   - N_CORE \n"
+                                                                                                                "   - N_DMA \n"
+                                                                                                                "   - N_EXT \n"
+                                                                                                                "   - N_LOG \n"
+                                                                                                                "   - N_HWPE\n"
+                                                                                                                "   - HWPE_WIDTH\n"
+                                                                                                                "   - TEST_RATIO\n"
+                                                                                                                "   - N_TEST_LOG\n"
+                                                                                                                "   - MAX_CYCLE_OFFSET")
+
+parser.add_argument(f'--master_log', nargs='*', default=[], action="extend", help=f"Specify the parameters for memory access related to masters in log branch:\n"
+                                                                                            "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
+                                                                                            "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
+                                                                                            "   - Stride0 (required for linear, 2D, and 3D accesses)\n"
+                                                                                            "   - Len_d0 (required for 2D and 3D accesses)\n"
+                                                                                            "   - Stride1 (required for 2D and 3D accesses)\n"
+                                                                                            "   - Len_d1 (required for 3D accesses)\n"
+                                                                                            "   - Stride2 (required for 3D accesses)\n\n"
+                                                                                            "NOTE: There is no need to specify the \"outer\" length for linear, 2D, and 3D accesses,\n"
+                                                                                            "as the program will automatically stop once the specified `N_TEST` vectors are reached.")
+
+parser.add_argument(f'--master_hwpe', nargs='*', default=[], action="extend", help=f"Specify the parameters for memory access related to masters in hwpe branch:\n"
+                                                                                            "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
+                                                                                            "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
+                                                                                            "   - Stride0 (required for linear, 2D, and 3D accesses)\n"
+                                                                                            "   - Len_d0 (required for 2D and 3D accesses)\n"
+                                                                                            "   - Stride1 (required for 2D and 3D accesses)\n"
+                                                                                            "   - Len_d1 (required for 3D accesses)\n"
+                                                                                            "   - Stride2 (required for 3D accesses)\n\n"
+                                                                                            "NOTE: There is no need to specify the \"outer\" length for linear, 2D, and 3D accesses,\n"
+                                                                                            "as the program will automatically stop once the specified `N_TEST` vectors are reached.")
+
+args = parser.parse_args()
+
+### PARAMETERS ###
+N_BANKS, TOT_MEM_SIZE, WIDTH_OF_MEMORY, N_CORE, N_DMA,\
+N_EXT, N_HWPE, HWPE_WIDTH, TEST_RATIO,\
+N_TEST_LOG, MAX_CYCLE_OFFSET= getattr(args,"sim_and_hardware_params")
 WIDTH_OF_MEMORY_BYTE = WIDTH_OF_MEMORY/8
 N_WORDS = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE
-
-if (not N_WORDS.is_integer()): #check if the number of words is an integer value
-    print("ERROR: the number of words is not an integer value")
-    sys.exit(1)
-
 ADD_WIDTH = int(np.ceil(np.log2(TOT_MEM_SIZE*1000))) # Each memory address point to a byte
 DATA_WIDTH = WIDTH_OF_MEMORY
-
-TEST_RATIO = sim_params.TEST_RATIO
-N_TEST_LOG = sim_params.N_TEST
 N_TEST_HWPE = int(N_TEST_LOG*TEST_RATIO)
-MAX_CYCLE_OFFSET = sim_params.MAX_CYCLE_OFFSET
+N_LOG = N_CORE + N_DMA + N_EXT
+N_MASTER = N_LOG + N_HWPE
+IW = int(np.ceil(np.log2(N_TEST_LOG*N_LOG + N_TEST_HWPE*N_HWPE)))
+CORE_ZERO_FLAG = 0 
+EXT_ZERO_FLAG = 0
+DMA_ZERO_FLAG = 0
+HWPE_ZERO_FLAG = 0
 if(TEST_RATIO>=1):
     CYCLE_OFFSET_LOG = TEST_RATIO
     CYCLE_OFFSET_HWPE = 1
 else:
     CYCLE_OFFSET_LOG = 1
     CYCLE_OFFSET_HWPE = int(1/TEST_RATIO)
-N_MASTER = N_CORE + N_DMA + N_EXT + N_HWPE
-IW = int(np.ceil(np.log2(N_TEST_LOG*N_LOG + N_TEST_HWPE*N_HWPE)))
-CORE_ZERO_FLAG = 0 
-EXT_ZERO_FLAG = 0
-DMA_ZERO_FLAG = 0
-HWPE_ZERO_FLAG = 0
 
-
-### Argpasre ###
+### CHECKS AND ERRORS ###
+if (not N_WORDS.is_integer()):
+    print("ERROR: the number of words is not an integer value")
+    sys.exit(1)
 if (N_MASTER < 1):
     print("ERROR: the number of masters must be > 0")
     sys.exit(1)
+if (len(args.sim_and_hardware_params) != 11):
+    print("ERROR: Incorrect number of parameters in --sim_and_hardware_params")
+    print("Expected: 11 parameters")
+    print("Passed: ", len(args.sim_and_hardware_params), "parameters")
+    sys.exit(1)
+if (len(args.master_log)/7 != N_LOG):
+    print("ERROR: Incorrect number of parameters in --master_log")
+    print("Expected: 7*N_LOG = ",7*N_LOG, "parameters")
+    print("Passed: ", len(args.master_log), "parameters")
+    sys.exit(1)
+if (len(args.master_hwpe)/7 != N_HWPE):
+    print("ERROR: Incorrect number of parameters in --master_hwpe")
+    print("Expected: 7*N_HWPE = ",7*N_HWPE, "parameters")
+    print("Passed: ", len(args.master_hwpe), "parameters")
+    sys.exit(1)
 
-parser = argparse.ArgumentParser(description="This script generates .txt files containing stimuli for use in the HCI verification suite.\n\n"
-                                 "USAGE EXAMPLE:\n"
-                                 "python stimuli_gen_main.py --master_log0 0, --master_log1 1 0101001 2 --master_hwpe0 2 1001010 3 10 2",
-                                 formatter_class=argparse.RawTextHelpFormatter,)
-if (N_CORE > 0):
-    for i in range(N_CORE):
-        parser.add_argument(f'--master_log{i}', nargs='+', default=[], required=True, help=f"Specify the parameters for memory access related to master_log{i}:\n"
-                                                                                            "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
-                                                                                            "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
-                                                                                            "   - Stride0 (required for linear, 2D, and 3D accesses)\n"
-                                                                                            "   - Len_d0 (required for 2D and 3D accesses)\n"
-                                                                                            "   - Stride1 (required for 2D and 3D accesses)\n"
-                                                                                            "   - Len_d1 (required for 3D accesses)\n"
-                                                                                            "   - Stride2 (required for 3D accesses)\n\n"
-                                                                                            "NOTE: There is no need to specify the \"outer\" length for linear, 2D, and 3D accesses,\n"
-                                                                                            "as the program will automatically stop once the specified `N_TEST` vectors are reached.")
-else:
+### GENERATE RAW TXT FILES ###
+if (N_CORE <= 0):
     CORE_ZERO_FLAG = 1
     N_CORE = 1 
     filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + "master_log_0.txt"))
     os.makedirs(os.path.dirname(filepath),exist_ok=True)
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
-
-if (N_DMA > 0):
-    for i in range(N_CORE - CORE_ZERO_FLAG,N_CORE - CORE_ZERO_FLAG + N_DMA):
-        parser.add_argument(f'--master_log{i}', nargs='+', default=[], required=True, help=f"Specify the parameters for memory access related to master_log{i}:\n"
-                                                                                            "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
-                                                                                            "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
-                                                                                            "   - Stride0 (required for linear, 2D, and 3D accesses)\n"
-                                                                                            "   - Len_d0 (required for 2D and 3D accesses)\n"
-                                                                                            "   - Stride1 (required for 2D and 3D accesses)\n"
-                                                                                            "   - Len_d1 (required for 3D accesses)\n"
-                                                                                            "   - Stride2 (required for 3D accesses)\n\n"
-                                                                                            "NOTE: There is no need to specify the \"outer\" length for linear, 2D, and 3D accesses,\n"
-                                                                                            "as the program will automatically stop once the specified `N_TEST` vectors are reached.")
-else:
+if (N_DMA <= 0):
     DMA_ZERO_FLAG = 1
     N_DMA = 1
     filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{N_CORE}.txt"))
     os.makedirs(os.path.dirname(filepath),exist_ok=True)
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
-if (N_EXT > 0):
-    for i in range(N_CORE - CORE_ZERO_FLAG + N_DMA - DMA_ZERO_FLAG, N_CORE - CORE_ZERO_FLAG + N_DMA - DMA_ZERO_FLAG + N_EXT):
-        parser.add_argument(f'--master_log{i}', nargs='+', default=[], required=True, help=f"Specify the parameters for memory access related to master_log{i}:\n"
-                                                                                            "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
-                                                                                            "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
-                                                                                            "   - Stride0 (required for linear, 2D, and 3D accesses)\n"
-                                                                                            "   - Len_d0 (required for 2D and 3D accesses)\n"
-                                                                                            "   - Stride1 (required for 2D and 3D accesses)\n"
-                                                                                            "   - Len_d1 (required for 3D accesses)\n"
-                                                                                            "   - Stride2 (required for 3D accesses)\n\n"
-                                                                                            "NOTE: There is no need to specify the \"outer\" length for linear, 2D, and 3D accesses,\n"
-                                                                                            "as the program will automatically stop once the specified `N_TEST` vectors are reached.")
-else:
+if (N_EXT <= 0):
     EXT_ZERO_FLAG = 1
     N_EXT = 1
     filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{N_CORE+N_DMA}.txt"))
     os.makedirs(os.path.dirname(filepath),exist_ok=True)
     with open(filepath, 'w', encoding="ascii") as file:
         file.write('zero')
-
-if (N_HWPE > 0):
-    for j in range(N_HWPE):
-        parser.add_argument(f'--master_hwpe{j}', nargs='+', default=[], required=True, help=f"Specify the parameters for memory access related to master_hwpe{j}:\n"
-                                                                                            "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"
-                                                                                            "   - Starting address in binary (required for linear, 2D, and 3D accesses)\n"
-                                                                                            "   - Stride0 (required for linear, 2D, and 3D accesses)\n"
-                                                                                            "   - Len_d0 (required for 2D and 3D accesses)\n"
-                                                                                            "   - Stride1 (required for 2D and 3D accesses)\n"
-                                                                                            "   - Len_d1 (required for 3D accesses)\n"
-                                                                                            "   - Stride2 (required for 3D accesses)\n\n"
-                                                                                            "NOTE: There is no need to specify the \"outer\" length for linear, 2D, and 3D accesses,\n"
-                                                                                            "as the program will automatically stop once the specified `N_TEST` vectors are reached.")
-else:
+if (N_HWPE <= 0):
     HWPE_ZERO_FLAG = 1
     N_HWPE = 1
     filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + "master_hwpe_0.txt"))
@@ -182,9 +176,6 @@ else:
 
 N_MASTER = N_CORE + N_DMA + N_EXT + N_HWPE
 
-args = parser.parse_args()
-
-### Generate the raw txt files ###
 next_start_id = 0
 LIST_OF_FORBIDDEN_ADDRESSES_WRITE = []
 LIST_OF_FORBIDDEN_ADDRESSES_READ = []
@@ -194,32 +185,30 @@ for n in range(N_MASTER):
         if CORE_ZERO_FLAG:
             continue
         else:
-            master_name = f'master_log{n}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     elif n < N_CORE + N_DMA:
         if DMA_ZERO_FLAG:
             continue
         else:
-            master_name = f'master_log{n-CORE_ZERO_FLAG}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     elif n < N_CORE + N_DMA + N_EXT:
         if EXT_ZERO_FLAG:
             continue
         else:
-            master_name = f'master_log{n-CORE_ZERO_FLAG-DMA_ZERO_FLAG}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,MAX_CYCLE_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     else:
         if HWPE_ZERO_FLAG:
             continue
         else:
-            master_name = f'master_hwpe{n-(N_MASTER-N_HWPE)}'
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_hwpe_{n-(N_MASTER-N_HWPE)}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,HWPE_WIDTH*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_HWPE,MAX_CYCLE_OFFSET,CYCLE_OFFSET_HWPE,n) # wide word for the hwpe
-
-    config, start_address, stride0, len_d0, stride1, len_d1, stride2 = (getattr(args,master_name, None) + [0] * 7)[:7]
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,HWPE_WIDTH*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_HWPE,MAX_CYCLE_OFFSET,CYCLE_OFFSET_HWPE,n,1,HWPE_WIDTH) # wide word for the hwpe
+            config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_hwpe")[n-(N_MASTER-N_HWPE):n-(N_MASTER-N_HWPE)+7]
     stride0 = int(stride0)
     len_d0 = int(len_d0)
     stride1 = int(stride1)
@@ -237,7 +226,7 @@ for n in range(N_MASTER):
     
 print("STEP 0 COMPLETED: created raw txt files")
 
-### Process the raw txt files ###
+### PROCESS RAW TXT FILES ###
 simvector_raw_path = os.path.dirname(filepath)
 simvector_processed_path = os.path.abspath(os.path.join(simvector_raw_path,"../stimuli_processed"))
 process.unfold_raw_txt(simvector_raw_path,simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH)

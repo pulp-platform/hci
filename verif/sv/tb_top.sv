@@ -487,6 +487,7 @@ module hci_tb
               if(HIDE_LOG[ii]) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
+                show_warning();
                 $display("The arbiter prioritized Master %0d in the LOG branch, but it should have given priority to the HWPE branch", i);
                 $finish();
               end
@@ -507,6 +508,7 @@ module hci_tb
                       if(okay && HIDE_HWPE[ii]) begin
                         $display("-----------------------------------------");
                         $display("Time %0t:    Test ***FAILED*** \n",$time);
+                        show_warning();
                         $display("The arbiter prioritized the HWPE branch, but it should have given priority to the LOG branch");
                         $finish();
                       end
@@ -536,6 +538,7 @@ module hci_tb
           if(!okay && !skip) begin
               $display("-----------------------------------------");
               $display("Time %0t:    Test ***FAILED*** \n",$time);
+              show_warning();
               $display("Bank %0d: data = %b address = %b", ii,queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add);
               $display("This transaction does not happen in the correct order at a master level, or some values are wrong");
               $finish();
@@ -592,6 +595,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                     if(HIDE_LOG[ii]) begin
                       $display("-----------------------------------------");
                       $display("Time %0t:    Test ***FAILED*** \n",$time);
+                      show_warning();
                       $display("The arbiter prioritized Master %0d, but it should have given priority to the HWPE", i);
                       $finish();
                     end
@@ -618,6 +622,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                         if(HIDE_HWPE[ii]) begin
                             $display("-----------------------------------------");
                             $display("Time %0t:    Test ***FAILED*** \n",$time);
+                            show_warning();
                             $display("The arbiter prioritized the HWPE, but it should have given priority to the LOG branch");
                             $finish();
                           end
@@ -665,6 +670,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               if(NOT_FOUND) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
+                show_warning();
                 $display("Bank %0d received a read req to address %b, but there's no correspondence among the one sent by the masters", ii,recreated_queue.add);
                 $display("The address may be wrong or the transaction does not arrive in the correct order");
                 $display("first element of the 1 queue_stimuli_all_except_hwpe add:%b, data: %b, wen:%b",queue_stimuli_all_except_hwpe[1][0].add,queue_stimuli_all_except_hwpe[1][0].data,queue_stimuli_all_except_hwpe[1][0].wen);
@@ -673,6 +679,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               if(DATA_MISMATCH && !skip)begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
+                show_warning();
                 $display("The r_data is not propagated correctly through the interconnect");
                 $display("r_data: %b, bank %0d",queue_read[ii][0],ii);
                 $display("r_data: %b, master hwpe",queue_read_master_hwpe[0][0]);
@@ -1018,8 +1025,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     $display("------ Simulation End ------");
     if(n_correct == TOT_CHECK) begin
       $display("    Test ***PASSED*** \n");
+      show_warning();
     end else begin
       $display("    Test ***FAILED*** \n");
+      show_warning();
     end
     $display("\\\\CHECKS\\\\");
     $display("n_correct = %0d out of n_check = %0d",n_correct,n_checks);
@@ -1153,4 +1162,37 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     end
   endtask
 
+
+  //-----------------------------------
+  //-        ASSERTIONS               -
+  //-----------------------------------
+function int manipulate_add(input logic [ADD_WIDTH-1:0] add);
+  logic [ADD_WIDTH-1:0] manipulated_add;
+  logic [ADD_WIDTH-BIT_BANK_INDEX-1:0] bank_level_manipulated_add;
+  logic [DATA_WIDTH-1:0] ret_1;
+  logic ret_2;
+
+  create_address_and_data_hwpe(add,'0,HWPE_WIDTH,manipulated_add,ret_1,'0,ret_2);
+  bank_level_manipulated_add = {manipulated_add[ADD_WIDTH-1:BIT_BANK_INDEX + 2],manipulated_add[1:0]};
+  $display("%0d",int'(bank_level_manipulated_add));
+  return int'(bank_level_manipulated_add);
+endfunction
+
+logic  WARNING_HWPE_ADD = 0;
+generate
+  for(genvar ii=0;ii<N_HWPE;ii++) begin
+    input_hwpe_add: assert property (@(posedge clk) (manipulate_add(hwpe_intc[ii].add) <= TOT_MEM_SIZE*1000/N_BANKS-WIDTH_OF_MEMORY_BYTE))
+    else begin
+      WARNING_HWPE_ADD = 1'b1;
+    end
+  end
+endgenerate
+
+task show_warning();
+  if(WARNING_HWPE_ADD) begin
+    $display("!!!WARNING!!!: UNPREDICTABLE RESULT. One HWPE generated an out of boundary address.");
+    $display("If this message is shown, the test is not valid. Try a new workload\n");
+    $finish();
+  end
+endtask
 endmodule
