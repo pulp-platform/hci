@@ -892,11 +892,9 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       wait(rst_n);
       #(CLK_PERIOD/100);
       @(posedge clk);
-      $display("start latency: %0t",$time);
       start_time = $time;
       wait(&END_LATENCY);
       end_time = $time;
-      $display("stop latency: %0t",$time);
       tot_latency = (end_time - start_time)/CLK_PERIOD;
 
   end
@@ -1173,7 +1171,6 @@ function int manipulate_add(input logic [ADD_WIDTH-1:0] add);
 
   create_address_and_data_hwpe(add,'0,HWPE_WIDTH,manipulated_add,ret_1,'0,ret_2);
   bank_level_manipulated_add = {manipulated_add[ADD_WIDTH-1:BIT_BANK_INDEX + 2],manipulated_add[1:0]};
-  $display("%0d",int'(bank_level_manipulated_add));
   return int'(bank_level_manipulated_add);
 endfunction
 
