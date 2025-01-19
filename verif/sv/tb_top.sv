@@ -487,7 +487,7 @@ module hci_tb
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
                 show_warning();
-                $display("The arbiter prioritized Master %0d in the LOG branch, but it should have given priority to the HWPE branch", i);
+                $display("The arbiter prioritized master_log_%0d in LOG branch, but it should have given priority to the HWPE branch", i);
                 $finish();
               end
             end
@@ -538,8 +538,11 @@ module hci_tb
               $display("-----------------------------------------");
               $display("Time %0t:    Test ***FAILED*** \n",$time);
               show_warning();
-              $display("Bank %0d: data = %b address = %b", ii,queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add);
-              $display("This transaction does not happen in the correct order at a master level, or some values are wrong");
+              $display("Bank %0d received the following write transaction: data = %b address = %b", ii,queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add);
+              $display("NO CORRESPONDENCE FOUND among the input queues");
+              $display("POSSIBLE ERRORS:");
+              $display("-Incorrect data or address");
+              $display("-Incorrect order");
               $finish();
           end
           if(!skip) begin
@@ -595,7 +598,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                       $display("-----------------------------------------");
                       $display("Time %0t:    Test ***FAILED*** \n",$time);
                       show_warning();
-                      $display("The arbiter prioritized Master %0d, but it should have given priority to the HWPE", i);
+                      $display("The arbiter prioritized master_log_%0d in LOG branch, but it should have given priority to the HWPE branch", i);
                       $finish();
                     end
                     wait(queue_read_master[i].size() != 0 && queue_read[ii].size() != 0);                   
@@ -622,7 +625,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                             $display("-----------------------------------------");
                             $display("Time %0t:    Test ***FAILED*** \n",$time);
                             show_warning();
-                            $display("The arbiter prioritized the HWPE, but it should have given priority to the LOG branch");
+                            $display("The arbiter prioritized the HWPE branch, but it should have given priority to the LOG branch");
                             $finish();
                           end
                         if(!already_checked_read[k]) begin
@@ -670,18 +673,18 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
                 show_warning();
-                $display("Bank %0d received a read req to address %b, but there's no correspondence among the one sent by the masters", ii,recreated_queue.add);
-                $display("The address may be wrong or the transaction does not arrive in the correct order");
-                $display("first element of the 1 queue_stimuli_all_except_hwpe add:%b, data: %b, wen:%b",queue_stimuli_all_except_hwpe[1][0].add,queue_stimuli_all_except_hwpe[1][0].data,queue_stimuli_all_except_hwpe[1][0].wen);
+                $display("Bank %0d received the following read transaction: address = %b", ii,recreated_queue.add);
+                $display("NO CORRESPONDENCE FOUND among the input queues");
+                $display("POSSIBLE ERRORS:");
+                $display("-Incorrect data or address");
+                $display("-Incorrect order");
                 $finish();
               end
               if(DATA_MISMATCH && !skip)begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
                 show_warning();
-                $display("The r_data is not propagated correctly through the interconnect");
-                $display("r_data: %b, bank %0d",queue_read[ii][0],ii);
-                $display("r_data: %b, master hwpe",queue_read_master_hwpe[0][0]);
+                $display("r_data is not propagated correctly through the interconnect");
                 $finish();
               end
               if(!skip) begin
@@ -1030,9 +1033,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     $display("\\\\CHECKS\\\\");
     $display("n_correct = %0d out of n_check = %0d",n_correct,n_checks);
     $display("expected n_check = %0d",TOT_CHECK);
-    $display("note: each hwpe transaction consists of HWPE_WIDTH checks \n");
+    $display("note: each hwpe transaction consists of HWPE_WIDTH=%0d checks \n",HWPE_WIDTH);
     if(WARNING) begin
-      $display("WARNING: the pieces of the HWPE wide word are written multiple times in the banks\n");
+      $display("WARNING: Unnecessary spourious writes are occuring when the HWPE's wide word is written to the banks.\n");
+      $display("The interconnect still works correctly, but this could be an unintended behaviour.\n");
     end
 
     calculate_theoretical_throughput(troughput_theo);
