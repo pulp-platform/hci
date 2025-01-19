@@ -1,7 +1,7 @@
 #################################
-# 		SIMULATION SETUP		#
+# 		SIMULATION SETUP 		#
 #################################
-# Can be usd to evaluate data integrity
+# Can be used to verify the mode0 of the arbiter
 
 # Number of tests for each master in the log branch
 N_TEST_LOG?=1000
@@ -14,15 +14,15 @@ RST_CLK_CYCLES?=10
 #Maximum expected number of cycles between the gnt signal and the r_valid signal
 MAX_CYCLES_BETWEEN_GNT_RVALID?=1
 # Flag for the random generation of the gnt signal (TCDM side)
-RANDOM_GNT?=1
+RANDOM_GNT?=0
 # Flag to activate the priority handling check, where it is consider as LOW_PRIO_MAX_STALL the maximum number of consecutive stalls on low-priority channel.
-PRIORITY_CHECK_MODE_ONE?=0
+PRIORITY_CHECK_MODE_ONE?=1
 # Flag to activate the priority handling check, where it is consider as LOW_PRIO_MAX_STALL the maximum number of consecutive cycles where there is at least 1 req both in the high and low priority channel
 PRIORITY_CHECK_MODE_ZERO?=0
 # Maximum cycle offset: needed if you want to generate the list of the transaction with masters_main.py. It indicates the maximum number of clock cycles 
 # between two consecutive requests coming from the same master. Note: the minimum value for this parameter is 1.
-MAX_CYCLE_OFFSET?=7
+MAX_CYCLE_OFFSET?=0
 # Invert default priority in the hci_arbiter module
 INVERT_PRIO?=0
 # Maximum number of stalls in the lower priority channel of the hci_arbiter
-LOW_PRIO_MAX_STALL?=10
+LOW_PRIO_MAX_STALL?=3
