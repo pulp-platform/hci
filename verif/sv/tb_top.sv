@@ -9,8 +9,7 @@ module hci_tb
   ();
 
   // Simulation parameters
-  localparam int unsigned     N_TEST             =          `N_TEST;
-  localparam int unsigned     N_TEST_LOG         =          `N_TEST;
+  localparam int unsigned     N_TEST_LOG         =          `N_TEST_LOG;
   localparam int unsigned     TEST_RATIO         =          `TEST_RATIO;
   localparam int unsigned     N_TEST_HWPE        =          int'(N_TEST_LOG*`TEST_RATIO);
   localparam int unsigned     TOT_CHECK          =          N_TEST_LOG*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*N_TEST_HWPE*`HWPE_WIDTH;
@@ -1155,10 +1154,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
 
   task automatic calculate_average_latency (ref real SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE], ref real SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]);
     for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-      SUM_LATENCY_PER_TRANSACTION_LOG[i] = SUM_LATENCY_PER_TRANSACTION_LOG[i] / N_TEST;
+      SUM_LATENCY_PER_TRANSACTION_LOG[i] = SUM_LATENCY_PER_TRANSACTION_LOG[i] / N_TEST_LOG;
     end
     for(int i=0;i<N_HWPE;i++) begin
-      SUM_LATENCY_PER_TRANSACTION_HWPE[i] = SUM_LATENCY_PER_TRANSACTION_HWPE[i] / N_TEST;
+      SUM_LATENCY_PER_TRANSACTION_HWPE[i] = SUM_LATENCY_PER_TRANSACTION_HWPE[i] / N_TEST_LOG;
     end
   endtask
 

@@ -11,11 +11,16 @@ PYTHON_STIMULI_SCRIPT ?= verif/stimuli_generator/stimuli_gen_main.py
 N_LOG := $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc) 
 
 VLOG_ARGS += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233 -timescale \"1 ns / 1 ps\" \"+incdir+$(shell pwd)/include\"
-MACROS_TB := $(N_HWPE) $(HWPE_WIDTH) $(N_CORE) $(N_DMA) $(N_EXT) $(TS_BIT) $(EXPFIFO) $(SEL_LIC) $(DATA_WIDTH) $(TOT_MEM_SIZE) $(N_BANKS) $(WIDTH_OF_MEMORY) \
-$(N_TEST) $(TEST_RATIO) $(CLK_PERIOD) $(RST_CLK_CYCLES) $(MAX_CYCLES_BETWEEN_GNT_RVALID) $(RANDOM_GNT) $(PRIORITY_CHECK_MODE_ONE) $(PRIORITY_CHECK_MODE_ZERO) $(MAX_CYCLE_OFFSET) $(INVERT_PRIO) $(LOW_PRIO_MAX_STALL)
+MACROS_TB := +define+N_HWPE=$(N_HWPE) +define+HWPE_WIDTH=$(HWPE_WIDTH) +define+N_CORE=$(N_CORE) +define+N_DMA=$(N_DMA) +define+N_EXT=$(N_EXT) \
++define+TS_BIT=$(TS_BIT) +define+EXPFIFO=$(EXPFIFO) +define+SEL_LIC=$(SEL_LIC) +define+DATA_WIDTH=$(DATA_WIDTH) +define+TOT_MEM_SIZE=$(TOT_MEM_SIZE) \
++define+N_BANKS=$(N_BANKS) +define+WIDTH_OF_MEMORY=$(WIDTH_OF_MEMORY) +define+N_TEST_LOG=$(N_TEST_LOG) +define+TEST_RATIO=$(TEST_RATIO) +define+CLK_PERIOD=$(CLK_PERIOD) \
++define+RST_CLK_CYCLES=$(RST_CLK_CYCLES) +define+MAX_CYCLES_BETWEEN_GNT_RVALID=$(MAX_CYCLES_BETWEEN_GNT_RVALID) +define+RANDOM_GNT=$(RANDOM_GNT) \
++define+PRIORITY_CHECK_MODE_ONE=$(PRIORITY_CHECK_MODE_ONE) +define+PRIORITY_CHECK_MODE_ZERO=$(PRIORITY_CHECK_MODE_ZERO) +define+MAX_CYCLE_OFFSET=$(MAX_CYCLE_OFFSET) \
++define+INVERT_PRIO=$(INVERT_PRIO) +define+LOW_PRIO_MAX_STALL=$(LOW_PRIO_MAX_STALL)
+
 define generate_vsim
 	echo 'set ROOT [file normalize [file dirname [info script]]/$3]' > $1
-	bender script vsim --vlog-arg="$(VLOG_ARGS)" $2 --vlog-arg=$(MACROS_TB) | grep -v "set ROOT" >> $1
+	bender script vsim --vlog-arg="$(VLOG_ARGS)" $2 --vlog-arg="$(MACROS_TB)" | grep -v "set ROOT" >> $1
 	echo >> $1
 endef
 
