@@ -58,17 +58,17 @@ setup: clean_setup
 		echo "###########################################"	>> $$LOG_PATH; \
 		echo -e "\n# Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D)" >> $$LOG_PATH; \
 		echo "MEM_ACCESS_TYPE_LOG$$i?=" >> $$LOG_PATH; \
-		echo "# Starting address in binary (required for linear, 2D, and 3D accesses). Leave it empty if not needed" >> $$LOG_PATH; \
+		echo "# Starting address in binary (required for linear, 2D, and 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
 		echo "START_ADDRESS_LOG$$i?=" >> $$LOG_PATH; \
-		echo "# Stride0 (required for linear, 2D, and 3D accesses). Leave it empty if not needed" >> $$LOG_PATH; \
+		echo "# Stride0 (required for linear, 2D, and 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
 		echo "STRIDE0_LOG$$i?=" >> $$LOG_PATH; \
-		echo "# Len_d0 (required for 2D and 3D accesses). Leave it empty if not needed" >> $$LOG_PATH; \
+		echo "# Len_d0 (required for 2D and 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
 		echo "LEN_D0_LOG$$i?=" >> $$LOG_PATH; \
-		echo "# Stride1 (required for 2D and 3D accesses). Leave it empty if not needed" >> $$LOG_PATH; \
+		echo "# Stride1 (required for 2D and 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
 		echo "STRIDE1_LOG$$i?=" >> $$LOG_PATH; \
-		echo "# Len_d1 (required for 3D accesses). Leave it empty if not needed" >> $$LOG_PATH; \
+		echo "# Len_d1 (required for 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
 		echo "LEN_D1_LOG$$i?=" >> $$LOG_PATH;  \
-		echo "# Stride2 (required for 3D accesses). Leave it empty if not needed" >> $$LOG_PATH;  \
+		echo "# Stride2 (required for 3D accesses). Set to 0 if not needed" >> $$LOG_PATH;  \
 		echo "STRIDE2_LOG$$i?=" >> $$LOG_PATH; \
 		echo "Done!";\
 	done
@@ -81,17 +81,17 @@ setup: clean_setup
 		echo "###########################################"	>> $$HWPE_PATH; \
 		echo -e "\n# Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D)" >> $$HWPE_PATH; \
 		echo "MEM_ACCESS_TYPE_HWPE$$i?=" >> $$HWPE_PATH; \
-		echo "# Starting address in binary (required for linear, 2D, and 3D accesses). Leave it empty if not needed" >> $$HWPE_PATH; \
+		echo "# Starting address in binary (required for linear, 2D, and 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
 		echo "START_ADDRESS_HWPE$$i?=" >> $$HWPE_PATH; \
-		echo "# Stride0 (required for linear, 2D, and 3D accesses). Leave it empty if not needed" >> $$HWPE_PATH; \
+		echo "# Stride0 (required for linear, 2D, and 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
 		echo "STRIDE0_HWPE$$i?=" >> $$HWPE_PATH; \
-		echo "# Len_d0 (required for 2D and 3D accesses). Leave it empty if not needed" >> $$HWPE_PATH; \
+		echo "# Len_d0 (required for 2D and 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
 		echo "LEN_D0_HWPE$$i?=" >> $$HWPE_PATH; \
-		echo "# Stride1 (required for 2D and 3D accesses). Leave it empty if not needed" >> $$HWPE_PATH; \
+		echo "# Stride1 (required for 2D and 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
 		echo "STRIDE1_HWPE$$i?=" >> $$HWPE_PATH; \
-		echo "# Len_d1 (required for 3D accesses). Leave it empty if not needed" >> $$HWPE_PATH; \
+		echo "# Len_d1 (required for 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
 		echo "LEN_D1_HWPE$$i?=" >> $$HWPE_PATH;  \
-		echo "# Stride2 (required for 3D accesses). Leave it empty if not needed" >> $$HWPE_PATH;  \
+		echo "# Stride2 (required for 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH;  \
 		echo "STRIDE2_HWPE$$i?=" >> $$HWPE_PATH; \
 		echo "Done!";\
 	done
@@ -109,31 +109,6 @@ clean_stimuli:
 PYTHON_SIM_AND_HARDWARE_ARGS := --sim_and_hardware_params $(N_BANKS) $(TOT_MEM_SIZE) $(WIDTH_OF_MEMORY) $(N_CORE) $(N_DMA) $(N_EXT) $(N_HWPE) $(HWPE_WIDTH) $(TEST_RATIO) $(N_TEST_LOG) $(MAX_CYCLE_OFFSET)
 PYTHON_LOG_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_LOG) - 1 | bc)), --master_log $(MEM_ACCESS_TYPE_LOG$(i)) $(START_ADDRESS_LOG$(i)) $(STRIDE0_LOG$(i)) $(LEN_D0_LOG$(i)) $(STRIDE1_LOG$(i)) $(LEN_D1_LOG$(i)) $(STRIDE2_LOG$(i)))
 PYTHON_HWPE_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_HWPE) - 1 | bc)), --master_hwpe $(MEM_ACCESS_TYPE_HWPE$(i)) $(START_ADDRESS_HWPE$(i)) $(STRIDE0_HWPE$(i)) $(LEN_D0_HWPE$(i)) $(STRIDE1_HWPE$(i)) $(LEN_D1_HWPE$(i)) $(STRIDE2_HWPE$(i)))
-
-setup_bandwidth: 
-	sed -i 's/^MAX_CYCLE_OFFSET.*$$/MAX_CYCLE_OFFSET=1/' $(CONFIG_FILE_SIM)
-	sed -i 's/^TEST_RATIO.*$$/TEST_RATIO=1/' $(CONFIG_FILE_SIM)
-	sed -i 's/^RANDOM_GNT.*$$/RANDOM_GNT=0/' $(CONFIG_FILE_SIM)
-	sed -i 's/^PRIORITY_CHECK_MODE_ONE.*$$/PRIORITY_CHECK_MODE_ONE=0/' $(CONFIG_FILE_SIM)
-	sed -i 's/^PRIORITY_CHECK_MODE_ZERO.*$$/PRIORITY_CHECK_MODE_ZERO=0/' $(CONFIG_FILE_SIM)
-
-setup_data_integ:
-	sed -i 's/^MAX_CYCLE_OFFSET.*$$/MAX_CYCLE_OFFSET=7/' $(CONFIG_FILE_SIM)
-	sed -i 's/^RANDOM_GNT.*$$/RANDOM_GNT=1/' $(CONFIG_FILE_SIM)
-	sed -i 's/^PRIORITY_CHECK_MODE_ONE.*$$/PRIORITY_CHECK_MODE_ONE=0/' $(CONFIG_FILE_SIM)
-	sed -i 's/^PRIORITY_CHECK_MODE_ZERO.*$$/PRIORITY_CHECK_MODE_ZERO=0/' $(CONFIG_FILE_SIM)
-setup_arbiter_stall:
-	sed -i 's/^MAX_CYCLE_OFFSET.*$$/MAX_CYCLE_OFFSET=0/' $(CONFIG_FILE_SIM)
-	sed -i 's/^RANDOM_GNT.*$$/RANDOM_GNT=0/' $(CONFIG_FILE_SIM)
-	sed -i 's/^PRIORITY_CHECK_MODE_ONE.*$$/PRIORITY_CHECK_MODE_ONE=1/' $(CONFIG_FILE_SIM)
-	sed -i 's/^PRIORITY_CHECK_MODE_ZERO.*$$/PRIORITY_CHECK_MODE_ZERO=0/' $(CONFIG_FILE_SIM)
-
-setup_arbiter_no_stall:
-	sed -i 's/^MAX_CYCLE_OFFSET.*$$/MAX_CYCLE_OFFSET=0/' $(CONFIG_FILE_SIM)
-	sed -i 's/^RANDOM_GNT.*$$/RANDOM_GNT=0/' $(CONFIG_FILE_SIM)
-	sed -i 's/^PRIORITY_CHECK_MODE_ONE.*$$/PRIORITY_CHECK_MODE_ONE=0/' $(CONFIG_FILE_SIM)
-	sed -i 's/^PRIORITY_CHECK_MODE_ZERO.*$$/PRIORITY_CHECK_MODE_ZERO=1/' $(CONFIG_FILE_SIM)
-
 
 stimuli: clean_stimuli
 	$(PYTHON) $(PYTHON_STIMULI_SCRIPT) $(PYTHON_SIM_AND_HARDWARE_ARGS) $(PYTHON_LOG_ARGS) $(PYTHON_HWPE_ARGS)
