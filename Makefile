@@ -1,37 +1,27 @@
 include config/config.mk
 
-ROOT_DIR      = $(strip $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))) # set the absolute path of the directory where the makefile is located
-
-CONFIG_FILE_HCI := config/hardware_config/hci_config.mk
-CONFIG_FILE_SIM := config/sim_config/test_1.mk
-
+ROOT_DIR := $(strip $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))) # set the absolute path of the directory where the makefile is located
 VLIB ?= vlib
 library ?= work
 VSIM ?= vsim
 top_level ?= hci_tb
 VOPT ?= vopt
+PYTHON ?= python
+PYTHON_STIMULI_SCRIPT ?= verif/stimuli_generator/stimuli_gen_main.py
+N_LOG := $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc) 
 
 VLOG_ARGS += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233 -timescale \"1 ns / 1 ps\" \"+incdir+$(shell pwd)/include\"
-MACROS_TB += $(N_HWPE) $(HWPE_WIDTH) $(N_CORE) $(N_DMA) $(N_EXT) $(TS_BIT) $(EXPFIFO) $(SEL_LIC) $(DATA_WIDTH) $(TOT_MEM_SIZE) $(N_BANKS) $(WIDTH_OF_MEMORY) \
+MACROS_TB := $(N_HWPE) $(HWPE_WIDTH) $(N_CORE) $(N_DMA) $(N_EXT) $(TS_BIT) $(EXPFIFO) $(SEL_LIC) $(DATA_WIDTH) $(TOT_MEM_SIZE) $(N_BANKS) $(WIDTH_OF_MEMORY) \
 $(N_TEST) $(TEST_RATIO) $(CLK_PERIOD) $(RST_CLK_CYCLES) $(MAX_CYCLES_BETWEEN_GNT_RVALID) $(RANDOM_GNT) $(PRIORITY_CHECK_MODE_ONE) $(PRIORITY_CHECK_MODE_ZERO) $(MAX_CYCLE_OFFSET) $(INVERT_PRIO) $(LOW_PRIO_MAX_STALL)
-
-PYTHON = python
-PYTHON_STIMULI_SCRIPT = verif/stimuli_generator/stimuli_gen_main.py
-
-N_LOG := $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc) 
 define generate_vsim
 	echo 'set ROOT [file normalize [file dirname [info script]]/$3]' > $1
 	bender script vsim --vlog-arg="$(VLOG_ARGS)" $2 --vlog-arg=$(MACROS_TB) | grep -v "set ROOT" >> $1
 	echo >> $1
 endef
-################
-# Dependencies #
-################
 
-prova:
-	@for i in $(shell seq 1 4); do \
-		echo "$$(i-1)"; \
-	done
+########################
+# 	  DEPENDENCIES     #
+########################
 
 .PHONY: checkout
 ## Checkout/update dependencies using Bender
@@ -97,12 +87,10 @@ setup: clean_setup
 	done
 
 
-
 ########################
-# Build and simulation #
+# 	 CREATE STIMULI    #
 ########################
 
-# Python stimuli
 clean_stimuli:
 	rm -rf verif/simvectors
 
@@ -113,8 +101,10 @@ PYTHON_HWPE_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_HWPE) - 1 | bc))
 stimuli: clean_stimuli
 	$(PYTHON) $(PYTHON_STIMULI_SCRIPT) $(PYTHON_SIM_AND_HARDWARE_ARGS) $(PYTHON_LOG_ARGS) $(PYTHON_HWPE_ARGS)
 
+########################
+#  BUILD AND SIMULATE  #
+########################
 
-# Questasim simulation
 clean:
 	rm -rf scripts/compile.tcl
 	rm -rf work
@@ -132,7 +122,6 @@ compile: $(library) scripts/compile.tcl
 
 build: compile
 	$(VOPT) $(compile_flag) -suppress 3053 -suppress 8885 -work $(library)  $(top_level) -o $(top_level)_optimized -debug
-
 
 run:
 	$(VSIM) +permissive $(questa-flags) $(questa-cmd) -suppress 3053 -suppress 8885 -lib $(library)  +MAX_CYCLES=$(max_cycles) +UVM_TESTNAME=$(test_case) +APP=$(elf-bin) +notimingchecks +nospecify  -t 1ps \
