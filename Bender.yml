@@ -62,3 +62,16 @@ sources:
       - rtl/ecc/hci_ecc_interconnect.sv
       - rtl/ecc/hci_ecc_sink.sv
       - rtl/hci_interconnect.sv
+      - target: test
+        files:
+          # Level 0
+          - verif/sv/clock_and_reset/rst_gen_prova.sv
+          - verif/sv/clock_and_reset/clk_rst_gen_prova.sv
+          - verif/sv/other_modules/application_driver.sv
+          - verif/sv/other_modules/tcdm_banks_wrap.sv
+          # Level 1
+          - verif/sv/tb_top.sv
+      - target: synth
+        files:
+          # Level 0
+          - rtl/hci_interconnect_wrap.sv

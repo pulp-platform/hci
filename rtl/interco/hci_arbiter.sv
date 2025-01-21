@@ -83,6 +83,7 @@ module hci_arbiter
   logic ls_req_d;
   logic switch_channels_d;
   logic invert_prio_one_cycle;
+  logic conflict;
   logic unsigned [7:0] ls_stall_ctr_d;
 
   //-----------------------------------------------------------------------
