@@ -53,19 +53,19 @@ setup: clean_setup
 		echo "#	  LOG$$i MEMORY ACCESS PARAMETERS		  #" >> $$LOG_PATH; \
 		echo "###########################################"	>> $$LOG_PATH; \
 		echo -e "\n# Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D)" >> $$LOG_PATH; \
-		echo "MEM_ACCESS_TYPE_LOG$$i?=" >> $$LOG_PATH; \
+		echo "MEM_ACCESS_TYPE_LOG$$i?=0" >> $$LOG_PATH; \
 		echo "# Starting address in binary (required for linear, 2D, and 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
-		echo "START_ADDRESS_LOG$$i?=" >> $$LOG_PATH; \
+		echo "START_ADDRESS_LOG$$i?=0" >> $$LOG_PATH; \
 		echo "# Stride0 (required for linear, 2D, and 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
-		echo "STRIDE0_LOG$$i?=" >> $$LOG_PATH; \
+		echo "STRIDE0_LOG$$i?=0" >> $$LOG_PATH; \
 		echo "# Len_d0 (required for 2D and 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
-		echo "LEN_D0_LOG$$i?=" >> $$LOG_PATH; \
+		echo "LEN_D0_LOG$$i?=0" >> $$LOG_PATH; \
 		echo "# Stride1 (required for 2D and 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
-		echo "STRIDE1_LOG$$i?=" >> $$LOG_PATH; \
+		echo "STRIDE1_LOG$$i?=0" >> $$LOG_PATH; \
 		echo "# Len_d1 (required for 3D accesses). Set to 0 if not needed" >> $$LOG_PATH; \
-		echo "LEN_D1_LOG$$i?=" >> $$LOG_PATH;  \
+		echo "LEN_D1_LOG$$i?=0" >> $$LOG_PATH;  \
 		echo "# Stride2 (required for 3D accesses). Set to 0 if not needed" >> $$LOG_PATH;  \
-		echo "STRIDE2_LOG$$i?=" >> $$LOG_PATH; \
+		echo "STRIDE2_LOG$$i?=0" >> $$LOG_PATH; \
 		echo "Done!";\
 	done
 	@for i in $(shell seq 0 $(shell echo $(N_HWPE)-1 | bc) ); do \
@@ -76,19 +76,19 @@ setup: clean_setup
 		echo "#	  HWPE$$i MEMORY ACCESS PARAMETERS	  #" >> $$HWPE_PATH; \
 		echo "###########################################"	>> $$HWPE_PATH; \
 		echo -e "\n# Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D)" >> $$HWPE_PATH; \
-		echo "MEM_ACCESS_TYPE_HWPE$$i?=" >> $$HWPE_PATH; \
+		echo "MEM_ACCESS_TYPE_HWPE$$i?=0" >> $$HWPE_PATH; \
 		echo "# Starting address in binary (required for linear, 2D, and 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
-		echo "START_ADDRESS_HWPE$$i?=" >> $$HWPE_PATH; \
+		echo "START_ADDRESS_HWPE$$i?=0" >> $$HWPE_PATH; \
 		echo "# Stride0 (required for linear, 2D, and 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
-		echo "STRIDE0_HWPE$$i?=" >> $$HWPE_PATH; \
+		echo "STRIDE0_HWPE$$i?=0" >> $$HWPE_PATH; \
 		echo "# Len_d0 (required for 2D and 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
-		echo "LEN_D0_HWPE$$i?=" >> $$HWPE_PATH; \
+		echo "LEN_D0_HWPE$$i?=0" >> $$HWPE_PATH; \
 		echo "# Stride1 (required for 2D and 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
-		echo "STRIDE1_HWPE$$i?=" >> $$HWPE_PATH; \
+		echo "STRIDE1_HWPE$$i?=0" >> $$HWPE_PATH; \
 		echo "# Len_d1 (required for 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH; \
-		echo "LEN_D1_HWPE$$i?=" >> $$HWPE_PATH;  \
+		echo "LEN_D1_HWPE$$i?=0" >> $$HWPE_PATH;  \
 		echo "# Stride2 (required for 3D accesses). Set to 0 if not needed" >> $$HWPE_PATH;  \
-		echo "STRIDE2_HWPE$$i?=" >> $$HWPE_PATH; \
+		echo "STRIDE2_HWPE$$i?=0" >> $$HWPE_PATH; \
 		echo "Done!";\
 	done
 

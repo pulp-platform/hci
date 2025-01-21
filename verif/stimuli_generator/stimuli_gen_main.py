@@ -115,7 +115,7 @@ EXT_ZERO_FLAG = 0
 DMA_ZERO_FLAG = 0
 HWPE_ZERO_FLAG = 0
 
-### CHECKS AND ERRORS ###
+### CHECKS ###
 if (not N_WORDS.is_integer()):
     print("ERROR: the number of words is not an integer value")
     sys.exit(1)
