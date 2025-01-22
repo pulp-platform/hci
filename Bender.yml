@@ -68,6 +68,7 @@ sources:
           - verif/sv/clock_and_reset/rst_gen_prova.sv
           - verif/sv/clock_and_reset/clk_rst_gen_prova.sv
           - verif/sv/other_modules/application_driver.sv
+          - verif/sv/other_modules/queue_stimuli.sv
           - verif/sv/other_modules/tcdm_banks_wrap.sv
           # Level 1
           - verif/sv/tb_top.sv

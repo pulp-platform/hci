@@ -188,7 +188,6 @@ module hci_tb
     .clk_i(clk),
     .rst_ni(rst_n),
     .test_mode_i(),        // not used inside tcdm
-
     .tcdm_slave(intc_mem_wiring)
   );
 
@@ -270,15 +269,12 @@ module hci_tb
   } out_intc_to_mem;
 
 
-  stimuli                                         queue_stimuli_all_except_hwpe[N_MASTER-N_HWPE][$];
-  stimuli                                         queue_stimuli_hwpe[N_HWPE*HWPE_WIDTH][$];
   out_intc_to_mem                                 queue_out_intc_to_mem_write[N_BANKS][$];
   out_intc_to_mem                                 queue_out_intc_to_mem_read[N_BANKS][$];
   logic [DATA_WIDTH-1:0]                          queue_read[N_BANKS][$];
   logic [DATA_WIDTH-1:0]                          queue_read_master[N_MASTER-N_HWPE][$];
   logic [HWPE_WIDTH*DATA_WIDTH-1:0]               queue_read_master_hwpe[N_HWPE][$];
   logic [DATA_WIDTH-1:0]                          queue_read_hwpe[HWPE_WIDTH*N_HWPE][$];
-  logic                                           rolls_over_check[N_HWPE];
   logic                                           flag_read[N_BANKS];
   logic                                           flag_read_master[N_MASTER-N_HWPE];
   logic                                           flag_read_hwpe[N_HWPE];
@@ -286,61 +282,19 @@ module hci_tb
   static real               SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]= '{default: 0};
   static real               SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]= '{default: 0};
   //------------ input queues -----------
+  queue_stimuli #(
+      .N_MASTER(N_MASTER),
+      .N_HWPE(N_HWPE),
+      .HWPE_WIDTH(HWPE_WIDTH),
+      .DATA_WIDTH(DATA_WIDTH),
+      .ADD_WIDTH(ADD_WIDTH)
+  ) i_queue_stimuli (
+      .all_except_hwpe(all_except_hwpe),
+      .hwpe_intc(hwpe_intc),
+      .rst_n(rst_n),
+      .clk(clk)
+  );
 
-  // Add CORES + DMA + EXT transactions to input queues
-  generate
-    for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin :  stimuli_queue_except_hwpe
-      initial begin
-        stimuli     in_except_hwpe;
-        int unsigned latency;
-        wait(rst_n);
-        while(1) begin
-          latency = 1;
-          @(posedge clk);
-          if(all_except_hwpe[ii].req) begin
-            in_except_hwpe.wen  =   all_except_hwpe[ii].wen;
-            in_except_hwpe.data =   all_except_hwpe[ii].data;
-            in_except_hwpe.add  =   all_except_hwpe[ii].add;
-            queue_stimuli_all_except_hwpe[ii].push_back(in_except_hwpe);
-            while(1) begin
-              if(all_except_hwpe[ii].gnt) begin
-                break;
-              end
-              @(posedge clk);
-            end
-          end
-        end
-      end
-    end
-  endgenerate
-
-  // Add HWPE transactions to input queues
-  generate
-    for(genvar ii=0;ii<N_HWPE;ii++) begin :  stimuli_queue_hwpe
-      initial begin
-        stimuli     in_hwpe;
-        int unsigned latency;
-        wait(rst_n);
-        while(1) begin
-          @(posedge clk);
-          if(hwpe_intc[ii].req) begin
-            rolls_over_check[ii] = 0;
-            for(int i=0;i<HWPE_WIDTH;i++) begin
-              in_hwpe.wen  =   hwpe_intc[ii].wen;
-              create_address_and_data_hwpe(hwpe_intc[ii].add,hwpe_intc[ii].data,i,in_hwpe.add,in_hwpe.data,rolls_over_check[ii],rolls_over_check[ii]);
-              queue_stimuli_hwpe[i+ii*HWPE_WIDTH].push_back(in_hwpe);
-            end
-            while(1) begin
-              if(hwpe_intc[ii].gnt) begin
-                break;
-              end
-              @(posedge clk);
-            end
-          end
-        end
-      end
-    end
-  endgenerate
   // Read transactions: Add r_data to a queue (master side)
 
   generate 
@@ -477,12 +431,12 @@ module hci_tb
           recreated_queue.data = queue_out_intc_to_mem_write[ii][0].data;
           recreated_queue.wen = 1'b0;
           for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-            if (queue_stimuli_all_except_hwpe[i].size() == 0) begin
+            if (i_queue_stimuli.queue_all_except_hwpe[i].size() == 0) begin
               continue;
             end
-            if (recreated_queue == queue_stimuli_all_except_hwpe[i][0]) begin
+            if (recreated_queue == i_queue_stimuli.queue_all_except_hwpe[i][0]) begin
               okay = 1;
-              queue_stimuli_all_except_hwpe[i].delete(0);
+              i_queue_stimuli.queue_all_except_hwpe[i].delete(0);
               if(HIDE_LOG[ii]) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
@@ -496,12 +450,12 @@ module hci_tb
           if (!okay) begin
             for(int k=0;k<N_HWPE;k++) begin
                 for(int i=0;i<HWPE_WIDTH;i++)  begin
-                  if (queue_stimuli_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
+                  if (i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                     continue;
                   end
-                  if (recreated_queue == queue_stimuli_hwpe[i+k*HWPE_WIDTH][0])  begin
+                  if (recreated_queue == i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0])  begin
                     if(!already_checked[k]) begin
-                      check_hwpe(i,ii,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_write,skip);
+                      check_hwpe(i,ii,i_queue_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_write,skip);
                       okay = 1;
                       STOP_CHECK = 1;
                       if(okay && HIDE_HWPE[ii]) begin
@@ -527,7 +481,7 @@ module hci_tb
                 hwpe_check[k] = 0;
                 already_checked[k] = 0;
                   for(int i=0;i<HWPE_WIDTH;i++) begin
-                    queue_stimuli_hwpe[i+k*HWPE_WIDTH].delete(0);
+                    i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH].delete(0);
                   end
                 end
                 if(STOP_CHECK)
@@ -586,13 +540,13 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               recreated_queue.data = queue_out_intc_to_mem_read[ii][0].data;
               recreated_queue.wen = 1'b1;
               for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-                if (queue_stimuli_all_except_hwpe[i].size() == 0) begin
+                if (i_queue_stimuli.queue_all_except_hwpe[i].size() == 0) begin
                   continue;
                 end
-                  if (queue_stimuli_all_except_hwpe[i][0].wen && (recreated_queue == queue_stimuli_all_except_hwpe[i][0])) begin
+                  if (i_queue_stimuli.queue_all_except_hwpe[i][0].wen && (recreated_queue == i_queue_stimuli.queue_all_except_hwpe[i][0])) begin
                     NOT_FOUND = 0;
                     queue_out_intc_to_mem_read[ii].delete(0);
-                    queue_stimuli_all_except_hwpe[i].delete(0);
+                    i_queue_stimuli.queue_all_except_hwpe[i].delete(0);
                     hwpe_read = 0;
                     if(HIDE_LOG[ii]) begin
                       $display("-----------------------------------------");
@@ -615,10 +569,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               if(hwpe_read) begin
                 for(int k=0;k<N_HWPE;k++) begin 
                   for(int i=0; i<HWPE_WIDTH;i++) begin
-                    if (queue_stimuli_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
+                    if (i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                       continue;
                     end
-                    if(queue_stimuli_hwpe[i+k*HWPE_WIDTH][0].wen && (recreated_queue == queue_stimuli_hwpe[i+k*HWPE_WIDTH][0])) begin
+                    if(i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0].wen && (recreated_queue == i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0])) begin
                         NOT_FOUND = 0;
                         STOP_CHECK_READ = 1;
                         if(HIDE_HWPE[ii]) begin
@@ -629,7 +583,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                             $finish();
                           end
                         if(!already_checked_read[k]) begin
-                          check_hwpe(i,ii,queue_stimuli_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_read,skip);
+                          check_hwpe(i,ii,i_queue_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_read,skip);
                           already_checked_read[k] = !skip;
                         end else begin
                           skip = 0;
@@ -638,7 +592,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                           check_hwpe_read_add[k]++;
                           if(check_hwpe_read_add[k] == HWPE_WIDTH) begin
                             for(int j=0;j<HWPE_WIDTH;j++) begin
-                                queue_stimuli_hwpe[HWPE_WIDTH*k+j].delete(0);
+                                i_queue_stimuli.queue_hwpe[HWPE_WIDTH*k+j].delete(0);
                                 check_hwpe_read_add[k] = 0;
                               end
                               already_checked_read[k] = 0;
