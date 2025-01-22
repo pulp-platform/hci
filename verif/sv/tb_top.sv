@@ -12,7 +12,7 @@ module hci_tb
   localparam int unsigned     N_TRANSACTION_LOG         =          `N_TRANSACTION_LOG;
   localparam int unsigned     TRANSACTION_RATIO         =          `TRANSACTION_RATIO;
   localparam int unsigned     N_TRANSACTION_HWPE        =          int'(N_TRANSACTION_LOG*`TRANSACTION_RATIO);
-  localparam int unsigned     TOT_CHECK          =          N_TRANSACTION_LOG*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*N_TRANSACTION_HWPE*`HWPE_WIDTH;
+  localparam int unsigned     TOT_CHECK                 =          N_TRANSACTION_LOG*(`N_CORE + `N_DMA + `N_EXT)+`N_HWPE*N_TRANSACTION_HWPE*`HWPE_WIDTH;
   
 
 
@@ -54,7 +54,7 @@ module hci_tb
   localparam int unsigned N_MASTER                = N_HWPE + N_CORE + N_DMA + N_EXT                                                           ; // Total number of masters
   localparam int unsigned N_MASTER_REAL           = N_HWPE_REAL + N_CORE_REAL + N_DMA_REAL + N_EXT_REAL                                       ; // Total number of masters
   localparam int unsigned TS_BIT                  = `TS_BIT                                                                                   ; // TEST_SET_BIT (for Log Interconnect)
-  localparam int unsigned IW                      = $clog2(N_TRANSACTION_LOG*(N_MASTER_REAL-N_HWPE_REAL)+N_TRANSACTION_HWPE*N_HWPE_REAL)        ; // ID Width
+  localparam int unsigned IW                      = $clog2(N_TRANSACTION_LOG*(N_MASTER_REAL-N_HWPE_REAL)+N_TRANSACTION_HWPE*N_HWPE_REAL)      ; // ID Width
   localparam int unsigned EXPFIFO                 = `EXPFIFO                                                                                  ; // FIFO Depth for HWPE Interconnect
   localparam int unsigned SEL_LIC                 = `SEL_LIC                                                                                  ; // Log interconnect type selector
 
@@ -1046,19 +1046,19 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     $display("PERFORMANCE RATING %f%%\n", troughput_real/troughput_theo*100);
 
     wait(tot_latency>=0);
-    $display("\\\\LATENCY\\\\");
-    $display("TOTAL LATENCY: %0d cycles", tot_latency);
-    for(int i=0; i<N_LOG_REAL; i++) begin
-      $display("TOTAL LATENCY for CORE%0d (stimuli file: master_log_%0d.txt): %f",i,latency_per_master[i]);
+    $display("\\\\SIMULATION TIME\\\\");
+    $display("TOTAL SIMULATION TIME: %0d cycles", tot_latency);
+    for(int i=0; i<N_CORE_REAL; i++) begin
+      $display("TOTAL SIMULATION TIME for CORE%0d (stimuli file: master_log_%0d.txt): %f",i,i,latency_per_master[i]);
     end
-    for(int i=N_LOG; i<N_LOG+N_DMA_REAL; i++) begin
-      $display("TOTAL LATENCY for DMA%0d (stimuli file: master_log_%0d.txt): %f",i-N_LOG,i,latency_per_master[i]);
+    for(int i=N_CORE; i<N_CORE+N_DMA_REAL; i++) begin
+      $display("TOTAL SIMULATION TIME for DMA%0d (stimuli file: master_log_%0d.txt): %f",i-N_CORE,i,latency_per_master[i]);
     end
-    for(int i=N_LOG+N_DMA; i<N_LOG+N_DMA+N_EXT_REAL; i++) begin
-      $display("TOTAL LATENCY for EXT%0d (stimuli file: master_log_%0d.txt): %f",i-(N_LOG+N_DMA),i,latency_per_master[i]);
+    for(int i=N_CORE+N_DMA; i<N_CORE+N_DMA+N_EXT_REAL; i++) begin
+      $display("TOTAL SIMULATION TIME for EXT%0d (stimuli file: master_log_%0d.txt): %f",i-(N_CORE+N_DMA),i,latency_per_master[i]);
     end
     for(int i=N_MASTER-N_HWPE; i<N_MASTER-N_HWPE+N_HWPE_REAL; i++) begin
-      $display("TOTAL LATENCY for HWPE%0d (stimuli file: master_hwpe_%0d.txt): %f",i-N_MASTER-N_HWPE,i,latency_per_master[i]);
+      $display("TOTAL SIMULATION TIME for HWPE%0d (stimuli file: master_hwpe_%0d.txt): %f",i-N_MASTER-N_HWPE,i,latency_per_master[i]);
     end
 
     calculate_average_latency(SUM_LATENCY_PER_TRANSACTION_LOG,SUM_LATENCY_PER_TRANSACTION_HWPE);
