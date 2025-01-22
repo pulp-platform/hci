@@ -63,7 +63,7 @@ parser = argparse.ArgumentParser(description="This script generates .txt files c
 parser.add_argument(f'--sim_and_hardware_params', nargs='+', default=[], required=True, type=int, help=f"Specify the software and hardware parameters used to generate the stimuli:\n"
                                                                                                                 "   - N_BANKS \n"
                                                                                                                 "   - TOT_MEM_SIZE \n"
-                                                                                                                "   - WIDTH_OF_MEMORY \n"
+                                                                                                                "   - DATA_WIDTH \n"
                                                                                                                 "   - N_CORE \n"
                                                                                                                 "   - N_DMA \n"
                                                                                                                 "   - N_EXT \n"
@@ -99,13 +99,14 @@ parser.add_argument(f'--master_hwpe', nargs='*', default=[], action="extend", he
 args = parser.parse_args()
 
 ### PARAMETERS ###
-N_BANKS, TOT_MEM_SIZE, WIDTH_OF_MEMORY, N_CORE, N_DMA,\
+N_BANKS, TOT_MEM_SIZE, DATA_WIDTH, N_CORE, N_DMA,\
 N_EXT, N_HWPE, HWPE_WIDTH, TEST_RATIO,\
 N_TEST_LOG, CYCLE_OFFSET_LOG, CYCLE_OFFSET_HWPE, EXACT_OR_MAX_OFFSET= getattr(args,"sim_and_hardware_params")
+
+WIDTH_OF_MEMORY = DATA_WIDTH
 WIDTH_OF_MEMORY_BYTE = WIDTH_OF_MEMORY/8
 N_WORDS = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE
 ADD_WIDTH = int(np.ceil(np.log2(TOT_MEM_SIZE*1000))) # Each memory address point to a byte
-DATA_WIDTH = WIDTH_OF_MEMORY
 N_TEST_HWPE = int(N_TEST_LOG*TEST_RATIO)
 N_LOG = N_CORE + N_DMA + N_EXT
 N_MASTER = N_LOG + N_HWPE

@@ -24,5 +24,3 @@ DATA_WIDTH?=32
 TOT_MEM_SIZE?=32
 # Number of memory banks
 N_BANKS?=8
-# Width of a memory bank (bits)                                                  
-WIDTH_OF_MEMORY?=32

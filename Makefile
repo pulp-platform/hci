@@ -14,7 +14,7 @@ N_LOG := $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc)
 VLOG_ARGS += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233 -timescale \"1 ns / 1 ps\" \"+incdir+$(shell pwd)/include\"
 MACROS_TB := +define+N_HWPE=$(N_HWPE) +define+HWPE_WIDTH=$(HWPE_WIDTH) +define+N_CORE=$(N_CORE) +define+N_DMA=$(N_DMA) +define+N_EXT=$(N_EXT) \
 +define+TS_BIT=$(TS_BIT) +define+EXPFIFO=$(EXPFIFO) +define+SEL_LIC=$(SEL_LIC) +define+DATA_WIDTH=$(DATA_WIDTH) +define+TOT_MEM_SIZE=$(TOT_MEM_SIZE) \
-+define+N_BANKS=$(N_BANKS) +define+WIDTH_OF_MEMORY=$(WIDTH_OF_MEMORY) +define+N_TRANSACTION_LOG=$(N_TRANSACTION_LOG) +define+TRANSACTION_RATIO=$(TRANSACTION_RATIO) +define+CLK_PERIOD=$(CLK_PERIOD) \
++define+N_BANKS=$(N_BANKS) +define+N_TRANSACTION_LOG=$(N_TRANSACTION_LOG) +define+TRANSACTION_RATIO=$(TRANSACTION_RATIO) +define+CLK_PERIOD=$(CLK_PERIOD) \
 +define+RST_CLK_CYCLES=$(RST_CLK_CYCLES) +define+MAX_CYCLES_BETWEEN_GNT_RVALID=$(MAX_CYCLES_BETWEEN_GNT_RVALID) +define+RANDOM_GNT=$(RANDOM_GNT) \
 +define+PRIORITY_CHECK_MODE_ONE=$(PRIORITY_CHECK_MODE_ONE) +define+PRIORITY_CHECK_MODE_ZERO=$(PRIORITY_CHECK_MODE_ZERO) \
 +define+INVERT_PRIO=$(INVERT_PRIO) +define+LOW_PRIO_MAX_STALL=$(LOW_PRIO_MAX_STALL)
@@ -100,7 +100,7 @@ setup: clean_setup
 clean_stimuli:
 	rm -rf verif/simvectors
 
-PYTHON_SIM_AND_HARDWARE_ARGS := --sim_and_hardware_params $(N_BANKS) $(TOT_MEM_SIZE) $(WIDTH_OF_MEMORY) $(N_CORE) $(N_DMA) $(N_EXT) $(N_HWPE) $(HWPE_WIDTH) $(TRANSACTION_RATIO) $(N_TRANSACTION_LOG) $(CYCLE_OFFSET_LOG) $(CYCLE_OFFSET_HWPE) $(EXACT_OR_MAX_OFFSET)
+PYTHON_SIM_AND_HARDWARE_ARGS := --sim_and_hardware_params $(N_BANKS) $(TOT_MEM_SIZE) $(DATA_WIDTH) $(N_CORE) $(N_DMA) $(N_EXT) $(N_HWPE) $(HWPE_WIDTH) $(TRANSACTION_RATIO) $(N_TRANSACTION_LOG) $(CYCLE_OFFSET_LOG) $(CYCLE_OFFSET_HWPE) $(EXACT_OR_MAX_OFFSET)
 PYTHON_LOG_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_LOG) - 1 | bc)), --master_log $(MEM_ACCESS_TYPE_LOG$(i)) $(START_ADDRESS_LOG$(i)) $(STRIDE0_LOG$(i)) $(LEN_D0_LOG$(i)) $(STRIDE1_LOG$(i)) $(LEN_D1_LOG$(i)) $(STRIDE2_LOG$(i)))
 PYTHON_HWPE_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_HWPE) - 1 | bc)), --master_hwpe $(MEM_ACCESS_TYPE_HWPE$(i)) $(START_ADDRESS_HWPE$(i)) $(STRIDE0_HWPE$(i)) $(LEN_D0_HWPE$(i)) $(STRIDE1_HWPE$(i)) $(LEN_D1_HWPE$(i)) $(STRIDE2_HWPE$(i)))
 

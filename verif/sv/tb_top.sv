@@ -63,7 +63,7 @@ module hci_tb
   localparam int unsigned TOT_MEM_SIZE            = `TOT_MEM_SIZE                                                                             ; // Memory size (kB)
   localparam int unsigned ADD_WIDTH               = $clog2(TOT_MEM_SIZE*1000)                                                                 ; // Width of ADDRESS in bits
   localparam int unsigned N_BANKS                 = `N_BANKS                                                                                  ; // Number of memory banks
-  localparam int unsigned WIDTH_OF_MEMORY         = `WIDTH_OF_MEMORY                                                                          ; // Width of a memory bank (bits)
+  localparam int unsigned WIDTH_OF_MEMORY         = `DATA_WIDTH                                                                               ; // Width of a memory bank (bits)
   localparam int unsigned WIDTH_OF_MEMORY_BYTE    = WIDTH_OF_MEMORY/8                                                                         ; // Width of a memory bank (bytes)
   localparam int unsigned BIT_BANK_INDEX          = $clog2(N_BANKS)                                                                           ; // Bits of the Bank index
   localparam int unsigned AddrMemWidth            = ADD_WIDTH - BIT_BANK_INDEX                                                                ; // Number of address bits per TCDM bank
@@ -81,7 +81,7 @@ module hci_tb
     EHW: hci_package::DEFAULT_EHW
   };
   localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(mems) = '{     // Bank parameters
-    DW:  DATA_WIDTH,
+    DW:  WIDTH_OF_MEMORY,
     AW:  AddrMemWidth,
     BW:  hci_package::DEFAULT_BW,
     UW:  hci_package::DEFAULT_UW,
@@ -1018,7 +1018,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   initial begin
     real troughput_theo;
     real average_latency;
-    int j;
     average_latency = 0;
     wait (n_checks >= TOT_CHECK);
     $display("n_checks final = %0d",n_checks);
@@ -1049,13 +1048,17 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     wait(tot_latency>=0);
     $display("\\\\LATENCY\\\\");
     $display("TOTAL LATENCY: %0d cycles", tot_latency);
-    for(int i=0; i<N_MASTER_REAL-N_HWPE_REAL; i++) begin
-      $display("TOTAL LATENCY for master_log_%0d: %f",i,latency_per_master[i]);
+    for(int i=0; i<N_LOG_REAL; i++) begin
+      $display("TOTAL LATENCY for CORE%0d (stimuli file: master_log_%0d.txt): %f",i,latency_per_master[i]);
     end
-    j=0;
+    for(int i=N_LOG; i<N_LOG+N_DMA_REAL; i++) begin
+      $display("TOTAL LATENCY for DMA%0d (stimuli file: master_log_%0d.txt): %f",i-N_LOG,i,latency_per_master[i]);
+    end
+    for(int i=N_LOG+N_DMA; i<N_LOG+N_DMA+N_EXT_REAL; i++) begin
+      $display("TOTAL LATENCY for EXT%0d (stimuli file: master_log_%0d.txt): %f",i-(N_LOG+N_DMA),i,latency_per_master[i]);
+    end
     for(int i=N_MASTER-N_HWPE; i<N_MASTER-N_HWPE+N_HWPE_REAL; i++) begin
-      $display("TOTAL LATENCY for master_hwpe_%0d: %f",j,latency_per_master[i]);
-      j++;
+      $display("TOTAL LATENCY for HWPE%0d (stimuli file: master_hwpe_%0d.txt): %f",i-N_MASTER-N_HWPE,i,latency_per_master[i]);
     end
 
     calculate_average_latency(SUM_LATENCY_PER_TRANSACTION_LOG,SUM_LATENCY_PER_TRANSACTION_HWPE);
