@@ -6,6 +6,7 @@ timeprecision 10ps;
 
 module hci_tb 
   import hci_package::*;
+  import verification_hci_package::*;
   ();
 
   // Simulation parameters
@@ -255,18 +256,6 @@ module hci_tb
   static int unsigned           check_hwpe_read_add[N_HWPE] = '{default: 0};
   logic                         HIDE_HWPE[N_BANKS] = '{default: 0};
   logic                         HIDE_LOG[N_BANKS] = '{default: 0};
-
-  // Declaration
-  typedef struct packed {
-    logic                           wen;
-    logic [DATA_WIDTH - 1 : 0]      data;
-    logic [ADD_WIDTH - 1 : 0]       add;
-  } stimuli;
-
-  typedef struct packed {
-    logic [DATA_WIDTH - 1 : 0]      data;
-    logic [AddrMemWidth - 1 : 0]    add;
-  } out_intc_to_mem;
 
   static real               SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]= '{default: 0};
   static real               SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]= '{default: 0};
