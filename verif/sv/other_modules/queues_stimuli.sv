@@ -1,4 +1,7 @@
-module queues_stimuli #(
+module queues_stimuli 
+    import verification_hci_package::stimuli;
+    import verification_hci_package::create_address_and_data_hwpe;
+#(
     parameter int unsigned N_MASTER = 1,
     parameter int unsigned N_HWPE = 1,
     parameter int unsigned HWPE_WIDTH = 1,
@@ -10,13 +13,6 @@ module queues_stimuli #(
     input logic                    rst_n,
     input logic                    clk
 );  
-
-  // Declaration
-  typedef struct packed {
-    logic                           wen;
-    logic [DATA_WIDTH - 1 : 0]      data;
-    logic [ADD_WIDTH - 1 : 0]       add;
-  } stimuli;
 
   stimuli   queue_all_except_hwpe[N_MASTER-N_HWPE][$];
   stimuli   queue_hwpe[N_HWPE*HWPE_WIDTH][$];

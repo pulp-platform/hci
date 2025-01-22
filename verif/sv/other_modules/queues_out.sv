@@ -1,4 +1,6 @@
-module queues_out #(
+module queues_out 
+    import verification_hci_package::out_intc_to_mem;
+#(
     parameter int unsigned N_MASTER = 1,
     parameter int unsigned N_HWPE = 1,
     parameter int unsigned N_BANKS = 8,
@@ -11,11 +13,6 @@ module queues_out #(
     input logic                    rst_n,
     input logic                    clk
 );  
-  
-  typedef struct packed {
-    logic [DATA_WIDTH - 1 : 0]      data;
-    logic [AddrMemWidth - 1 : 0]    add;
-  } out_intc_to_mem;
 
   out_intc_to_mem                                 queue_out_write[N_BANKS][$];
   out_intc_to_mem                                 queue_out_read[N_BANKS][$];
