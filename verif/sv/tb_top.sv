@@ -270,7 +270,7 @@ module hci_tb
 
   static real               SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]= '{default: 0};
   static real               SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]= '{default: 0};
-  //------------ input queues -----------
+
   queues_stimuli #(
       .N_MASTER(N_MASTER),
       .N_HWPE(N_HWPE),
@@ -283,13 +283,14 @@ module hci_tb
       .rst_n(rst_n),
       .clk(clk)
   );
+
 logic EMPTY_queue_out_read [0:N_BANKS-1];
 generate  
   for(genvar ii=0;ii<N_BANKS;ii++) begin
     assign EMPTY_queue_out_read[ii] = i_queues_out.queue_out_read[ii].size() == 0 ? 1 : 0;
   end
 endgenerate
-  // Read transactions: Add r_data to a queue (master side)
+
   queues_rdata #(
       .N_MASTER(N_MASTER),
       .N_HWPE(N_HWPE),
@@ -306,8 +307,6 @@ endgenerate
       .clk(clk)
   );
 
-
-  //------------------- output queues ------------------------------
   queues_out #(
       .N_MASTER(N_MASTER),
       .N_HWPE(N_HWPE),
@@ -336,79 +335,113 @@ endgenerate
     for(genvar ii=0;ii<N_BANKS;ii++) begin : checker_block_write
       initial begin 
         stimuli recreated_queue;
-        logic skip;
-        int okay;
+        logic NOT_ALL_WRITTEN_HWPE;
+        int FOUND_IN_LOG, FOUND_IN_HWPE;
         wait (rst_n);
         while (1) begin
-          okay = 0;
-          wait(i_queues_out.queue_out_write[ii].size() != 0);
-          skip = 0;
+          //STEP 1: Wait for a write transaction (TCDM side)
+          FOUND_IN_LOG = 0;
+          NOT_ALL_WRITTEN_HWPE = 0;
           STOP_CHECK = 0;
+          wait(i_queues_out.queue_out_write[ii].size() != 0);
+
+          //STEP 2: Manipulate the address received by the bank by re-adding the bits of the bank index
           recreate_address(i_queues_out.queue_out_write[ii][0].add,ii,recreated_queue.add);
           recreated_queue.data = i_queues_out.queue_out_write[ii][0].data;
           recreated_queue.wen = 1'b0;
-          for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-            if (i_queues_stimuli.queue_all_except_hwpe[i].size() == 0) begin
-              continue;
-            end
-            if (recreated_queue == i_queues_stimuli.queue_all_except_hwpe[i][0]) begin
-              okay = 1;
-              i_queues_stimuli.queue_all_except_hwpe[i].delete(0);
-              if(HIDE_LOG[ii]) begin
-                $display("-----------------------------------------");
-                $display("Time %0t:    Test ***FAILED*** \n",$time);
-                show_warning();
-                $display("The arbiter prioritized master_log_%0d in LOG branch, but it should have given priority to the HWPE branch", i);
-                $finish();
+
+          //STEP 3: Look among the input queues to find a correspondence
+
+            //STEP 3.1: Start looking in each master in the logarithmic branch
+            for(int i=0;i<N_MASTER-N_HWPE;i++) begin
+
+              //STEP 3.1.1: If the queue associated to a master is empty, go to the next master
+              if (i_queues_stimuli.queue_all_except_hwpe[i].size() == 0) begin
+                continue;
+              end
+
+              //STEP 3.1.2: Compare the manipulated address, the data and the wen signal with the ones stored in the input queue
+              if (recreated_queue == i_queues_stimuli.queue_all_except_hwpe[i][0]) begin
+                FOUND_IN_LOG = 1;
+
+                //STEP 3.1.2.1: Delete the first element of the queue associated with the master where we found the correspondence
+                i_queues_stimuli.queue_all_except_hwpe[i].delete(0);
+
+                //STEP 3.1.2.2: Check priority
+                if(HIDE_LOG[ii]) begin
+                  $display("-----------------------------------------");
+                  $display("Time %0t:    Test ***FAILED*** \n",$time);
+                  show_warning();
+                  $display("The arbiter prioritized master_log_%0d in LOG branch, but it should have given priority to the HWPE branch", i);
+                  $finish();
+                end
               end
             end
-          end
-          //hwpe check branch
-          if (!okay) begin
-            for(int k=0;k<N_HWPE;k++) begin
+
+            //STEP 3.2: If no correspondence was found in the log branch, start looking in the hwpe branch
+            if (!FOUND_IN_LOG) begin
+              //STEP 3.2.1: Start looking in each hwpe
+              for(int k=0;k<N_HWPE;k++) begin
+                //STEP 3.2.1.2: Check each port
                 for(int i=0;i<HWPE_WIDTH;i++)  begin
+                  
+                  //STEP 3.2.1.2.1: If the queue is empty, skip and go to the next iteration
                   if (i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                     continue;
                   end
+
+                  //STEP 3.2.1.2.2: Compare the manipulated address, the data and the wen signal with the ones stored in the input queue
                   if (recreated_queue == i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0])  begin
+                    FOUND_IN_HWPE = 1;
+                    STOP_CHECK = 1;
+                    
+                    //STEP 3.2.1.2.2.1: Start checking if all the ports of the HWPE are written at the same time.
+                    //Since each involved bank would try to do this check, we avoid repeating the same verification multiple times by using the following if statement
+
                     if(!already_checked[k]) begin
-                      check_hwpe(i,ii,i_queues_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],i_queues_out.queue_out_write,skip);
-                      okay = 1;
-                      STOP_CHECK = 1;
-                      if(okay && HIDE_HWPE[ii]) begin
+
+                      //STEP 3.2.1.2.2.1.1: Check priority
+                      if(HIDE_HWPE[ii]) begin
                         $display("-----------------------------------------");
                         $display("Time %0t:    Test ***FAILED*** \n",$time);
                         show_warning();
                         $display("The arbiter prioritized the HWPE branch, but it should have given priority to the LOG branch");
                         $finish();
                       end
-                      if(!skip) begin
+
+                      //STEP 3.2.1.2.2.1.2: Check if all the ports of the hwpe are written at the same time in the banks
+                      check_hwpe(i,ii,i_queues_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],i_queues_out.queue_out_write,NOT_ALL_WRITTEN_HWPE);
+
+                      //STEP 3.2.1.2.2.1.3: If the condition 3.2.1.2.2.1.2 is met, then already_checked[k] is asserted to 1. In this way the adjacent banks will not repeat the same verification.
+                      //hwpe_check[k] is also increased by one because one bank checked the k-th hwpe
+                      if(!NOT_ALL_WRITTEN_HWPE) begin
                         hwpe_check[k]++;
                         already_checked[k] = 1;
                       end
                       break;
+
+                    //STEP 3.2.1.2.2.2: If already_checked[k] = 1, avoid 3.2.1.2.2.1.* and increment directly hwpe_check[k] 
                     end else begin
                       hwpe_check[k]++;
-                      okay = 1;
-                      STOP_CHECK = 1;
+                      break;
                     end
                   end
                 end
-              if(hwpe_check[k] == HWPE_WIDTH) begin
-                hwpe_check[k] = 0;
-                already_checked[k] = 0;
-                  for(int i=0;i<HWPE_WIDTH;i++) begin
-                    i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH].delete(0);
-                    $display("BANK %0d DELETE HWPE, time: %0t", ii, $time);
-                    $display("i_queues_stimuli.queue_hwpe = %b, time: %0t", i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0], $time);
-                  end
+                //STEP 3.2.1.3: If the k-th HWPE reaches a number of HWPE_WIDTH checks, then the input queue associated to that HWPE is cleared
+                if(hwpe_check[k] == HWPE_WIDTH) begin
+                  hwpe_check[k] = 0;
+                  already_checked[k] = 0;
+                    for(int i=0;i<HWPE_WIDTH;i++) begin
+                      i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH].delete(0);
+                    end
                 end
                 if(STOP_CHECK)
                   break;
+              end
             end
-          end
-          $display("BANK %0d FINISH CHEK WRITE, time: %0t", ii, $time); 
-          if(!okay && !skip) begin
+
+          //STEP 4: Report an error if no correspondence was found
+          if(!FOUND_IN_HWPE && !FOUND_IN_LOG) begin
               $display("-----------------------------------------");
               $display("Time %0t:    Test ***FAILED*** \n",$time);
               show_warning();
@@ -419,10 +452,14 @@ endgenerate
               $display("-Incorrect order");
               $finish();
           end
-          if(!skip) begin
-            n_correct = n_correct + okay;
+
+          //STEP 5: Increment n_correct and n_checks accordingly to the check results
+          if(FOUND_IN_LOG || (FOUND_IN_HWPE && !NOT_ALL_WRITTEN_HWPE)) begin
+            n_correct ++;
             n_checks ++;
           end
+
+          //STEP 6: Delete the first element of the output queue
           i_queues_out.queue_out_write[ii].delete(0);
         end
       end
@@ -449,7 +486,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
         wait (rst_n);
         while (1) begin
             wait(i_queues_out.queue_out_read[ii].size() != 0);
-            $display("START CHECK bank %0d, time:%0t",ii,$time);
             skip = 0;
             STOP_CHECK_READ = 0;
               NOT_FOUND = 1;
@@ -466,7 +502,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                 end
                   if (i_queues_stimuli.queue_all_except_hwpe[i][0].wen && (recreated_queue == i_queues_stimuli.queue_all_except_hwpe[i][0])) begin
                     NOT_FOUND = 0;
-                    $display("FOUND! bank %0d, log %0d, time: %0t",ii,i,$time);
                     i_queues_out.queue_out_read[ii].delete(0);
                     i_queues_stimuli.queue_all_except_hwpe[i].delete(0);
                     hwpe_read = 0;
@@ -544,8 +579,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                     if(STOP_CHECK_READ)
                       break;
                   end
-              end
-              $display("BANK %0d FINISH CHEK READ, time: %0t", ii, $time);    
+              end   
               if(NOT_FOUND) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
