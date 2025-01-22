@@ -268,143 +268,60 @@ module hci_tb
     logic [AddrMemWidth - 1 : 0]    add;
   } out_intc_to_mem;
 
-
-  out_intc_to_mem                                 queue_out_intc_to_mem_write[N_BANKS][$];
-  out_intc_to_mem                                 queue_out_intc_to_mem_read[N_BANKS][$];
-  logic [DATA_WIDTH-1:0]                          queue_read[N_BANKS][$];
-  logic [DATA_WIDTH-1:0]                          queue_read_master[N_MASTER-N_HWPE][$];
-  logic [HWPE_WIDTH*DATA_WIDTH-1:0]               queue_read_master_hwpe[N_HWPE][$];
-  logic [DATA_WIDTH-1:0]                          queue_read_hwpe[HWPE_WIDTH*N_HWPE][$];
-  logic                                           flag_read[N_BANKS];
-  logic                                           flag_read_master[N_MASTER-N_HWPE];
-  logic                                           flag_read_hwpe[N_HWPE];
-
   static real               SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]= '{default: 0};
   static real               SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]= '{default: 0};
   //------------ input queues -----------
-  queue_stimuli #(
+  queues_stimuli #(
       .N_MASTER(N_MASTER),
       .N_HWPE(N_HWPE),
       .HWPE_WIDTH(HWPE_WIDTH),
       .DATA_WIDTH(DATA_WIDTH),
       .ADD_WIDTH(ADD_WIDTH)
-  ) i_queue_stimuli (
+  ) i_queues_stimuli (
       .all_except_hwpe(all_except_hwpe),
       .hwpe_intc(hwpe_intc),
       .rst_n(rst_n),
       .clk(clk)
   );
-
+logic EMPTY_queue_out_read [0:N_BANKS-1];
+generate  
+  for(genvar ii=0;ii<N_BANKS;ii++) begin
+    assign EMPTY_queue_out_read[ii] = i_queues_out.queue_out_read[ii].size() == 0 ? 1 : 0;
+  end
+endgenerate
   // Read transactions: Add r_data to a queue (master side)
-
-  generate 
-    //LOG branch
-    for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin : queue_rdata_master_side
-      always_ff @(posedge clk or negedge rst_n)
-      begin
-        if (~rst_n)
-          flag_read_master[ii] <= 0;
-        else if (all_except_hwpe[ii].req && all_except_hwpe[ii].wen && all_except_hwpe[ii].gnt)
-          flag_read_master[ii] <= 1'b1;
-        else
-          flag_read_master[ii] <= 0;
-      end
-
-      initial begin: add_queue_read_master 
-        int index_hwpe, index_master;
-        wait (rst_n);
-        while(1) begin
-          @(posedge clk);
-          if(all_except_hwpe[ii].r_valid && flag_read_master[ii]) begin
-            queue_read_master[ii].push_back(all_except_hwpe[ii].r_data);
-          end
-        end
-      end
-    end
-    //HWPE branch
-    for(genvar ii=0;ii<N_HWPE;ii++) begin
-      always_ff @(posedge clk or negedge rst_n)
-      begin
-        if (~rst_n)
-          flag_read_hwpe[ii] <= 0;
-        else if (hwpe_intc[ii].req && hwpe_intc[ii].wen && hwpe_intc[ii].gnt)
-          flag_read_hwpe[ii] <= 1'b1;
-        else
-          flag_read_hwpe[ii] <= 0;
-      end
-      initial begin: add_queue_read_hwpe_master
-      int index_hwpe, index_master;
-        wait (rst_n);
-        while(1) begin
-          @(posedge clk);
-          if(hwpe_intc[ii].r_valid && flag_read_hwpe[ii]) begin
-            queue_read_master_hwpe[ii].push_back(hwpe_intc[ii].r_data);
-          end
-        end
-      end
-    end
-  endgenerate
+  queues_rdata #(
+      .N_MASTER(N_MASTER),
+      .N_HWPE(N_HWPE),
+      .N_BANKS(N_BANKS),
+      .HWPE_WIDTH(HWPE_WIDTH),
+      .DATA_WIDTH(DATA_WIDTH),
+      .ADD_WIDTH(ADD_WIDTH)
+  ) i_queues_rdata (
+      .all_except_hwpe(all_except_hwpe),
+      .hwpe_intc(hwpe_intc),
+      .intc_mem_wiring(intc_mem_wiring),
+      .EMPTY_queue_out_read(EMPTY_queue_out_read),
+      .rst_n(rst_n),
+      .clk(clk)
+  );
 
 
   //------------------- output queues ------------------------------
+  queues_out #(
+      .N_MASTER(N_MASTER),
+      .N_HWPE(N_HWPE),
+      .N_BANKS(N_BANKS),
+      .DATA_WIDTH(DATA_WIDTH),
+      .AddrMemWidth(AddrMemWidth)
+  ) i_queues_out (
+      .all_except_hwpe(all_except_hwpe),
+      .hwpe_intc(hwpe_intc),
+      .intc_mem_wiring(intc_mem_wiring),
+      .rst_n(rst_n),
+      .clk(clk)
+  );
 
-  // Add transactions received by each BANK to different output queues
-  generate
-    for(genvar ii=0;ii<N_BANKS;ii++) begin: queue_out_intc_write
-      initial begin
-        out_intc_to_mem         out_intc_write;
-        out_intc_to_mem         out_intc_read;
-        wait (rst_n);
-        while (1) begin
-          @(posedge clk);
-          if(intc_mem_wiring[ii].req && intc_mem_wiring[ii].gnt) begin
-            if(!intc_mem_wiring[ii].wen) begin
-              out_intc_write.data =   intc_mem_wiring[ii].data;
-              out_intc_write.add  =   intc_mem_wiring[ii].add;
-              queue_out_intc_to_mem_write[ii].push_back(out_intc_write);
-              wait(queue_out_intc_to_mem_write[ii].size() == 0);
-            end else begin
-              out_intc_read.data =  intc_mem_wiring[ii].data;
-              out_intc_read.add = intc_mem_wiring[ii].add;
-              queue_out_intc_to_mem_read[ii].push_back(out_intc_read);
-              wait(queue_out_intc_to_mem_read[ii].size() == 0);
-              end
-            end
-          end
-        end
-      end
-  endgenerate
-
-  // Read transactions: Add r_data to a queue (TCDM side)
-  generate
-    for(genvar ii=0;ii<N_BANKS;ii++) begin: flag
-      always_ff @(posedge clk or negedge rst_n)
-      begin
-        if (~rst_n)
-          flag_read[ii] <= 0;
-        else if (intc_mem_wiring[ii].req && intc_mem_wiring[ii].gnt && intc_mem_wiring[ii].wen)
-          flag_read[ii] <= 1'b1;
-        else
-          flag_read[ii] <= 0;
-      end
-    end
-  endgenerate 
-
-  generate 
-    for(genvar ii=0;ii<N_BANKS;ii++) begin: queue_read_tcdm 
-      initial begin
-        int index_hwpe, index_master;
-        wait (rst_n);
-        while(1) begin
-          @(posedge clk);
-          if(intc_mem_wiring[ii].r_valid && flag_read[ii]) begin
-            queue_read[ii].push_back(intc_mem_wiring[ii].r_data);
-            wait(queue_out_intc_to_mem_read[ii].size() == 0);
-          end
-        end
-      end
-    end
-  endgenerate
 
   //-----------------------------------------------
   //-                CHECKER                      -
@@ -424,19 +341,19 @@ module hci_tb
         wait (rst_n);
         while (1) begin
           okay = 0;
-          wait(queue_out_intc_to_mem_write[ii].size() != 0);
+          wait(i_queues_out.queue_out_write[ii].size() != 0);
           skip = 0;
           STOP_CHECK = 0;
-          recreate_address(queue_out_intc_to_mem_write[ii][0].add,ii,recreated_queue.add);
-          recreated_queue.data = queue_out_intc_to_mem_write[ii][0].data;
+          recreate_address(i_queues_out.queue_out_write[ii][0].add,ii,recreated_queue.add);
+          recreated_queue.data = i_queues_out.queue_out_write[ii][0].data;
           recreated_queue.wen = 1'b0;
           for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-            if (i_queue_stimuli.queue_all_except_hwpe[i].size() == 0) begin
+            if (i_queues_stimuli.queue_all_except_hwpe[i].size() == 0) begin
               continue;
             end
-            if (recreated_queue == i_queue_stimuli.queue_all_except_hwpe[i][0]) begin
+            if (recreated_queue == i_queues_stimuli.queue_all_except_hwpe[i][0]) begin
               okay = 1;
-              i_queue_stimuli.queue_all_except_hwpe[i].delete(0);
+              i_queues_stimuli.queue_all_except_hwpe[i].delete(0);
               if(HIDE_LOG[ii]) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
@@ -450,12 +367,12 @@ module hci_tb
           if (!okay) begin
             for(int k=0;k<N_HWPE;k++) begin
                 for(int i=0;i<HWPE_WIDTH;i++)  begin
-                  if (i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
+                  if (i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                     continue;
                   end
-                  if (recreated_queue == i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0])  begin
+                  if (recreated_queue == i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0])  begin
                     if(!already_checked[k]) begin
-                      check_hwpe(i,ii,i_queue_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_write,skip);
+                      check_hwpe(i,ii,i_queues_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],i_queues_out.queue_out_write,skip);
                       okay = 1;
                       STOP_CHECK = 1;
                       if(okay && HIDE_HWPE[ii]) begin
@@ -481,18 +398,21 @@ module hci_tb
                 hwpe_check[k] = 0;
                 already_checked[k] = 0;
                   for(int i=0;i<HWPE_WIDTH;i++) begin
-                    i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH].delete(0);
+                    i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH].delete(0);
+                    $display("BANK %0d DELETE HWPE, time: %0t", ii, $time);
+                    $display("i_queues_stimuli.queue_hwpe = %b, time: %0t", i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0], $time);
                   end
                 end
                 if(STOP_CHECK)
                   break;
             end
           end
+          $display("BANK %0d FINISH CHEK WRITE, time: %0t", ii, $time); 
           if(!okay && !skip) begin
               $display("-----------------------------------------");
               $display("Time %0t:    Test ***FAILED*** \n",$time);
               show_warning();
-              $display("Bank %0d received the following write transaction: data = %b address = %b", ii,queue_out_intc_to_mem_write[ii][0].data,queue_out_intc_to_mem_write[ii][0].add);
+              $display("Bank %0d received the following write transaction: data = %b address = %b", ii,i_queues_out.queue_out_write[ii][0].data,i_queues_out.queue_out_write[ii][0].add);
               $display("NO CORRESPONDENCE FOUND among the input queues");
               $display("POSSIBLE ERRORS:");
               $display("-Incorrect data or address");
@@ -503,7 +423,7 @@ module hci_tb
             n_correct = n_correct + okay;
             n_checks ++;
           end
-          queue_out_intc_to_mem_write[ii].delete(0);
+          i_queues_out.queue_out_write[ii].delete(0);
         end
       end
     end 
@@ -528,7 +448,8 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
         int index_hwpe, index_master;
         wait (rst_n);
         while (1) begin
-            wait(queue_out_intc_to_mem_read[ii].size() != 0);
+            wait(i_queues_out.queue_out_read[ii].size() != 0);
+            $display("START CHECK bank %0d, time:%0t",ii,$time);
             skip = 0;
             STOP_CHECK_READ = 0;
               NOT_FOUND = 1;
@@ -536,17 +457,18 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               okay = 0;
               hwpe_read = 1;
               // LOG branch
-              recreate_address(queue_out_intc_to_mem_read[ii][0].add,ii,recreated_queue.add);
-              recreated_queue.data = queue_out_intc_to_mem_read[ii][0].data;
+              recreate_address(i_queues_out.queue_out_read[ii][0].add,ii,recreated_queue.add);
+              recreated_queue.data = i_queues_out.queue_out_read[ii][0].data;
               recreated_queue.wen = 1'b1;
               for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-                if (i_queue_stimuli.queue_all_except_hwpe[i].size() == 0) begin
+                if (i_queues_stimuli.queue_all_except_hwpe[i].size() == 0) begin
                   continue;
                 end
-                  if (i_queue_stimuli.queue_all_except_hwpe[i][0].wen && (recreated_queue == i_queue_stimuli.queue_all_except_hwpe[i][0])) begin
+                  if (i_queues_stimuli.queue_all_except_hwpe[i][0].wen && (recreated_queue == i_queues_stimuli.queue_all_except_hwpe[i][0])) begin
                     NOT_FOUND = 0;
-                    queue_out_intc_to_mem_read[ii].delete(0);
-                    i_queue_stimuli.queue_all_except_hwpe[i].delete(0);
+                    $display("FOUND! bank %0d, log %0d, time: %0t",ii,i,$time);
+                    i_queues_out.queue_out_read[ii].delete(0);
+                    i_queues_stimuli.queue_all_except_hwpe[i].delete(0);
                     hwpe_read = 0;
                     if(HIDE_LOG[ii]) begin
                       $display("-----------------------------------------");
@@ -555,10 +477,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                       $display("The arbiter prioritized master_log_%0d in LOG branch, but it should have given priority to the HWPE branch", i);
                       $finish();
                     end
-                    wait(queue_read_master[i].size() != 0 && queue_read[ii].size() != 0);                   
-                    if(queue_read_master[i][0] == queue_read[ii][0]) begin
-                      queue_read[ii].delete(0);
-                      queue_read_master[i].delete(0);
+                    wait(i_queues_rdata.log_rdata[i].size() != 0 && i_queues_rdata.mems_rdata[ii].size() != 0);               
+                    if(i_queues_rdata.log_rdata[i][0] == i_queues_rdata.mems_rdata[ii][0]) begin
+                      i_queues_rdata.mems_rdata[ii].delete(0);
+                      i_queues_rdata.log_rdata[i].delete(0);
                       DATA_MISMATCH = 0;
                       okay = 1;
                     end
@@ -569,10 +491,10 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               if(hwpe_read) begin
                 for(int k=0;k<N_HWPE;k++) begin 
                   for(int i=0; i<HWPE_WIDTH;i++) begin
-                    if (i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
+                    if (i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                       continue;
                     end
-                    if(i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0].wen && (recreated_queue == i_queue_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0])) begin
+                    if(i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0].wen && (recreated_queue == i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0])) begin
                         NOT_FOUND = 0;
                         STOP_CHECK_READ = 1;
                         if(HIDE_HWPE[ii]) begin
@@ -583,7 +505,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                             $finish();
                           end
                         if(!already_checked_read[k]) begin
-                          check_hwpe(i,ii,i_queue_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],queue_out_intc_to_mem_read,skip);
+                          check_hwpe(i,ii,i_queues_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],i_queues_out.queue_out_read,skip);
                           already_checked_read[k] = !skip;
                         end else begin
                           skip = 0;
@@ -592,28 +514,28 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                           check_hwpe_read_add[k]++;
                           if(check_hwpe_read_add[k] == HWPE_WIDTH) begin
                             for(int j=0;j<HWPE_WIDTH;j++) begin
-                                i_queue_stimuli.queue_hwpe[HWPE_WIDTH*k+j].delete(0);
+                                i_queues_stimuli.queue_hwpe[HWPE_WIDTH*k+j].delete(0);
                                 check_hwpe_read_add[k] = 0;
                               end
                               already_checked_read[k] = 0;
                           end
-                          queue_out_intc_to_mem_read[ii].delete(0);
-                          wait(queue_read_master_hwpe[k].size() != 0 && queue_read[ii].size() != 0);
-                          if(queue_read_master_hwpe[k][0][i*DATA_WIDTH +: DATA_WIDTH] == queue_read[ii][0]) begin
+                          i_queues_out.queue_out_read[ii].delete(0);
+                          wait(i_queues_rdata.hwpe_rdata[k].size() != 0 && i_queues_rdata.mems_rdata[ii].size() != 0);
+                          if(i_queues_rdata.hwpe_rdata[k][0][i*DATA_WIDTH +: DATA_WIDTH] == i_queues_rdata.mems_rdata[ii][0]) begin
                             DATA_MISMATCH = 0;
                             okay = 1;
                             check_hwpe_read[k]++;
-                            queue_read[ii].delete(0);
+                            i_queues_rdata.mems_rdata[ii].delete(0);
                             if(check_hwpe_read[k] == HWPE_WIDTH) begin
-                              queue_read_master_hwpe[k].delete(0);
+                              i_queues_rdata.hwpe_rdata[k].delete(0);
                               check_hwpe_read[k] = 0;
                             end
                             
                           end
                         end else begin
-                          queue_out_intc_to_mem_read[ii].delete(0);
-                          wait(queue_read[ii].size() != 0);
-                          queue_read[ii].delete(0);
+                          i_queues_out.queue_out_read[ii].delete(0);
+                          wait(i_queues_rdata.mems_rdata[ii].size() != 0);
+                          i_queues_rdata.mems_rdata[ii].delete(0);
                           STOP_CHECK_READ = 1;
                         end
                         break;
@@ -623,6 +545,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                       break;
                   end
               end
+              $display("BANK %0d FINISH CHEK READ, time: %0t", ii, $time);    
               if(NOT_FOUND) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
