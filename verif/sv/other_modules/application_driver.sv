@@ -3,7 +3,7 @@ module application_driver #(
     parameter int unsigned IS_HWPE = 1,
     parameter int unsigned DATA_WIDTH = 1,
     parameter int unsigned ADD_WIDTH = 1,
-    parameter int unsigned APPL_DELAY = 2, //delay on the input signals //parameter ACQ_DELAY ?
+    parameter int unsigned APPL_DELAY = 2, //delay on the input signals
     parameter int unsigned IW = 1
 ) (
     hci_core_intf.initiator        master,
@@ -30,6 +30,9 @@ module application_driver #(
         master.data = '0;
         master.req = 0;
         master.wen = 0;
+        master.ecc = 0;
+        master.ereq = 0;
+        master.r_eready = 0;
 
         master.be = -1; //all bits are 1
         master.r_ready = 1;
@@ -51,15 +54,12 @@ module application_driver #(
         @(posedge clk);
         while (!$feof(stim)) begin
             ret_code = $fscanf(stim, "%b %b %b %b %b\n",req, id, wen, data, add); 
-            //cycle = $urandom_range(10,1);
-            //repeat(cycle) @(posedge clk);
             #(APPL_DELAY);
             master.id = id;
             master.data = data;
             master.add = add;
             master.wen = wen;
             master.req = req;
-            //#(ACQ_DELAY-APPL_DELAY);
             last_wen = wen;
             if(req) begin
                 while(1) begin

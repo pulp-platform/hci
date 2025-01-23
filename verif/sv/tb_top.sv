@@ -64,10 +64,10 @@ module hci_tb
 
   // HCI connections
   hci_core_intf #(
-      .WAIVE_RQ3_ASSERT(1'b1),
-      .WAIVE_RQ4_ASSERT(1'b1),
-      .WAIVE_RSP3_ASSERT(1'b1),
-      .WAIVE_RSP5_ASSERT(1'b1),
+      //.WAIVE_RQ3_ASSERT(1'b1),
+      //.WAIVE_RQ4_ASSERT(1'b1),
+      //.WAIVE_RSP3_ASSERT(1'b1),
+      //.WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_hwpe.DW),
       .AW(HCI_SIZE_hwpe.AW),
       .BW(HCI_SIZE_hwpe.BW),
@@ -80,10 +80,10 @@ module hci_tb
     );
 
   hci_core_intf #(
-      .WAIVE_RQ3_ASSERT(1'b1),
-      .WAIVE_RQ4_ASSERT(1'b1),
-      .WAIVE_RSP3_ASSERT(1'b1),
-      .WAIVE_RSP5_ASSERT(1'b1),
+      //.WAIVE_RQ3_ASSERT(1'b1),
+      //.WAIVE_RQ4_ASSERT(1'b1),
+      //.WAIVE_RSP3_ASSERT(1'b1),
+      //.WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_cores.DW),
       .AW(HCI_SIZE_cores.AW),
       .BW(HCI_SIZE_cores.BW),
@@ -96,10 +96,10 @@ module hci_tb
     );
 
   hci_core_intf #(
-      .WAIVE_RQ3_ASSERT(1'b1),
-      .WAIVE_RQ4_ASSERT(1'b1),
-      .WAIVE_RSP3_ASSERT(1'b1),
-      .WAIVE_RSP5_ASSERT(1'b1),
+      //.WAIVE_RQ3_ASSERT(1'b1),
+      //.WAIVE_RQ4_ASSERT(1'b1),
+      //.WAIVE_RSP3_ASSERT(1'b1),
+      //.WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_mems.DW),
       .AW(HCI_SIZE_mems.AW),
       .BW(HCI_SIZE_mems.BW),
