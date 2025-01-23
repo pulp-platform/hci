@@ -27,31 +27,31 @@ module hci_tb
   //---------------------------------------------
 
   localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '{    // CORE + DMA + EXT parameters
-    DW:  DATA_WIDTH,
-    AW:  ADD_WIDTH,
-    BW:  hci_package::DEFAULT_BW,
-    UW:  hci_package::DEFAULT_UW,
+    DW:  DEFAULT_DW,
+    AW:  DEFAULT_AW,
+    BW:  DEFAULT_BW,
+    UW:  DEFAULT_UW,
     IW:  IW,
-    EW:  hci_package::DEFAULT_EW,
-    EHW: hci_package::DEFAULT_EHW
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
   };
   localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(mems) = '{     // Bank parameters
-    DW:  WIDTH_OF_MEMORY,
+    DW:  DEFAULT_DW,
     AW:  AddrMemWidth,
-    BW:  hci_package::DEFAULT_BW,
-    UW:  hci_package::DEFAULT_UW,
+    BW:  DEFAULT_BW,
+    UW:  DEFAULT_UW,
     IW:  IW,
-    EW:  hci_package::DEFAULT_EW,
-    EHW: hci_package::DEFAULT_EHW
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
   };
   localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(hwpe) = '{     // HWPE parameters
     DW:  HWPE_WIDTH*DATA_WIDTH,
-    AW:  ADD_WIDTH,
-    BW:  hci_package::DEFAULT_BW,
-    UW:  hci_package::DEFAULT_UW,
+    AW:  DEFAULT_AW,
+    BW:  DEFAULT_BW,
+    UW:  DEFAULT_UW,
     IW:  IW,
-    EW:  hci_package::DEFAULT_EW,
-    EHW: hci_package::DEFAULT_EHW
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
   };
 
   // Control signals
@@ -64,10 +64,6 @@ module hci_tb
 
   // HCI connections
   hci_core_intf #(
-      //.WAIVE_RQ3_ASSERT(1'b1),
-      //.WAIVE_RQ4_ASSERT(1'b1),
-      //.WAIVE_RSP3_ASSERT(1'b1),
-      //.WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_hwpe.DW),
       .AW(HCI_SIZE_hwpe.AW),
       .BW(HCI_SIZE_hwpe.BW),
@@ -80,10 +76,6 @@ module hci_tb
     );
 
   hci_core_intf #(
-      //.WAIVE_RQ3_ASSERT(1'b1),
-      //.WAIVE_RQ4_ASSERT(1'b1),
-      //.WAIVE_RSP3_ASSERT(1'b1),
-      //.WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_cores.DW),
       .AW(HCI_SIZE_cores.AW),
       .BW(HCI_SIZE_cores.BW),
@@ -96,10 +88,6 @@ module hci_tb
     );
 
   hci_core_intf #(
-      //.WAIVE_RQ3_ASSERT(1'b1),
-      //.WAIVE_RQ4_ASSERT(1'b1),
-      //.WAIVE_RSP3_ASSERT(1'b1),
-      //.WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_mems.DW),
       .AW(HCI_SIZE_mems.AW),
       .BW(HCI_SIZE_mems.BW),
@@ -803,6 +791,34 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     $finish();
   end
 
+  //-----------------------------------
+  //          PROGRESS BAR            -
+  //-----------------------------------
+  initial begin
+    wait(rst_n);
+    $display("START!");
+    wait(real'(n_checks)/TOT_CHECK >= 0.1);
+    $display("10%% completed...");
+    wait(real'(n_checks)/TOT_CHECK >= 0.2);
+    $display("20%% completed...");
+    wait(real'(n_checks)/TOT_CHECK >= 0.3);
+    $display("30%% completed...");
+    wait(real'(n_checks)/TOT_CHECK >= 0.4);
+    $display("40%% completed...");
+    wait(real'(n_checks)/TOT_CHECK >= 0.5);
+    $display("50%% completed...");
+    wait(real'(n_checks)/TOT_CHECK >= 0.6);
+    $display("60%% completed...");
+    wait(real'(n_checks)/TOT_CHECK >= 0.7);
+    $display("70%% completed...");
+    wait(real'(n_checks)/TOT_CHECK >= 0.8);
+    $display("80%% completed...");
+    wait(real'(n_checks)/TOT_CHECK >= 0.9);
+    $display("90%% completed...");
+    wait(real'(n_checks)/TOT_CHECK == 1);
+    $display("100%% completed!");
+
+  end
   //--------------------------------------------------------------------------------------------------------------------------------------------------------------
   //--------------------------------------------------------------------------------------------------------------------------------------------------------------
 

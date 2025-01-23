@@ -30,7 +30,6 @@ import verification_hci_package::create_address_and_data_hwpe;
         logic [BIT_BANK_INDEX-1:0] bank_index_log;
         int unsigned bank_index_log_int;
         initial begin
-                  $display("CHECK ARBITER!");
           wait(rst_n);
           while(1) begin
             wait(all_except_hwpe[ii].req)
