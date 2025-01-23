@@ -31,13 +31,11 @@ module queues_out
               out_intc_write.data =   intc_mem_wiring[ii].data;
               out_intc_write.add  =   intc_mem_wiring[ii].add;
               queue_out_write[ii].push_back(out_intc_write);
-              $display("OUT BANK %0d: write, add %b, time %0t",ii,queue_out_write[ii][0].add, $time);
               wait(queue_out_write[ii].size() == 0);
             end else begin
               out_intc_read.data =  intc_mem_wiring[ii].data;
               out_intc_read.add = intc_mem_wiring[ii].add;
               queue_out_read[ii].push_back(out_intc_read);
-              $display("OUT BANK %0d: read, add %b, time %0t",ii,queue_out_read[ii][0].add, $time);
               wait(queue_out_read[ii].size() == 0);
               end
             end

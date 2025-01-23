@@ -3,7 +3,6 @@
 timeunit 1ns;
 timeprecision 10ps;
 
-
 module hci_tb 
   import hci_package::*;
   import verification_hci_package::*;
@@ -13,7 +12,6 @@ module hci_tb
   //-             CLOCK AND RESET              -
   //--------------------------------------------
 
-  // Clk and rst generation
   logic                       clk, rst_n;
   
   clk_rst_gen_prova #(
@@ -24,13 +22,9 @@ module hci_tb
       .rst_no(rst_n)
   );
 
-
-
   //---------------------------------------------
   //-                   HCI                     -
-  //---------------------------------------------                                                  ; // Choosen mode for the arbiter
-  // Control signals
-
+  //---------------------------------------------
 
   localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '{    // CORE + DMA + EXT parameters
     DW:  DATA_WIDTH,
@@ -60,6 +54,7 @@ module hci_tb
     EHW: hci_package::DEFAULT_EHW
   };
 
+  // Control signals
   logic                       clear_i;
   hci_interconnect_ctrl_t     ctrl_i;
 
@@ -69,6 +64,10 @@ module hci_tb
 
   // HCI connections
   hci_core_intf #(
+      .WAIVE_RQ3_ASSERT(1'b1),
+      .WAIVE_RQ4_ASSERT(1'b1),
+      .WAIVE_RSP3_ASSERT(1'b1),
+      .WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_hwpe.DW),
       .AW(HCI_SIZE_hwpe.AW),
       .BW(HCI_SIZE_hwpe.BW),
@@ -81,6 +80,10 @@ module hci_tb
     );
 
   hci_core_intf #(
+      .WAIVE_RQ3_ASSERT(1'b1),
+      .WAIVE_RQ4_ASSERT(1'b1),
+      .WAIVE_RSP3_ASSERT(1'b1),
+      .WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_cores.DW),
       .AW(HCI_SIZE_cores.AW),
       .BW(HCI_SIZE_cores.BW),
@@ -93,6 +96,10 @@ module hci_tb
     );
 
   hci_core_intf #(
+      .WAIVE_RQ3_ASSERT(1'b1),
+      .WAIVE_RQ4_ASSERT(1'b1),
+      .WAIVE_RSP3_ASSERT(1'b1),
+      .WAIVE_RSP5_ASSERT(1'b1),
       .DW(HCI_SIZE_mems.DW),
       .AW(HCI_SIZE_mems.AW),
       .BW(HCI_SIZE_mems.BW),
@@ -118,20 +125,22 @@ module hci_tb
       .ARBITER_MODE(ARBITER_MODE),          // Chosen mode for the arbiter 
       .HCI_SIZE_cores(HCI_SIZE_cores),
       .HCI_SIZE_mems(HCI_SIZE_mems),
-      .HCI_SIZE_hwpe(HCI_SIZE_hwpe)
+      .HCI_SIZE_hwpe(HCI_SIZE_hwpe),
+      .WAIVE_RQ3_ASSERT(1'b1),
+      .WAIVE_RQ4_ASSERT(1'b1),
+      .WAIVE_RSP3_ASSERT(1'b1),
+      .WAIVE_RSP5_ASSERT(1'b1)
   ) i_hci_interconnect (
       .clk_i(clk),
       .rst_ni(rst_n),
       .clear_i(clear_i),
       .ctrl_i(ctrl_i),
-      .cores(all_except_hwpe[0 : N_CORE - 1]),
-      .dma(all_except_hwpe[N_CORE : N_CORE + N_DMA-1]),
-      .ext(all_except_hwpe[N_CORE + N_DMA : N_CORE + N_DMA + N_EXT-1]),
+      .cores(all_except_hwpe[0:N_CORE-1]),
+      .dma(all_except_hwpe[N_CORE:N_CORE+N_DMA-1]),
+      .ext(all_except_hwpe[N_CORE+N_DMA:N_CORE+N_DMA+N_EXT-1]),
       .mems(intc_mem_wiring),
       .hwpe(hwpe_intc)
   );
-
-
 
   //------------------------------------------------
   //-                     TCDM                     -
@@ -150,8 +159,6 @@ module hci_tb
     .test_mode_i(),        // not used inside tcdm
     .tcdm_slave(intc_mem_wiring)
   );
-
-
 
   //-------------------------------------------------
   //-              APPLICATION DRIVERS              -
@@ -201,8 +208,6 @@ module hci_tb
     end
   endgenerate
 
-
-
   //-------------------------------------------------
   //-                   QUEUES                      -
   //-------------------------------------------------
@@ -213,8 +218,8 @@ module hci_tb
   static int unsigned           hwpe_check[N_HWPE] = '{default: 0};
   static int unsigned           check_hwpe_read[N_HWPE] = '{default: 0};
   static int unsigned           check_hwpe_read_add[N_HWPE] = '{default: 0};
-  logic                         HIDE_HWPE[N_BANKS] = '{default: 0};
-  logic                         HIDE_LOG[N_BANKS] = '{default: 0};
+  logic [N_BANKS-1:0]           HIDE_HWPE;
+  logic [N_BANKS-1:0]           HIDE_LOG;
 
   static real               SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]= '{default: 0};
   static real               SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]= '{default: 0};
@@ -232,12 +237,12 @@ module hci_tb
       .clk(clk)
   );
 
-logic EMPTY_queue_out_read [0:N_BANKS-1];
-generate  
-  for(genvar ii=0;ii<N_BANKS;ii++) begin
-    assign EMPTY_queue_out_read[ii] = i_queues_out.queue_out_read[ii].size() == 0 ? 1 : 0;
-  end
-endgenerate
+  logic EMPTY_queue_out_read [0:N_BANKS-1];
+  generate  
+    for(genvar ii=0;ii<N_BANKS;ii++) begin
+      assign EMPTY_queue_out_read[ii] = i_queues_out.queue_out_read[ii].size() == 0 ? 1 : 0;
+    end
+  endgenerate
 
   queues_rdata #(
       .N_MASTER(N_MASTER),
@@ -268,7 +273,6 @@ endgenerate
       .rst_n(rst_n),
       .clk(clk)
   );
-
 
   //-----------------------------------------------
   //-                CHECKER                      -
@@ -319,7 +323,6 @@ endgenerate
                 if(HIDE_LOG[ii]) begin
                   $display("-----------------------------------------");
                   $display("Time %0t:    Test ***FAILED*** \n",$time);
-                  show_warning();
                   $display("The arbiter prioritized master_log_%0d in LOG branch, but it should have given priority to the HWPE branch", i);
                   $finish();
                 end
@@ -352,7 +355,6 @@ endgenerate
                       if(HIDE_HWPE[ii]) begin
                         $display("-----------------------------------------");
                         $display("Time %0t:    Test ***FAILED*** \n",$time);
-                        show_warning();
                         $display("The arbiter prioritized the HWPE branch, but it should have given priority to the LOG branch");
                         $finish();
                       end
@@ -394,7 +396,6 @@ endgenerate
           if(!FOUND_IN_HWPE && !FOUND_IN_LOG) begin
               $display("-----------------------------------------");
               $display("Time %0t:    Test ***FAILED*** \n",$time);
-              show_warning();
               $display("Bank %0d received the following write transaction: data = %b address = %b", ii,i_queues_out.queue_out_write[ii][0].data,i_queues_out.queue_out_write[ii][0].add);
               $display("NO CORRESPONDENCE FOUND among the input queues");
               $display("POSSIBLE ERRORS:");
@@ -458,7 +459,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                     if(HIDE_LOG[ii]) begin
                       $display("-----------------------------------------");
                       $display("Time %0t:    Test ***FAILED*** \n",$time);
-                      show_warning();
                       $display("The arbiter prioritized master_log_%0d in LOG branch, but it should have given priority to the HWPE branch", i);
                       $finish();
                     end
@@ -485,7 +485,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
                         if(HIDE_HWPE[ii]) begin
                             $display("-----------------------------------------");
                             $display("Time %0t:    Test ***FAILED*** \n",$time);
-                            show_warning();
                             $display("The arbiter prioritized the HWPE branch, but it should have given priority to the LOG branch");
                             $finish();
                           end
@@ -534,7 +533,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               if(NOT_FOUND) begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
-                show_warning();
                 $display("Bank %0d received the following read transaction: address = %b", ii,recreated_queue.add);
                 $display("NO CORRESPONDENCE FOUND among the input queues");
                 $display("POSSIBLE ERRORS:");
@@ -545,7 +543,6 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
               if(DATA_MISMATCH && !skip)begin
                 $display("-----------------------------------------");
                 $display("Time %0t:    Test ***FAILED*** \n",$time);
-                show_warning();
                 $display("r_data is not propagated correctly through the interconnect");
                 $finish();
               end
@@ -561,158 +558,29 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   //--------------------------------------------
   //-             QoS: Arbiter                 -
   //--------------------------------------------
-/*
-    static logic [N_BANKS-1:0]   LOG_REQ;
-    static logic [N_BANKS-1:0]   HWPE_REQ;
-    static logic [N_BANKS-1:0][N_MASTER-N_HWPE-1:0]   LOG_REQ_EACH_MASTER = '{default: '0};
-    static logic [N_BANKS-1:0][N_HWPE-1:0]   HWPE_REQ_EACH_MASTER = '{default: '0};
-
-    generate
-    if(`PRIORITY_CHECK_MODE_ONE == 1 || `PRIORITY_CHECK_MODE_ZERO == 1) begin
-      // Compute the requests for each bank
-      for(genvar ii=0;ii<N_MASTER-N_HWPE;ii++) begin: req_per_bank_per_log_master
-        logic [BIT_BANK_INDEX-1:0] bank_index_log;
-        int unsigned bank_index_log_int;
-        initial begin
-          wait(rst_n);
-          while(1) begin
-            wait(all_except_hwpe[ii].req)
-              calculate_bank_index(all_except_hwpe[ii].add,bank_index_log);
-              bank_index_log_int = int'(bank_index_log);
-              LOG_REQ_EACH_MASTER[bank_index_log_int][ii] = 1'b1;
-              #(CLK_PERIOD/100)
-              while(1) begin
-                @(posedge clk);
-                if(all_except_hwpe[ii].gnt) begin
-                  #(CLK_PERIOD/100)
-                  LOG_REQ_EACH_MASTER[bank_index_log_int][ii] = 1'b0;
-                  break;
-                end
-              end
-          end
-        end
-      end
-
-      for(genvar ii=0;ii<N_BANKS;ii++) begin
-        assign LOG_REQ[ii] = |LOG_REQ_EACH_MASTER[ii];
-      end
-
-      for(genvar ii=0;ii<N_HWPE;ii++) begin: req_per_bank_per_hwpe_master
-        logic [BIT_BANK_INDEX-1:0] bank_index_hwpe;
-        int unsigned bank_index_hwpe_int;
-        initial begin
-          wait(rst_n);
-          while(1) begin
-            wait(hwpe_intc[ii].req);
-              calculate_bank_index(hwpe_intc[ii].add,bank_index_hwpe);
-              bank_index_hwpe_int = int'(bank_index_hwpe);
-              $display("hwpe%0d, bank index hwpe %0d, time : %0t",ii,bank_index_hwpe_int,$time);
-              for(int i=0;i<HWPE_WIDTH;i++) begin
-                if(bank_index_hwpe_int + i >= N_BANKS) begin
-                  HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i - N_BANKS][ii] = 1'b1; //rolls over
-                end else begin 
-                  HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i][ii] = 1'b1;
-                end
-              end
-              #(CLK_PERIOD/100);
-              while(1) begin
-                @(posedge clk);
-                if(hwpe_intc[ii].gnt) begin
-                  #(CLK_PERIOD/100);
-                  for(int i=0;i<HWPE_WIDTH;i++) begin
-                    if(bank_index_hwpe_int + i >= N_BANKS) begin
-                      HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i - N_BANKS][ii] = 1'b0; //rolls over
-                    end else begin 
-                      HWPE_REQ_EACH_MASTER[bank_index_hwpe_int + i][ii] = 1'b0;
-                    end
-                  end
-                  break;
-                end
-              end
-          end
-        end
-      end
-      for(genvar ii=0;ii<N_BANKS;ii++) begin
-        assign HWPE_REQ[ii] = |HWPE_REQ_EACH_MASTER[ii];
-      end
+  generate
+    if(`PRIORITY_CHECK_MODE_ONE || `PRIORITY_CHECK_MODE_ZERO) begin
+      arbiter_checker #(
+        .ARBITER_MODE(ARBITER_MODE),
+        .N_MASTER(N_MASTER),
+        .N_HWPE(N_HWPE),
+        .N_BANKS(N_BANKS),
+        .HWPE_WIDTH(HWPE_WIDTH), 
+        .BIT_BANK_INDEX(BIT_BANK_INDEX),  
+        .CLK_PERIOD(CLK_PERIOD)
+      ) i_arbiter_checker (
+        .HIDE_HWPE(HIDE_HWPE),
+        .HIDE_LOG(HIDE_LOG),
+        .ctrl_i(ctrl_i),
+        .clk(clk),
+        .rst_n(rst_n)
+      );
+    end else begin
+      assign HIDE_HWPE = '0;
+      assign HIDE_LOG = '0;
     end
-    endgenerate
-
-    static logic [N_BANKS-1:0] CONFLICTS = '0;
-    static logic prior;
-
-    generate 
-    if(`PRIORITY_CHECK_MODE_ONE == 1) begin
-      // Check conflicts and the number of stalls
-      initial begin : check_conflicts
-        int stall;
-        stall = 0;
-        prior = ctrl_i.invert_prio;
-        wait(rst_n);
-        while(1) begin
-          @(negedge clk);
-          for(int i=0;i<N_BANKS;i++) begin
-            CONFLICTS[i] = LOG_REQ[i] && HWPE_REQ[i];
-            $display("BANK %0d: conflict %0d, time %0t",i,CONFLICTS[i],$time);
-            $display("BANK %0d: HWPE_REQ_EACH_MASTER %0d, time %0t",i,HWPE_REQ_EACH_MASTER[i][1],$time);
-          end
-          stall = stall*|CONFLICTS + |CONFLICTS;
-          $display("stall: %0d, time %0t",stall,$time);
-          if(prior == ctrl_i.invert_prio) begin
-            if(stall == ctrl_i.low_prio_max_stall+1) begin
-              prior = !prior;
-              stall = 0;
-            end
-          end else begin
-            prior = !prior;
-            //stall = 0;
-          end
-        end
-      end
-    end
-    if(`PRIORITY_CHECK_MODE_ZERO == 1) begin
-      initial begin : check_conflicts
-        int stall;
-        stall = 0;
-        prior = ctrl_i.invert_prio;
-        wait(rst_n);
-        while(1) begin
-          @(negedge clk);
-          for(int i=0;i<N_BANKS;i++) begin
-            CONFLICTS[i] = LOG_REQ[i] && HWPE_REQ[i];
-            $display("BANK %0d: conflict %0d, time %0t",i,CONFLICTS[i],$time);
-            $display("BANK %0d: HWPE_REQ_EACH_MASTER %0d, time %0t",i,HWPE_REQ_EACH_MASTER[i][1],$time);
-          end
-          stall = stall*(|LOG_REQ && |HWPE_REQ) + (|LOG_REQ && |HWPE_REQ); // we improperly consider a stall when there is at least 1 req in both the high and low priority channel
-          $display("stall: %0d, time %0t",stall,$time);
-          if(prior == ctrl_i.invert_prio) begin
-            if(stall == ctrl_i.low_prio_max_stall+1) begin
-              prior = !prior;
-              stall = 0;
-            end
-          end else begin
-            prior = !prior;
-          end
-        end
-      end
-    end
-
-    //Hide low priority branch in case of conflicts
-    if(`PRIORITY_CHECK_MODE_ZERO == 1 || `PRIORITY_CHECK_MODE_ONE == 1) begin
-      always_comb begin : HIDE
-        for(int i=0;i<N_BANKS;i++) begin
-          if(!prior) begin
-            HIDE_HWPE[i] = CONFLICTS[i];
-            HIDE_LOG[i] = 0;
-          end else begin
-            HIDE_HWPE[i] = 0;
-            HIDE_LOG[i] = CONFLICTS[i];
-          end
-        end
-      end
-    end
-    endgenerate
-*/    
+  endgenerate
+ 
   //-----------------------------------------
   //-         REAL TROUGHPUT                -
   //-----------------------------------------
@@ -885,10 +753,8 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     $display("------ Simulation End ------");
     if(n_correct == TOT_CHECK) begin
       $display("    Test ***PASSED*** \n");
-      show_warning();
     end else begin
       $display("    Test ***FAILED*** \n");
-      show_warning();
     end
     $display("\\\\CHECKS\\\\");
     $display("n_correct = %0d out of n_check = %0d",n_correct,n_checks);
@@ -940,40 +806,20 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   //--------------------------------------------------------------------------------------------------------------------------------------------------------------
   //--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-  //-----------------------------------
-  //-             TASKS               -
-  //-----------------------------------
-
   //-----------------------------------
   //-        ASSERTIONS               -
   //-----------------------------------
-function int manipulate_add(input logic [ADD_WIDTH-1:0] add);
-  logic [ADD_WIDTH-1:0] manipulated_add;
-  logic [ADD_WIDTH-BIT_BANK_INDEX-1:0] bank_level_manipulated_add;
-  logic [DATA_WIDTH-1:0] ret_1;
-  logic ret_2;
-
-  create_address_and_data_hwpe(add,'0,HWPE_WIDTH,manipulated_add,ret_1,'0,ret_2);
-  bank_level_manipulated_add = {manipulated_add[ADD_WIDTH-1:BIT_BANK_INDEX + 2],manipulated_add[1:0]};
-  return int'(bank_level_manipulated_add);
-endfunction
-
-logic  WARNING_HWPE_ADD = 0;
-generate
-  for(genvar ii=0;ii<N_HWPE;ii++) begin
-    input_hwpe_add: assert property (@(posedge clk) (manipulate_add(hwpe_intc[ii].add) <= TOT_MEM_SIZE*1000/N_BANKS-WIDTH_OF_MEMORY_BYTE))
-    else begin
-      WARNING_HWPE_ADD = 1'b1;
+  //Assertions
+  generate
+    for(genvar ii=0;ii<N_HWPE;ii++) begin
+      input_hwpe_add: assert property (@(posedge clk) (manipulate_add(hwpe_intc[ii].add) <= TOT_MEM_SIZE*1000/N_BANKS-WIDTH_OF_MEMORY_BYTE))
+      else begin
+        $display("-----------------------------------------");
+        $display("Time %0t:    Test ***STOPPED*** \n",$time);
+        $error("UNPREDICTABLE RESULT. One HWPE generated an out of boundary address.\nIf this message is shown, the test is not valid. Try a new workload");
+        $finish();
+      end
     end
-  end
-endgenerate
+  endgenerate
 
-task show_warning();
-  if(WARNING_HWPE_ADD) begin
-    $display("!!!WARNING!!!: UNPREDICTABLE RESULT. One HWPE generated an out of boundary address.");
-    $display("If this message is shown, the test is not valid. Try a new workload\n");
-    $finish();
-  end
-endtask
 endmodule

@@ -31,7 +31,6 @@ module queues_stimuli
             in_except_hwpe.data =   all_except_hwpe[ii].data;
             in_except_hwpe.add  =   all_except_hwpe[ii].add;
             queue_all_except_hwpe[ii].push_back(in_except_hwpe);
-            $display("INPUT LOG %0d: add %b, time %0t",ii,queue_all_except_hwpe[ii][0].add, $time);
             while(1) begin
               if(all_except_hwpe[ii].gnt) begin
                 break;
@@ -58,7 +57,6 @@ module queues_stimuli
               in_hwpe.wen  =   hwpe_intc[ii].wen;
               create_address_and_data_hwpe(hwpe_intc[ii].add,hwpe_intc[ii].data,i,in_hwpe.add,in_hwpe.data,rolls_over_check[ii],rolls_over_check[ii]);
               queue_hwpe[i+ii*HWPE_WIDTH].push_back(in_hwpe);
-              $display("INPUT HWPE %0d: add %b, time %0t",ii,queue_hwpe[ii][0].add, $time);
             end
             while(1) begin
               if(hwpe_intc[ii].gnt) begin

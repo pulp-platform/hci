@@ -1,5 +1,5 @@
 # Select desired test configuration
-SELECT_TEST ?= test_1
+SELECT_TEST ?= test_4
 
 
 MASTERS_CONFIG_PATH := config/hardware_config/masters_config

@@ -42,7 +42,6 @@ module queues_rdata #(
           @(posedge clk);
           if(all_except_hwpe[ii].r_valid && flag_read_master[ii]) begin
             log_rdata[ii].push_back(all_except_hwpe[ii].r_data);
-            $display("ADD LOG_RDATA, master %0d, time:%0d",ii,$time);
           end
         end
       end
@@ -68,7 +67,6 @@ module queues_rdata #(
           @(posedge clk);
           if(hwpe_intc[ii].r_valid && flag_read_hwpe[ii]) begin
             hwpe_rdata[ii].push_back(hwpe_intc[ii].r_data);
-            $display("ADD HWPE_RDATA, master %0d, time:%0d",ii,$time);
           end
         end
       end
@@ -100,9 +98,7 @@ module queues_rdata #(
           @(posedge clk);
           if(intc_mem_wiring[ii].r_valid && flag_read[ii]) begin
             mems_rdata[ii].push_back(intc_mem_wiring[ii].r_data);
-            $display("ADD MEMS_RDATA, master %0d, time:%0d",ii,$time);
             wait(EMPTY_queue_out_read[ii]);
-            $display("ELIMINATE MEMS_RDATA, master %0d, time:%0d",ii,$time);
           end
         end
       end

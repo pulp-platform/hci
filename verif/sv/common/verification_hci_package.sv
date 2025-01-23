@@ -38,7 +38,7 @@ package verification_hci_package;
   localparam int unsigned AddrMemWidth            = ADD_WIDTH - BIT_BANK_INDEX                                                                ; // Number of address bits per TCDM bank
   localparam int unsigned N_WORDS                 = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE                                          ; // Number of words in a bank
 
-  localparam int unsigned ARBITER_MODE            = (`PRIORITY_CHECK_MODE_ONE == 1) ? 1 : 0                                                   ;
+  localparam int unsigned ARBITER_MODE            = (`PRIORITY_CHECK_MODE_ONE == 1) ? 1 : 0                                                   ;// Choosen mode for the arbiter
 
 //Structures
   typedef struct packed {
@@ -134,5 +134,16 @@ package verification_hci_package;
     end
   endtask
 
+//Functions
+function int manipulate_add(input logic [ADD_WIDTH-1:0] add);
+  logic [ADD_WIDTH-1:0] manipulated_add;
+  logic [ADD_WIDTH-BIT_BANK_INDEX-1:0] bank_level_manipulated_add;
+  logic [DATA_WIDTH-1:0] ret_1;
+  logic ret_2;
+
+  create_address_and_data_hwpe(add,'0,HWPE_WIDTH,manipulated_add,ret_1,'0,ret_2);
+  bank_level_manipulated_add = {manipulated_add[ADD_WIDTH-1:BIT_BANK_INDEX + 2],manipulated_add[1:0]};
+  return int'(bank_level_manipulated_add);
+endfunction
 
 endpackage
