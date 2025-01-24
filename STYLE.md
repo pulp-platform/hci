@@ -24,7 +24,7 @@ end
 ```
 *It is much easier to see an `else` than one of the many `end`s in code, so I prefer this to the lowRISC style.*
 
-3. Avoid non-unavoidable preprocessor directives and macros. 
+3. Avoid non-unavoidable preprocessor directives and macros.
 *Basically you will see only `ifdef SYNTHESIS` and `ifdef VERILATOR`. These can almost always be replaced by parameters and other constructs.*
 
 4. Parameters and constants are `ALL_CAPS`.
@@ -88,3 +88,6 @@ hci_core_fifo i_fifo (
 
 15. Use assertions inside `interface`s, waive them only if you are reasonably sure that they must be waived!
 *One of the useful properties of `interface`s compared to plain `struct`s is that they can carry assertions without cluttering the code.*
+
+16. As a corollary of 3, the usage of flip-flop macros (e.g., from https://github.com/pulp-platform/common_cells/blob/master/include/common_cells/registers.svh), common in many PULP IPs, is __discouraged__ in HWPE-style accelerators using HCI IPs.
+*I believe the only benefit of these is to save time in writing code. But they do that at the expense of readability and understandability, which are severely hindered. They also introduce potential subtle bugs. It is my strong opinion that we should focus instead on making code readable & debuggable, as we spend >90% of our design time in reading and debugging code. Making code faster to write is a design anti-pattern.*
