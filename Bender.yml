@@ -74,6 +74,8 @@ sources:
           - verif/sv/other_modules/queues_rdata.sv
           - verif/sv/other_modules/queues_out.sv
           - verif/sv/other_modules/arbiter_checker.sv
+          - verif/sv/other_modules/compute_latency_per_transaction.sv
+          - verif/sv/other_modules/compute_througput_and_simtime.sv
           - verif/sv/other_modules/tcdm_banks_wrap.sv
           # Level 2
           - verif/sv/tb_top.sv
