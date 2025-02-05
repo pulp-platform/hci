@@ -1,15 +1,15 @@
 include config/config.mk
-include backend/backend.mk
 
 ROOT_DIR := $(strip $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))) # set the absolute path of the directory where the makefile is located
 VLIB ?= vlib
 library ?= work
 VSIM ?= vsim
 top_level ?= hci_tb
+TARGET_BENDER ?= test
 VOPT ?= vopt
 PYTHON ?= python
 PYTHON_STIMULI_SCRIPT ?= verif/stimuli_generator/stimuli_gen_main.py
-N_LOG := $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc) 
+N_LOG := $(strip $(shell echo $(N_CORE) + $(N_DMA) + $(N_EXT) | bc))
 
 VLOG_ARGS += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233 -timescale \"1 ns / 1 ps\" \"+incdir+$(shell pwd)/include\"
 MACROS_TB := +define+N_HWPE=$(N_HWPE) +define+HWPE_WIDTH=$(HWPE_WIDTH) +define+N_CORE=$(N_CORE) +define+N_DMA=$(N_DMA) +define+N_EXT=$(N_EXT) \
@@ -98,14 +98,17 @@ setup: clean_setup
 ########################
 
 clean_stimuli:
-	rm -rf verif/simvectors
+	@echo -e "\nRemove old stimuli..."
+	@rm -rf verif/simvectors
 
 PYTHON_SIM_AND_HARDWARE_ARGS := --sim_and_hardware_params $(N_BANKS) $(TOT_MEM_SIZE) $(DATA_WIDTH) $(N_CORE) $(N_DMA) $(N_EXT) $(N_HWPE) $(HWPE_WIDTH) $(TRANSACTION_RATIO) $(N_TRANSACTION_LOG) $(CYCLE_OFFSET_LOG) $(CYCLE_OFFSET_HWPE) $(EXACT_OR_MAX_OFFSET)
 PYTHON_LOG_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_LOG) - 1 | bc)), --master_log $(MEM_ACCESS_TYPE_LOG$(i)) $(START_ADDRESS_LOG$(i)) $(STRIDE0_LOG$(i)) $(LEN_D0_LOG$(i)) $(STRIDE1_LOG$(i)) $(LEN_D1_LOG$(i)) $(STRIDE2_LOG$(i)))
 PYTHON_HWPE_ARGS := $(foreach i, $(shell seq 0 $(shell echo $(N_HWPE) - 1 | bc)), --master_hwpe $(MEM_ACCESS_TYPE_HWPE$(i)) $(START_ADDRESS_HWPE$(i)) $(STRIDE0_HWPE$(i)) $(LEN_D0_HWPE$(i)) $(STRIDE1_HWPE$(i)) $(LEN_D1_HWPE$(i)) $(STRIDE2_HWPE$(i)))
 
 stimuli: clean_stimuli
-	$(PYTHON) $(PYTHON_STIMULI_SCRIPT) $(PYTHON_SIM_AND_HARDWARE_ARGS) $(PYTHON_LOG_ARGS) $(PYTHON_HWPE_ARGS)
+	@echo -e "\n### START! ###"
+	@$(PYTHON) $(PYTHON_STIMULI_SCRIPT) $(PYTHON_SIM_AND_HARDWARE_ARGS) $(PYTHON_LOG_ARGS) $(PYTHON_HWPE_ARGS)
+	@echo -e "\nDONE! New stimuli created"
 
 ########################
 #  BUILD AND SIMULATE  #
@@ -116,7 +119,7 @@ clean:
 	rm -rf work
 
 scripts/compile.tcl: | Bender.lock
-	$(call generate_vsim, $@, -t test ,..) 
+	$(call generate_vsim, $@, -t $(TARGET_BENDER) ,..) 
 
 $(library):
 	$(VLIB) $(library)
@@ -133,3 +136,5 @@ run:
 	$(VSIM) +permissive $(questa-flags) $(questa-cmd) -suppress 3053 -suppress 8885 -lib $(library)  +MAX_CYCLES=$(max_cycles) +UVM_TESTNAME=$(test_case) +APP=$(elf-bin) +notimingchecks +nospecify  -t 1ps \
 	${top_level}_optimized +permissive-off ++$(elf-bin) ++$(target-options) ++$(cl-bin) | tee sim.log
 
+#include backend/backend.mk
+include backend/backend_copy.mk

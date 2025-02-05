@@ -219,13 +219,13 @@ for n in range(N_MASTER):
         case '3':
             next_start_id = master.gen_3d(stride0,len_d0,stride1,len_d1,stride2,start_address,next_start_id,LIST_OF_FORBIDDEN_ADDRESSES_READ,LIST_OF_FORBIDDEN_ADDRESSES_WRITE)
     
-print("STEP 0 COMPLETED: created raw txt files")
+print("STEP 0 COMPLETED: create raw txt files")
 
 ### PROCESS RAW TXT FILES ###
 simvector_raw_path = os.path.dirname(filepath)
 simvector_processed_path = os.path.abspath(os.path.join(simvector_raw_path,"../stimuli_processed"))
 process.unfold_raw_txt(simvector_raw_path,simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH)
-print("STEP 1 COMPLETED: unfolded txt files")
+print("STEP 1 COMPLETED: unfold txt files")
 
 process.pad_txt_files(simvector_processed_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH)
-print("STEP 2 COMPLETED: padded txt files")
+print("STEP 2 COMPLETED: pad txt files")

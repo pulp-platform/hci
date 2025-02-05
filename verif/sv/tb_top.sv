@@ -544,7 +544,7 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
   endgenerate
   
   //--------------------------------------------
-  //-             QoS: Arbiter                 -
+  //-        QoS: Arbitration check            -
   //--------------------------------------------
   generate
     if(`PRIORITY_CHECK_MODE_ONE || `PRIORITY_CHECK_MODE_ZERO) begin
@@ -610,97 +610,43 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       .SUM_LATENCY_PER_TRANSACTION_LOG(SUM_LATENCY_PER_TRANSACTION_LOG)
   );
 
-  //--------------------------------------------
-  //-             END OF SIMULATION            -
-  //--------------------------------------------
+  //----------------------------------------
+  //-         END OF SIMULATION            -
+  //----------------------------------------
+  end_simulation_and_final_report #(
+    .TOT_CHECK(TOT_CHECK),
+    .N_CORE(N_CORE),
+    .N_CORE_REAL(N_CORE_REAL),
+    .N_DMA(N_DMA),
+    .N_DMA_REAL(N_DMA_REAL),
+    .N_EXT_REAL(N_EXT_REAL),
+    .N_MASTER(N_MASTER),
+    .N_MASTER_REAL(N_MASTER_REAL),
+    .N_HWPE(N_HWPE),
+    .N_HWPE_REAL(N_HWPE_REAL),
+    .HWPE_WIDTH(HWPE_WIDTH)
+  ) i_end_simulation_and_final_report (
+    .n_checks(n_checks),
+    .n_correct(n_correct),
+    .WARNING(WARNING),
+    .troughput_real(troughput_real),
+    .tot_latency(tot_latency),
+    .latency_per_master(latency_per_master),
+    .SUM_LATENCY_PER_TRANSACTION_LOG(SUM_LATENCY_PER_TRANSACTION_LOG),
+    .SUM_LATENCY_PER_TRANSACTION_HWPE(SUM_LATENCY_PER_TRANSACTION_HWPE)
+  );  
 
-  initial begin
-    real troughput_theo;
-    real average_latency;
-    average_latency = 0;
-    wait (n_checks >= TOT_CHECK);
-    $display("n_checks final = %0d",n_checks);
-    $display("------ Simulation End ------");
-    if(n_correct == TOT_CHECK) begin
-      $display("    Test ***PASSED*** \n");
-    end else begin
-      $display("    Test ***FAILED*** \n");
-    end
-    $display("\\\\CHECKS\\\\");
-    $display("n_correct = %0d out of n_check = %0d",n_correct,n_checks);
-    $display("expected n_check = %0d",TOT_CHECK);
-    $display("note: each hwpe transaction consists of HWPE_WIDTH=%0d checks \n",HWPE_WIDTH);
-    if(WARNING) begin
-      $display("WARNING: Unnecessary spourious writes are occuring when the HWPE's wide word is written to the banks.\n");
-      $display("The interconnect still works correctly, but this could be an unintended behaviour.\n");
-    end
+  //------------------------------------------------
+  //    PROGRESS BAR (10% 20% 30% ... 100%)        -
+  //------------------------------------------------
 
-    calculate_theoretical_throughput(troughput_theo);
-    wait(troughput_real>=0);
-    $display("\\\\THROUGHPUT\\\\");
-    $display("THEORETICAL THROUGHPUT: %f bit per cycle",troughput_theo);
-    $display("REAL THROUGHPUT: %f bit per cycle",troughput_real);
-    $display("PERFORMANCE RATING %f%%\n", troughput_real/troughput_theo*100);
-
-    wait(tot_latency>=0);
-    $display("\\\\SIMULATION TIME\\\\");
-    $display("TOTAL SIMULATION TIME: %0d cycles", tot_latency);
-    for(int i=0; i<N_CORE_REAL; i++) begin
-      $display("TOTAL SIMULATION TIME for CORE%0d (stimuli file: master_log_%0d.txt): %f",i,i,latency_per_master[i]);
-    end
-    for(int i=N_CORE; i<N_CORE+N_DMA_REAL; i++) begin
-      $display("TOTAL SIMULATION TIME for DMA%0d (stimuli file: master_log_%0d.txt): %f",i-N_CORE,i,latency_per_master[i]);
-    end
-    for(int i=N_CORE+N_DMA; i<N_CORE+N_DMA+N_EXT_REAL; i++) begin
-      $display("TOTAL SIMULATION TIME for EXT%0d (stimuli file: master_log_%0d.txt): %f",i-(N_CORE+N_DMA),i,latency_per_master[i]);
-    end
-    for(int i=N_MASTER-N_HWPE; i<N_MASTER-N_HWPE+N_HWPE_REAL; i++) begin
-      $display("TOTAL SIMULATION TIME for HWPE%0d (stimuli file: master_hwpe_%0d.txt): %f",i-(N_MASTER-N_HWPE),i-(N_MASTER-N_HWPE),latency_per_master[i]);
-    end
-
-    calculate_average_latency(SUM_LATENCY_PER_TRANSACTION_LOG,SUM_LATENCY_PER_TRANSACTION_HWPE);
-    $display("\n\\\\LATENCY PER TRANSACTION\\\\");
-    for(int i=0; i<N_MASTER_REAL-N_HWPE_REAL; i++) begin
-      $display("Average latency for each transaction in master_log_%0d: %f",i,SUM_LATENCY_PER_TRANSACTION_LOG[i]);
-      average_latency += SUM_LATENCY_PER_TRANSACTION_LOG[i];
-    end
-    for(int i=0; i<N_HWPE_REAL; i++) begin
-      $display("Average latency for each transaction in master_hwpe_%0d: %f",i,SUM_LATENCY_PER_TRANSACTION_HWPE[i]);
-      average_latency += SUM_LATENCY_PER_TRANSACTION_HWPE[i];
-    end
-    average_latency = average_latency/N_MASTER_REAL;
-    $display("Average latency for each transaction (all masters): %f",average_latency);
-    $finish();
-  end
-
-  //-----------------------------------
-  //          PROGRESS BAR            -
-  //-----------------------------------
-  initial begin
-    wait(rst_n);
-    $display("START!");
-    wait(real'(n_checks)/TOT_CHECK >= 0.1);
-    $display("10%% completed...");
-    wait(real'(n_checks)/TOT_CHECK >= 0.2);
-    $display("20%% completed...");
-    wait(real'(n_checks)/TOT_CHECK >= 0.3);
-    $display("30%% completed...");
-    wait(real'(n_checks)/TOT_CHECK >= 0.4);
-    $display("40%% completed...");
-    wait(real'(n_checks)/TOT_CHECK >= 0.5);
-    $display("50%% completed...");
-    wait(real'(n_checks)/TOT_CHECK >= 0.6);
-    $display("60%% completed...");
-    wait(real'(n_checks)/TOT_CHECK >= 0.7);
-    $display("70%% completed...");
-    wait(real'(n_checks)/TOT_CHECK >= 0.8);
-    $display("80%% completed...");
-    wait(real'(n_checks)/TOT_CHECK >= 0.9);
-    $display("90%% completed...");
-    wait(real'(n_checks)/TOT_CHECK == 1);
-    $display("100%% completed!");
-
-  end
+  progress_bar #(
+    .TOT_CHECK(TOT_CHECK)
+  ) i_progress_bar(
+    .rst_n(rst_n),
+    .n_checks(n_checks)
+  );
+  
   //--------------------------------------------------------------------------------------------------------------------------------------------------------------
   //--------------------------------------------------------------------------------------------------------------------------------------------------------------
 

@@ -62,7 +62,7 @@ sources:
       - rtl/ecc/hci_ecc_interconnect.sv
       - rtl/ecc/hci_ecc_sink.sv
       - rtl/hci_interconnect.sv
-      - target: test
+      - target: any(test, test_wrap, test_wrap_netlist)
         files:
           # Level 0
           - verif/sv/common/verification_hci_package.sv
@@ -77,9 +77,23 @@ sources:
           - verif/sv/other_modules/compute_latency_per_transaction.sv
           - verif/sv/other_modules/compute_througput_and_simtime.sv
           - verif/sv/other_modules/tcdm_banks_wrap.sv
+          - verif/sv/other_modules/end_simulation_and_final_report.sv
+          - verif/sv/other_modules/progress_bar.sv
+      - target: test
+        files:
           # Level 2
           - verif/sv/tb_top.sv
-      - target: synth
+      - target: test_wrap
+        files:
+          - rtl/hci_interconnect_wrap.sv
+          # Level 2
+          - backend/sourcecode/tb_top_wrap.sv
+      - target: test_wrap_netlist
+        files:
+          - backend/synopsys/out/hci_interconnect_wrap.v
+          # Level 2
+          - backend/sourcecode/tb_top_wrap_netlist.sv
+      - target: synthesis
         files:
           # Level 0
           - rtl/hci_interconnect_wrap.sv

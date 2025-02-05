@@ -25,44 +25,44 @@
 module hci_interconnect_wrap
   import hci_package::*;
 #(
-  parameter int unsigned N_HWPE                           = 1                                              , // Number of HWPEs attached to the port
-  parameter int unsigned N_CORE                           = 8                                              , // Number of Core ports
-  parameter int unsigned N_DMA                            = 4                                              , // Number of DMA ports
-  parameter int unsigned N_EXT                            = 4                                              , // Number of External ports
-  parameter int unsigned N_MEM                            = 16                                             , // Number of Memory banks
-  parameter int unsigned TS_BIT                           = 21                                             , // TEST_SET_BIT (for Log Interconnect)
-  parameter int unsigned IW                               = N_HWPE+N_CORE+N_DMA+N_EXT                      , // ID Width
-  parameter int unsigned EXPFIFO                          = 0                                              , // FIFO Depth for HWPE Interconnect
-  parameter int unsigned SEL_LIC                          = 0                                              , // Log interconnect type selector
-  parameter int unsigned ARBITER_MODE                     = 0                                              , // Chosen mode for the arbiter
-  parameter int unsigned FILTER_WRITE_R_VALID[0:N_HWPE-1] = '{default: 0}                                  ,
+  parameter int unsigned N_HWPE                           = 1                         , // Number of HWPEs attached to the port
+  parameter int unsigned N_CORE                           = 8                         , // Number of Core ports
+  parameter int unsigned N_DMA                            = 4                         , // Number of DMA ports
+  parameter int unsigned N_EXT                            = 4                         , // Number of External ports
+  parameter int unsigned N_MEM                            = 16                        , // Number of Memory banks
+  parameter int unsigned TS_BIT                           = 21                        , // TEST_SET_BIT (for Log Interconnect)
+  parameter int unsigned IW                               = N_HWPE+N_CORE+N_DMA+N_EXT , // ID Width
+  parameter int unsigned EXPFIFO                          = 0                         , // FIFO Depth for HWPE Interconnect
+  parameter int unsigned SEL_LIC                          = 0                         , // Log interconnect type selector
+  parameter int unsigned ARBITER_MODE                     = 0                         , // Chosen mode for the arbiter
+  parameter int unsigned FILTER_WRITE_R_VALID[0:N_HWPE-1] = '{default: 0}             ,
   
   parameter int unsigned TOT_MEM_SIZE                     = 32                                             , // Total memory size (kB), this parameter is only used to define the default value for AW  
   parameter int unsigned HWPE_WIDTH                       = 4                                              , // Width of an HWPE wide-word (as a multiple of DW_cores), this parameter is only used to define the default value for DW_hwpe
   
-  parameter int unsigned DW_cores                         = DEFAULT_DW                                             ,
-  parameter int unsigned AW_cores                         = DEFAULT_AW                      ,
-  parameter int unsigned BW_cores                         = DEFAULT_BW                                              ,
-  parameter int unsigned UW_cores                         = DEFAULT_UW                                             ,
-  parameter int unsigned IW_cores                         = IW                                             ,
-  parameter int unsigned EW_cores                         = DEFAULT_EW                                              ,
-  parameter int unsigned EHW_cores                        = DEFAULT_EHW                                              ,
+  parameter int unsigned DW_cores                         = DEFAULT_DW    ,
+  parameter int unsigned AW_cores                         = DEFAULT_AW    ,
+  parameter int unsigned BW_cores                         = DEFAULT_BW    ,
+  parameter int unsigned UW_cores                         = DEFAULT_UW    ,
+  parameter int unsigned IW_cores                         = IW            ,
+  parameter int unsigned EW_cores                         = DEFAULT_EW    ,
+  parameter int unsigned EHW_cores                        = DEFAULT_EHW   ,
 
-  parameter int unsigned DW_mems                          = DEFAULT_DW                                             ,
-  parameter int unsigned AW_mems                          = DEFAULT_AW - $clog2(N_MEM)      ,
-  parameter int unsigned BW_mems                          = DEFAULT_BW                                             ,
-  parameter int unsigned UW_mems                          = DEFAULT_UW                                             ,
-  parameter int unsigned IW_mems                          = IW                                             ,
-  parameter int unsigned EW_mems                          = DEFAULT_EW                                              ,
-  parameter int unsigned EHW_mems                         = DEFAULT_EHW                                              ,
+  parameter int unsigned DW_mems                          = DEFAULT_DW                ,
+  parameter int unsigned AW_mems                          = DEFAULT_AW - $clog2(N_MEM),
+  parameter int unsigned BW_mems                          = DEFAULT_BW                ,
+  parameter int unsigned UW_mems                          = DEFAULT_UW                ,
+  parameter int unsigned IW_mems                          = IW                        ,
+  parameter int unsigned EW_mems                          = DEFAULT_EW                ,
+  parameter int unsigned EHW_mems                         = DEFAULT_EHW               ,
 
-  parameter int unsigned DW_hwpe                          = HWPE_WIDTH*DEFAULT_DW                           ,
-  parameter int unsigned AW_hwpe                          = DEFAULT_AW                      ,
-  parameter int unsigned BW_hwpe                          = DEFAULT_BW                                            ,
-  parameter int unsigned UW_hwpe                          = DEFAULT_UW                                             ,
-  parameter int unsigned IW_hwpe                          = IW                                             ,
-  parameter int unsigned EW_hwpe                          = DEFAULT_EW                                              ,
-  parameter int unsigned EHW_hwpe                         = DEFAULT_EHW                                              ,
+  parameter int unsigned DW_hwpe                          = HWPE_WIDTH*DEFAULT_DW     ,
+  parameter int unsigned AW_hwpe                          = DEFAULT_AW                ,
+  parameter int unsigned BW_hwpe                          = DEFAULT_BW                ,
+  parameter int unsigned UW_hwpe                          = DEFAULT_UW                ,
+  parameter int unsigned IW_hwpe                          = IW                        ,
+  parameter int unsigned EW_hwpe                          = DEFAULT_EW                ,
+  parameter int unsigned EHW_hwpe                         = DEFAULT_EHW               ,
 
   parameter bit WAIVE_RQ3_ASSERT  = 1'b0,
   parameter bit WAIVE_RQ4_ASSERT  = 1'b0,
@@ -253,9 +253,9 @@ module hci_interconnect_wrap
   // bindings
   generate
     for(genvar ii=0; ii<N_CORE; ii++) begin: cores_binding
-      assign all_except_hwpe[ii].req      = req_cores[ii];
+      assign all_except_hwpe[ii].req      = req_cores      [ii];
       assign gnt_cores      [ii]          = all_except_hwpe[ii].gnt;
-      assign all_except_hwpe[ii].add      = add_cores[ii];
+      assign all_except_hwpe[ii].add      = add_cores      [ii];
       assign all_except_hwpe[ii].wen      = wen_cores      [ii];
       assign all_except_hwpe[ii].data     = data_cores     [ii];
       assign all_except_hwpe[ii].be       = be_cores       [ii];
@@ -277,53 +277,53 @@ module hci_interconnect_wrap
   endgenerate
 
   generate
-    for(genvar ii=N_CORE; ii<N_CORE+N_DMA; ii++) begin: dma_binding
-      assign all_except_hwpe[ii].req      = req_dma        [ii];
-      assign gnt_dma        [ii]          = all_except_hwpe[ii].gnt;
-      assign all_except_hwpe[ii].add      = add_dma        [ii];
-      assign all_except_hwpe[ii].wen      = wen_dma        [ii];
-      assign all_except_hwpe[ii].data     = data_dma       [ii];
-      assign all_except_hwpe[ii].be       = be_dma         [ii];
-      assign all_except_hwpe[ii].r_ready  = r_ready_dma    [ii];  
-      assign all_except_hwpe[ii].user     = user_dma       [ii]; 
-      assign all_except_hwpe[ii].id       = id_dma         [ii]; 
-      assign r_data_dma     [ii]          = all_except_hwpe[ii].r_data;
-      assign r_valid_dma    [ii]          = all_except_hwpe[ii].r_valid;
-      assign r_user_dma     [ii]          = all_except_hwpe[ii].r_user;
-      assign r_id_dma       [ii]          = all_except_hwpe[ii].r_id;
-      assign r_opc_dma      [ii]          = all_except_hwpe[ii].r_opc;
-      assign all_except_hwpe[ii].ecc      = ecc_dma        [ii];
-      assign r_ecc_dma      [ii]          = all_except_hwpe[ii].r_ecc;
-      assign all_except_hwpe[ii].ereq     = ereq_dma       [ii];
-      assign egnt_dma       [ii]          = all_except_hwpe[ii].egnt;
-      assign r_evalid_dma   [ii]          = all_except_hwpe[ii].r_evalid;
-      assign all_except_hwpe[ii].r_eready = r_eready_dma   [ii];
+    for(genvar ii=0; ii<N_DMA; ii++) begin: dma_binding
+      assign all_except_hwpe[N_CORE+ii].req      = req_dma        [ii];
+      assign gnt_dma        [ii]                 = all_except_hwpe[N_CORE+ii].gnt;
+      assign all_except_hwpe[N_CORE+ii].add      = add_dma        [ii];
+      assign all_except_hwpe[N_CORE+ii].wen      = wen_dma        [ii];
+      assign all_except_hwpe[N_CORE+ii].data     = data_dma       [ii];
+      assign all_except_hwpe[N_CORE+ii].be       = be_dma         [ii];
+      assign all_except_hwpe[N_CORE+ii].r_ready  = r_ready_dma    [ii];  
+      assign all_except_hwpe[N_CORE+ii].user     = user_dma       [ii]; 
+      assign all_except_hwpe[N_CORE+ii].id       = id_dma         [ii]; 
+      assign r_data_dma     [ii]                 = all_except_hwpe[N_CORE+ii].r_data;
+      assign r_valid_dma    [ii]                 = all_except_hwpe[N_CORE+ii].r_valid;
+      assign r_user_dma     [ii]                 = all_except_hwpe[N_CORE+ii].r_user;
+      assign r_id_dma       [ii]                 = all_except_hwpe[N_CORE+ii].r_id;
+      assign r_opc_dma      [ii]                 = all_except_hwpe[N_CORE+ii].r_opc;
+      assign all_except_hwpe[N_CORE+ii].ecc      = ecc_dma        [ii];
+      assign r_ecc_dma      [ii]                 = all_except_hwpe[N_CORE+ii].r_ecc;
+      assign all_except_hwpe[N_CORE+ii].ereq     = ereq_dma       [ii];
+      assign egnt_dma       [ii]                 = all_except_hwpe[N_CORE+ii].egnt;
+      assign r_evalid_dma   [ii]                 = all_except_hwpe[N_CORE+ii].r_evalid;
+      assign all_except_hwpe[N_CORE+ii].r_eready = r_eready_dma   [ii];
     end
   endgenerate
 
 
   generate
-    for(genvar ii=N_CORE+N_DMA; ii<N_CORE+N_DMA+N_EXT; ii++) begin: ext_binding
-      assign all_except_hwpe[ii].req      = req_ext        [ii];
-      assign gnt_ext        [ii]          = all_except_hwpe[ii].gnt;
-      assign all_except_hwpe[ii].add      = add_ext        [ii];
-      assign all_except_hwpe[ii].wen      = wen_ext        [ii];
-      assign all_except_hwpe[ii].data     = data_ext       [ii];
-      assign all_except_hwpe[ii].be       = be_ext         [ii];
-      assign all_except_hwpe[ii].r_ready  = r_ready_ext    [ii];  
-      assign all_except_hwpe[ii].user     = user_ext       [ii]; 
-      assign all_except_hwpe[ii].id       = id_ext         [ii]; 
-      assign r_data_ext     [ii]          = all_except_hwpe[ii].r_data;
-      assign r_valid_ext    [ii]          = all_except_hwpe[ii].r_valid;
-      assign r_user_ext     [ii]          = all_except_hwpe[ii].r_user;
-      assign r_id_ext       [ii]          = all_except_hwpe[ii].r_id;
-      assign r_opc_ext      [ii]          = all_except_hwpe[ii].r_opc;
-      assign all_except_hwpe[ii].ecc      = ecc_ext        [ii];
-      assign r_ecc_ext      [ii]          = all_except_hwpe[ii].r_ecc;
-      assign all_except_hwpe[ii].ereq     = ereq_ext       [ii];
-      assign egnt_ext       [ii]          = all_except_hwpe[ii].egnt;
-      assign r_evalid_ext   [ii]          = all_except_hwpe[ii].r_evalid;
-      assign all_except_hwpe[ii].r_eready = r_eready_ext   [ii];
+    for(genvar ii=0; ii<N_EXT; ii++) begin: ext_binding
+      assign all_except_hwpe[N_CORE+N_DMA+ii].req      = req_ext        [ii];
+      assign gnt_ext        [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].gnt;
+      assign all_except_hwpe[N_CORE+N_DMA+ii].add      = add_ext        [ii];
+      assign all_except_hwpe[N_CORE+N_DMA+ii].wen      = wen_ext        [ii];
+      assign all_except_hwpe[N_CORE+N_DMA+ii].data     = data_ext       [ii];
+      assign all_except_hwpe[N_CORE+N_DMA+ii].be       = be_ext         [ii];
+      assign all_except_hwpe[N_CORE+N_DMA+ii].r_ready  = r_ready_ext    [ii];  
+      assign all_except_hwpe[N_CORE+N_DMA+ii].user     = user_ext       [ii]; 
+      assign all_except_hwpe[N_CORE+N_DMA+ii].id       = id_ext         [ii]; 
+      assign r_data_ext     [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].r_data;
+      assign r_valid_ext    [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].r_valid;
+      assign r_user_ext     [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].r_user;
+      assign r_id_ext       [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].r_id;
+      assign r_opc_ext      [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].r_opc;
+      assign all_except_hwpe[N_CORE+N_DMA+ii].ecc      = ecc_ext        [ii];
+      assign r_ecc_ext      [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].r_ecc;
+      assign all_except_hwpe[N_CORE+N_DMA+ii].ereq     = ereq_ext       [ii];
+      assign egnt_ext       [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].egnt;
+      assign r_evalid_ext   [ii]                       = all_except_hwpe[N_CORE+N_DMA+ii].r_evalid;
+      assign all_except_hwpe[N_CORE+N_DMA+ii].r_eready = r_eready_ext   [ii];
     end
   endgenerate
 

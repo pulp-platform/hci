@@ -37,6 +37,7 @@ package verification_hci_package;
   localparam int unsigned BIT_BANK_INDEX          = $clog2(N_BANKS)                                                                           ; // Bits of the Bank index
   localparam int unsigned AddrMemWidth            = ADD_WIDTH - BIT_BANK_INDEX                                                                ; // Number of address bits per TCDM bank
   localparam int unsigned N_WORDS                 = (TOT_MEM_SIZE*1000/N_BANKS)/WIDTH_OF_MEMORY_BYTE                                          ; // Number of words in a bank
+  localparam int unsigned FILTER_WRITE_R_VALID    = '0;
 
   localparam int unsigned ARBITER_MODE            = (`PRIORITY_CHECK_MODE_ONE == 1) ? 1 : 0                                                   ;// Choosen mode for the arbiter
 

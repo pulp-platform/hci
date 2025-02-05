@@ -7,7 +7,7 @@ N_HWPE?=1
 # Width of an HWPE wide-word (as a multiple of DATA_WIDTH)
 HWPE_WIDTH?=4
 # Number of Core ports                                                  
-N_CORE?=1
+N_CORE?=2
 # Number of DMA ports                                                  
 N_DMA?=1
 # Number of External ports                                               
