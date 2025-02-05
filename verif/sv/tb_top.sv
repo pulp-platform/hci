@@ -47,6 +47,34 @@ module hci_tb
   ////////////////////
   // HCI interfaces //
   ////////////////////
+  localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '{    // CORE + DMA + EXT parameters
+    DW:  DEFAULT_DW,
+    AW:  DEFAULT_AW,
+    BW:  DEFAULT_BW,
+    UW:  DEFAULT_UW,
+    IW:  IW,
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
+  };
+  localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(mems) = '{     // Bank parameters
+    DW:  DEFAULT_DW,
+    AW:  AddrMemWidth,
+    BW:  DEFAULT_BW,
+    UW:  DEFAULT_UW,
+    IW:  IW,
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
+  };
+  localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(hwpe) = '{     // HWPE parameters
+    DW:  HWPE_WIDTH*DATA_WIDTH,
+    AW:  DEFAULT_AW,
+    BW:  DEFAULT_BW,
+    UW:  DEFAULT_UW,
+    IW:  IW,
+    EW:  DEFAULT_EW,
+    EHW: DEFAULT_EHW
+  };
+
   hci_core_intf #(
       .DW(HCI_SIZE_hwpe.DW),
       .AW(HCI_SIZE_hwpe.AW),
