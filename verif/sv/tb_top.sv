@@ -1,3 +1,27 @@
+/*
+ * tb_top.sv
+ *
+ * Luca Codeluppi <lcodelupp@student.ethz.ch>
+ * Francesco Conti <f.conti@unibo.it>
+ * Tobias Riedener <tobiasri@student.ethz.ch>
+ * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
+ * Sergio Mazzolla <smazzolla@iis.ee.ethz.ch>
+ *
+ * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
+ * Copyright and related rights are licensed under the Solderpad Hardware
+ * License, Version 0.51 (the "License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
+ * or agreed to in writing, software, hardware and materials distributed under
+ * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
+ /**
+   Top-level module for a comprehensive and exhaustive HCI verification enviroment, including QoS measurement 
+ **/
+
 `include "hci_helpers.svh"
 
 timeunit 1ns;
@@ -8,61 +32,21 @@ module hci_tb
   import verification_hci_package::*;
   ();
 
-  //--------------------------------------------
-  //-             CLOCK AND RESET              -
-  //--------------------------------------------
+  //-------------------------------------------------------------------------------------------------------------------------------
+  //-                                                          HCI                                                                -
+  //-------------------------------------------------------------------------------------------------------------------------------
 
   logic                       clk, rst_n;
-  
-  clk_rst_gen_prova #(
-      .ClkPeriod   (CLK_PERIOD),
-      .RstClkCycles(RST_CLK_CYCLES)
-  ) i_clk_rst_gen (
-      .clk_o (clk),
-      .rst_no(rst_n)
-  );
-
-  //---------------------------------------------
-  //-                   HCI                     -
-  //---------------------------------------------
-
-  localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '{    // CORE + DMA + EXT parameters
-    DW:  DEFAULT_DW,
-    AW:  DEFAULT_AW,
-    BW:  DEFAULT_BW,
-    UW:  DEFAULT_UW,
-    IW:  IW,
-    EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
-  };
-  localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(mems) = '{     // Bank parameters
-    DW:  DEFAULT_DW,
-    AW:  AddrMemWidth,
-    BW:  DEFAULT_BW,
-    UW:  DEFAULT_UW,
-    IW:  IW,
-    EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
-  };
-  localparam hci_package::hci_size_parameter_t `HCI_SIZE_PARAM(hwpe) = '{     // HWPE parameters
-    DW:  HWPE_WIDTH*DATA_WIDTH,
-    AW:  DEFAULT_AW,
-    BW:  DEFAULT_BW,
-    UW:  DEFAULT_UW,
-    IW:  IW,
-    EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
-  };
-
-  // Control signals
   logic                       clear_i;
   hci_interconnect_ctrl_t     ctrl_i;
 
   assign                      clear_i = 0;
   assign                      ctrl_i.invert_prio = `INVERT_PRIO;
   assign                      ctrl_i.low_prio_max_stall = `LOW_PRIO_MAX_STALL;
-
-  // HCI connections
+  
+  ////////////////////
+  // HCI interfaces //
+  ////////////////////
   hci_core_intf #(
       .DW(HCI_SIZE_hwpe.DW),
       .AW(HCI_SIZE_hwpe.AW),
@@ -74,7 +58,6 @@ module hci_tb
     ) hwpe_intc [0:N_HWPE-1] (
       .clk(clk)
     );
-
   hci_core_intf #(
       .DW(HCI_SIZE_cores.DW),
       .AW(HCI_SIZE_cores.AW),
@@ -86,7 +69,6 @@ module hci_tb
     ) all_except_hwpe [0:N_MASTER-N_HWPE-1] (
       .clk(clk)
     );
-
   hci_core_intf #(
       .DW(HCI_SIZE_mems.DW),
       .AW(HCI_SIZE_mems.AW),
@@ -103,7 +85,9 @@ module hci_tb
       .clk(clk)
     );
 
-  // HCI instance
+  ////////////////// 
+  // HCI instance //
+  //////////////////
   hci_interconnect #(
       .N_HWPE(N_HWPE),                      // Number of HWPEs attached to the port
       .N_CORE(N_CORE),                      // Number of Core ports
@@ -134,9 +118,9 @@ module hci_tb
       .hwpe(hwpe_intc)
   );
 
-  //------------------------------------------------
-  //-                     TCDM                     -
-  //------------------------------------------------
+  //-------------------------------------------------------------------------------------------------------------------------------
+  //-                                                         TCDM                                                                -
+  //-------------------------------------------------------------------------------------------------------------------------------
 
   tcdm_banks_wrap #(
     .BankSize(N_WORDS),
@@ -152,12 +136,15 @@ module hci_tb
     .tcdm_slave(intc_mem_wiring)
   );
 
-  //-------------------------------------------------
-  //-              APPLICATION DRIVERS              -
-  //-------------------------------------------------
+  //-------------------------------------------------------------------------------------------------------------------------------
+  //-                                                       APPLICATION DRIVERS                                                   -
+  //-------------------------------------------------------------------------------------------------------------------------------
   logic [0:N_MASTER-1]         END_STIMULI = '0;
   logic [0:N_MASTER-1]         END_LATENCY = '0;
-  // Drivers connections
+  
+  ///////////////////////
+  // Driver interfaces //
+  ///////////////////////
     hci_core_intf #(
       .DW(HCI_SIZE_hwpe.DW),
       .AW(HCI_SIZE_hwpe.AW),
@@ -181,7 +168,10 @@ module hci_tb
   ) drivers_log [0:N_MASTER-N_HWPE-1] (
       .clk(clk)
     );
-  // CORES + DMA + EXT
+
+  //////////////////////  
+  // CORE + DMA + EXT //
+  //////////////////////
   generate
     for(genvar ii=0; ii < N_MASTER - N_HWPE ; ii++) begin: app_driver_log
       application_driver#(
@@ -201,8 +191,10 @@ module hci_tb
       );
     end
   endgenerate
-
-  // HWPE
+   
+  //////////
+  // HWPE //
+  //////////
   generate
     for(genvar ii=0; ii < N_HWPE ; ii++) begin: app_driver_hwpe
       application_driver#(
@@ -223,9 +215,9 @@ module hci_tb
     end
   endgenerate
 
-  //-------------------------------------------------
-  //-           INITIATORS-HCI BOUNDING             -  
-  //-------------------------------------------------
+  //-------------------------------------------------------------------------------------------------------------------------------
+  //-                                                   INITIATORS-HCI BOUNDING                                                   -
+  //-------------------------------------------------------------------------------------------------------------------------------
 
   generate
     for(genvar ii=0; ii < N_MASTER - N_HWPE ; ii++) begin: bounding_log_hci
@@ -251,11 +243,10 @@ module hci_tb
     end
   endgenerate
 
-  //-------------------------------------------------
-  //-                   QUEUES                      -
-  //-------------------------------------------------
+  //-------------------------------------------------------------------------------------------------------------------------------
+  //-                                                           QUEUES                                                            -
+  //-------------------------------------------------------------------------------------------------------------------------------
 
-  // Global variables
   static int unsigned           n_checks = 0;
   static int unsigned           n_correct = 0;
   static int unsigned           hwpe_check[N_HWPE] = '{default: 0};
@@ -267,6 +258,9 @@ module hci_tb
   real               SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE];
   real               SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE];
 
+  ////////////////////
+  // STIMULI QUEUES //
+  ////////////////////
   queues_stimuli #(
       .N_MASTER(N_MASTER),
       .N_HWPE(N_HWPE),
@@ -287,6 +281,9 @@ module hci_tb
     end
   endgenerate
 
+  ///////////////////
+  // R_DATA QUEUES //
+  ///////////////////
   queues_rdata #(
       .N_MASTER(N_MASTER),
       .N_HWPE(N_HWPE),
@@ -303,6 +300,9 @@ module hci_tb
       .clk(clk)
   );
 
+  /////////////////
+  // TCDM QUEUES //
+  /////////////////
   queues_out #(
       .N_MASTER(N_MASTER),
       .N_HWPE(N_HWPE),
@@ -317,11 +317,13 @@ module hci_tb
       .clk(clk)
   );
 
-  //-----------------------------------------------
-  //-                CHECKER                      -
-  //-----------------------------------------------
+  //-------------------------------------------------------------------------------------------------------------------------------
+  //-                                                           CHECKER                                                           -
+  //-------------------------------------------------------------------------------------------------------------------------------
 
-  //------------- write transactions --------------
+  //////////////////////////////
+  // CHECK WRITE TRANSACTIONS //
+  //////////////////////////////
   logic                         WARNING = 1'b0;
   static logic           already_checked[N_HWPE] = '{default: 0};
   static logic           STOP_CHECK = 0;
@@ -460,10 +462,11 @@ module hci_tb
     end 
   endgenerate
 
-  //------------- read transactions -------------
-
-static logic           STOP_CHECK_READ = 0;
-logic                  already_checked_read[N_HWPE] = '{default: 0};
+  /////////////////////////////
+  // CHECK READ TRANSACTIONS //
+  /////////////////////////////
+  static logic           STOP_CHECK_READ = 0;
+  logic                  already_checked_read[N_HWPE] = '{default: 0};
 
   // Check address
   generate 
@@ -598,9 +601,13 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       end
   endgenerate
   
-  //--------------------------------------------
-  //-        QoS: Arbitration check            -
-  //--------------------------------------------
+  //-------------------------------------------------------------------------------------------------------------------------------
+  //-                                                           QoS                                                               -
+  //-------------------------------------------------------------------------------------------------------------------------------
+  
+  /////////////////////////////////////////////
+  // ARBITER CHECKER (WIDE vs NARROW branch) //
+  /////////////////////////////////////////////
   generate
     if(`PRIORITY_CHECK_MODE_ONE || `PRIORITY_CHECK_MODE_ZERO) begin
       arbiter_checker #(
@@ -624,12 +631,13 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     end
   endgenerate
  
-  //-----------------------------------------------------
-  //-      REAL TROUGHPUT AND SIMULATION TIME           -
-  //-----------------------------------------------------
+  ////////////////////////////////////////
+  // REAL TROUGHPUT AND SIMULATION TIME //
+  ////////////////////////////////////////
   real                 latency_per_master[N_MASTER];
   real                 troughput_real;
   real                 tot_latency;
+
   compute_througput_and_simtime #(
     .N_MASTER(N_MASTER),
     .N_TRANSACTION_LOG(N_TRANSACTION_LOG),
@@ -649,10 +657,9 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     .latency_per_master(latency_per_master)
   );  
 
-  //-----------------------------------------------------------
-  //-               LATENCY PER TRANSACTION                   -
-  //-----------------------------------------------------------
-
+  /////////////////////////////////////
+  // COMPUTE LATENCY PER TRANSACTION //
+  /////////////////////////////////////
   compute_latency_per_transaction #(
       .N_MASTER(N_MASTER),
       .N_HWPE(N_HWPE)
@@ -664,10 +671,13 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
       .SUM_LATENCY_PER_TRANSACTION_HWPE(SUM_LATENCY_PER_TRANSACTION_HWPE),
       .SUM_LATENCY_PER_TRANSACTION_LOG(SUM_LATENCY_PER_TRANSACTION_LOG)
   );
+  //-------------------------------------------------------------------------------------------------------------------------------
+  //-                                                           Other                                                             -
+  //-------------------------------------------------------------------------------------------------------------------------------
 
-  //----------------------------------------
-  //-         END OF SIMULATION            -
-  //----------------------------------------
+  ///////////////////////
+  // END OF SIMULATION //
+  ///////////////////////
   end_simulation_and_final_report #(
     .TOT_CHECK(TOT_CHECK),
     .N_CORE(N_CORE),
@@ -691,10 +701,9 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     .SUM_LATENCY_PER_TRANSACTION_HWPE(SUM_LATENCY_PER_TRANSACTION_HWPE)
   );  
 
-  //------------------------------------------------
-  //    PROGRESS BAR (10% 20% 30% ... 100%)        -
-  //------------------------------------------------
-
+  /////////////////////////////////////////
+  // PROGRESS BAR (10% 20% 30% ... 100%) //
+  /////////////////////////////////////////
   progress_bar #(
     .TOT_CHECK(TOT_CHECK)
   ) i_progress_bar(
@@ -702,13 +711,21 @@ logic                  already_checked_read[N_HWPE] = '{default: 0};
     .n_checks(n_checks)
   );
   
-  //--------------------------------------------------------------------------------------------------------------------------------------------------------------
-  //--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-  //-----------------------------------
-  //-        ASSERTIONS               -
-  //-----------------------------------
-  //Assertions
+  /////////////////////
+  // CLOCK AND RESET //
+  /////////////////////
+  clk_rst_gen_prova #(
+      .ClkPeriod   (CLK_PERIOD),
+      .RstClkCycles(RST_CLK_CYCLES)
+  ) i_clk_rst_gen (
+      .clk_o (clk),
+      .rst_no(rst_n)
+  );
+
+  ////////////////
+  // ASSERTIONS //
+  ////////////////
   generate
     for(genvar ii=0;ii<N_HWPE;ii++) begin
       input_hwpe_add: assert property (@(posedge clk) (manipulate_add(hwpe_intc[ii].add) <= TOT_MEM_SIZE*1000/N_BANKS-WIDTH_OF_MEMORY_BYTE))
