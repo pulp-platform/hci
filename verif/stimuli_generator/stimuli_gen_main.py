@@ -181,28 +181,28 @@ for n in range(N_MASTER):
             continue
         else:
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n) #create the instance "master" from the class "stimuli generator"
             config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     elif n < N_CORE + N_DMA:
         if DMA_ZERO_FLAG:
             continue
         else:
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n) #create the instance "master" from the class "stimuli generator"
             config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     elif n < N_CORE + N_DMA + N_EXT:
         if EXT_ZERO_FLAG:
             continue
         else:
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_log_{n}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n,0,HWPE_WIDTH) #create the instance "master" from the class "stimuli generator"
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_LOG,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_LOG,n) #create the instance "master" from the class "stimuli generator"
             config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_log")[n:n+7]
     else:
         if HWPE_ZERO_FLAG:
             continue
         else:
             filepath = os.path.abspath(os.path.join(code_directory, "../../verif/simvectors/stimuli_raw/" + f"master_hwpe_{n-(N_MASTER-N_HWPE)}.txt"))
-            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,HWPE_WIDTH*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_HWPE,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_HWPE,n,1,HWPE_WIDTH) # wide word for the hwpe
+            master = stimuli_generator(IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,HWPE_WIDTH*DATA_WIDTH,ADD_WIDTH,filepath,N_TEST_HWPE,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET_HWPE,n) # wide word for the hwpe
             config, start_address, stride0, len_d0, stride1, len_d1, stride2 = getattr(args,"master_hwpe")[n-(N_MASTER-N_HWPE):n-(N_MASTER-N_HWPE)+7]
     stride0 = int(stride0)
     len_d0 = int(len_d0)

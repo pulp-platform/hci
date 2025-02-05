@@ -2,8 +2,7 @@
 #   STIMULI GENERATOR CLASS     # 
 #################################
 # 
-# This file provides a detailed description of the class stimuli_generator used in the 
-# main application file `masters_main.py`.
+# Class stimuli_generator used in the main python code `masters_main.py`.
 # 
 # METHODS OVERVIEW:
 # -random_gen: random data and RANDOM address computation
@@ -14,7 +13,7 @@ import numpy as np
 import os
 
 class stimuli_generator:
-    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET,MASTER_NUMBER_IDENTIFICATION,IS_HWPE,HWPE_WIDTH):
+    def __init__(self,IW,WIDTH_OF_MEMORY,N_BANKS,TOT_MEM_SIZE,DATA_WIDTH,ADD_WIDTH,filepath,N_TEST,EXACT_OR_MAX_OFFSET,CYCLE_OFFSET,MASTER_NUMBER_IDENTIFICATION):
         self.WIDTH_OF_MEMORY = WIDTH_OF_MEMORY
         self.WIDTH_OF_MEMORY_BYTE = int(WIDTH_OF_MEMORY/8)
         self.N_BANKS = N_BANKS
@@ -28,23 +27,12 @@ class stimuli_generator:
         self.CYCLE_OFFSET = CYCLE_OFFSET
         self.IW = IW
         self.MASTER_NUMBER_IDENTIFICATION = MASTER_NUMBER_IDENTIFICATION
-        self.IS_HWPE = IS_HWPE
-        self.HWPE_WIDTH = HWPE_WIDTH
     
     def random_data(self):
         data_decimal = random.randint(0, (2**(self.DATA_WIDTH))-1) # generate random data
         data = bin(data_decimal)[2:].zfill(self.DATA_WIDTH)
         return data
     
-    def data_for_read_transaction(self):
-        data_decimal = self.MASTER_NUMBER_IDENTIFICATION
-        if self.IS_HWPE:
-            data = bin(data_decimal)[2:].zfill(int(self.DATA_WIDTH/self.HWPE_WIDTH))
-            data = self.HWPE_WIDTH*data
-        else:
-            data = bin(data_decimal)[2:].zfill(self.DATA_WIDTH)
-        return data
-
     def data_wen_offset(self):
         wen = random.randint(0,1) # write enable signal (1 = read, 0 = write)
         if (self.EXACT_OR_MAX_OFFSET):
@@ -52,7 +40,7 @@ class stimuli_generator:
         else:
             cycle_offset = self.CYCLE_OFFSET 
         if wen:
-            data = self.data_for_read_transaction()
+            data = "0" * self.DATA_WIDTH
         else:
             data = self.random_data()
         return data, wen, cycle_offset
