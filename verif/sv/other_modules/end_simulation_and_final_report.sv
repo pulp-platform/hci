@@ -42,7 +42,7 @@ import verification_hci_package::calculate_average_latency;
     $display("expected n_check = %0d",TOT_CHECK);
     $display("note: each hwpe transaction consists of HWPE_WIDTH=%0d checks \n",HWPE_WIDTH);
     if(WARNING) begin
-      $display("WARNING: Unnecessary spourious writes are occuring when the HWPE's wide word is written to the banks.\n");
+      $display("** WARNING **: Unnecessary spourious writes are occuring when the HWPE's wide word is written to the banks.");
       $display("The interconnect still works correctly, but this could be an unintended behaviour.\n");
     end
 

@@ -94,7 +94,11 @@ module hci_tb
       .UW(HCI_SIZE_mems.UW),
       .IW(HCI_SIZE_mems.IW),
       .EW(HCI_SIZE_mems.EW),
-      .EHW(HCI_SIZE_mems.EHW)
+      .EHW(HCI_SIZE_mems.EHW),
+      .WAIVE_RQ3_ASSERT(1'b1),
+      .WAIVE_RQ4_ASSERT(1'b1),
+      .WAIVE_RSP3_ASSERT(1'b1),
+      .WAIVE_RSP5_ASSERT(1'b1)
     ) intc_mem_wiring [0:N_BANKS-1] (
       .clk(clk)
     );
