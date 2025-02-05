@@ -151,9 +151,32 @@ module hci_tb
   //-------------------------------------------------
   //-              APPLICATION DRIVERS              -
   //-------------------------------------------------
-
   logic [0:N_MASTER-1]         END_STIMULI = '0;
   logic [0:N_MASTER-1]         END_LATENCY = '0;
+  // Drivers connections
+    hci_core_intf #(
+      .DW(HCI_SIZE_hwpe.DW),
+      .AW(HCI_SIZE_hwpe.AW),
+      .BW(HCI_SIZE_hwpe.BW),
+      .UW(HCI_SIZE_hwpe.UW),
+      .IW(HCI_SIZE_hwpe.IW),
+      .EW(HCI_SIZE_hwpe.EW),
+      .EHW(HCI_SIZE_hwpe.EHW)
+    ) drivers_hwpe [0:N_HWPE-1] (
+      .clk(clk)
+    );
+
+  hci_core_intf #(
+      .DW(HCI_SIZE_cores.DW),
+      .AW(HCI_SIZE_cores.AW),
+      .BW(HCI_SIZE_cores.BW),
+      .UW(HCI_SIZE_cores.UW),
+      .IW(HCI_SIZE_cores.IW),
+      .EW(HCI_SIZE_cores.EW),
+      .EHW(HCI_SIZE_cores.EHW)
+  ) drivers_log [0:N_MASTER-N_HWPE-1] (
+      .clk(clk)
+    );
   // CORES + DMA + EXT
   generate
     for(genvar ii=0; ii < N_MASTER - N_HWPE ; ii++) begin: app_driver_log
@@ -165,7 +188,7 @@ module hci_tb
         .APPL_DELAY(APPL_DELAY), //delay on the input signals
         .IW(IW)
       ) app_driver (
-        .master(all_except_hwpe[ii]),
+        .master(drivers_log[ii]),
         .rst_ni(rst_n),
         .clear_i(clear_i),
         .clk(clk),
@@ -186,12 +209,40 @@ module hci_tb
         .APPL_DELAY(APPL_DELAY), //delay on the input signals
         .IW(IW)
       ) app_driver_hwpe (
-          .master(hwpe_intc[ii]),
+          .master(drivers_hwpe[ii]),
           .rst_ni(rst_n),
           .clear_i(clear_i),
           .clk(clk),
           .end_stimuli(END_STIMULI[N_MASTER-N_HWPE+ii]),
           .end_latency(END_LATENCY[N_MASTER-N_HWPE+ii])
+      );
+    end
+  endgenerate
+
+  //-------------------------------------------------
+  //-           INITIATORS-HCI BOUNDING             -  
+  //-------------------------------------------------
+
+  generate
+    for(genvar ii=0; ii < N_MASTER - N_HWPE ; ii++) begin: bounding_log_hci
+      assign_drivers_to_logbranch #(
+          .DRIVER_ID(ii)
+      ) i_assign_drivers_to_logbranch (
+          .driver_target(drivers_log[ii]),
+          .hci_initiator(all_except_hwpe[ii])
+      );
+    end
+  endgenerate
+
+  generate
+    for(genvar ii=0; ii < N_HWPE ; ii++) begin: bounding_hwpe_hci
+      assign_drivers_to_hwpebranch #(
+          .DRIVER_ID(ii+N_MASTER-N_HWPE),
+          .HWPE_WIDTH(HWPE_WIDTH),
+          .DATA_WIDTH_CORE(DATA_WIDTH)
+      ) i_assign_drivers_to_hwpebranch (
+          .driver_target(drivers_hwpe[ii]),
+          .hci_initiator(hwpe_intc[ii])
       );
     end
   endgenerate

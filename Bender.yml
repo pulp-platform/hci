@@ -79,6 +79,8 @@ sources:
           - verif/sv/other_modules/tcdm_banks_wrap.sv
           - verif/sv/other_modules/end_simulation_and_final_report.sv
           - verif/sv/other_modules/progress_bar.sv
+          - verif/sv/other_modules/assign_drivers_to_hwpebranch.sv
+          - verif/sv/other_modules/assign_drivers_to_logbranch.sv
       - target: test
         files:
           # Level 2
