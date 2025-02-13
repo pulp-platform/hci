@@ -100,6 +100,7 @@ module hci_core_r_id_filter
         id_q <= tcdm_target.id;
       end
     end
+  end
 
   /*
   * ECC Handshake signals
@@ -117,21 +118,6 @@ module hci_core_r_id_filter
       assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1 
     end
 
-    /*
-    * The hci_core_r_id_filter works *only* if it is positioned at the 1-cycle latency boundary, i.e.,
-    * the boundary in a cluster where we are guaranteed that a grant on a read results in a response in
-    * the following cycle. Positioning it in another place results in hard-to-debug problems, typically
-    * showing up as r_valid's never being taken or being served to the wrong initiator by a OoO mux or a
-    * dynamic mux.
-    * These asserts try to avoid this scenario!
-    */
-    `ifndef SYNTHESIS
-    `ifndef VERILATOR
-      // gnt=1 & wen=1 => the following cycle r_valid=1
-      property p_gnt_wen_high_then_r_valid_high_next_cycle;
-        @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
-      endproperty
-
 /*
  * The hci_core_r_id_filter works *only* if it is positioned at the 1-cycle latency boundary, i.e.,
  * the boundary in a cluster where we are guaranteed that a grant on a read results in a response in
@@ -148,10 +134,8 @@ module hci_core_r_id_filter
     @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
   endproperty
 
-  // gnt=0 => the following cycle r_valid=0
-  property p_gnt_low_then_r_valid_low_next_cycle;
-    @(posedge clk_i) (!tcdm_initiator.gnt) |-> ##1 !tcdm_initiator.r_valid;
-  endproperty
+  assert_gnt_wen_high_then_r_valid_high_next_cycle: assert property (p_gnt_wen_high_then_r_valid_high_next_cycle)
+    else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
 
   // gnt=0 => the following cycle r_valid=0
   property p_gnt_low_then_r_valid_low_next_cycle;
@@ -163,6 +147,7 @@ module hci_core_r_id_filter
 `endif
 `endif
 `endif
+
 
 /*
  * Interface size asserts
@@ -186,6 +171,6 @@ module hci_core_r_id_filter
   `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
 `endif
 `endif
-`endif;
+`endif
 
 endmodule : hci_core_r_id_filter
