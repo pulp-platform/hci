@@ -3,11 +3,23 @@
 #################################
 # 
 # Class stimuli_generator used in the main python code `masters_main.py`.
-# 
-# METHODS OVERVIEW:
+#
+# ---------------METHODS OVERVIEW------------------
+#
+# 1) METHODS RELATED TO MEM ACCESS PATTERN GENERATION:
 # -random_gen: random data and RANDOM address computation
 # -linear_gen: random data and LINEAR address computation
-
+# -gen_2d: random data and 2D address computation
+# -gen_3d: random data and 3D address computation
+#
+# 2) METHODS RELATED TO DATA GENERATION:
+# -random_data: generate random data
+# -data_wen_offset: generate random data, write enable signal and cycle offset
+#
+# 3) INITIALIZATION:
+# -__init__: initialize the class
+#
+# ------------------------------------------------
 import random
 import numpy as np
 import os
