@@ -10,11 +10,23 @@
 # to emulate the behaviour of a multi-master system
 #
 # USAGE GUIDE:
+# Run the command 'python stimuli_gen_main.py', specifying the necessary arguments
+# 1) Specify the software and hardware parameters used to generate the stimuli with the argument --sim_and_hardware_params, in the following order:  
+#    - N_BANKS
+#    - TOT_MEM_SIZE
+#    - DATA_WIDTH
+#    - N_CORE
+#    - N_DMA
+#    - N_EXT
+#    - N_HWPE
+#    - HWPE_WIDTH
+#    - TEST_RATIO
+#    - N_TEST_LOG
+#    - CYCLE_OFFSET_LOG
+#    - CYCLE_OFFSET_HWPE
+#    - EXACT_OR_MAX_OFFSET
 # 
-# 1) Set the correct parameters in the files hci_params.py and sim_params.py
-# 
-# 2) Run the command 'python stimuli_gen_main.py', specifying the necessary arguments.
-# Each argument is used to define the memory access type of a master, in particular it is possible to specify:
+# 2) Each --master_log and --master_hwpe argument is used to define the memory access type of a master, in particular it is possible to specify:
 #   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D)
 #   - Starting address in binary (required for linear, 2D, and 3D accesses)
 #   - Stride0 (required for linear, 2D, and 3D accesses)
@@ -22,24 +34,27 @@
 #   - Stride1 (required for 2D and 3D accesses)
 #   - Len_d1 (required for 3D accesses)
 #   - Stride2 (required for 3D accesses)
-# note: There is no need to specify the "outer" length for linear, 2D, and 3D accesses,
-# as the program will automatically stop once the specified `N_TEST` vectors are reached.
+#   note: There is no need to specify the "outer" length for linear, 2D, and 3D accesses,
+#   as the program will automatically stop once the specified `N_TEST` number of vectors is reached.
 # 
 # For the masters in the logarithmic branch, use --master_log0 --master_log1 --master_log2 ecc...
-# The first arguments are used for the cores, then dma and ext.
+# The first arguments are used for the COREs, followed by DMA and EXT, in order and depending on the number of cores, DMAs, and EXT specified with --sim_and_hardware_params.
 # For the masters in the hwpe branch (shallow interconnect), use --master_hwpe0 --master_hwpe1 ecc...
 #
 # EXAMPLE:
-# N_CORE = 1, N_DMA = 0, N_EXT = 1
-# python stimuli_gen_main.py --master_log0 0, --master_log1 1 0101001 2 --master_hwpe1 2 1100100 2 3 10
-# Running the script with these arguments will produce 3 .txt file, each containing:
-# - stimuli with random memory access pattern (CORE)
-# - stimuli with linear memory access pattern, starting address 0101001 and stride0 = 2 (EXT)
-# - stimuli with a 2D memory access pattern, starting address 1100100, stride0 = 2, led_d0 = 3, stride2 = 2 (HWPE)
+# Parameters:      N_BANKS = 8, TOT_MEM_SIZE = 32, DATA_WIDTH = 32, N_CORE = 1, N_DMA = 0, N_EXT = 1, N_HWPE = 1, 
+#                  HWPE_WIDTH = 4, TEST_RATIO = 2, N_TEST_LOG = 1000, CYCLE_OFFSET_LOG = 3, CYCLE_OFFSET_HWPE = 4, EXACT_OR_MAX_OFFSET = 1
+# 
+# Command:         python stimuli_gen_main.py --sim_and_hardware_params 8 32 32 1 0 1 1 4 2 1000 3 4 1 --master_log0 0 0101001 2 --master_hwpe0 2 1100100 2 3 10
+# 
+# Result:          The code will generate the following .txt files in the folder verif/simvectors/stimuli_processed:
+#                   - stimuli with random memory access pattern (CORE)
+#                   - stimuli with linear memory access pattern, starting address 0101001 and stride0 = 2 (EXT)
+#                   - stimuli with a 2D memory access pattern, starting address 1100100, stride0 = 2, led_d0 = 3, stride2 = 2 (HWPE)
 #
 # "MAKE" YOUR LIFE EASIER:
 # You can also use the makefile to configure the verification setup and automatically generate the correct stimuli for the most common scenarios. Otherwise, if a finer
-# and more specific simulation is needed, you can manually invoke this script.
+# and more specific simulation is needed, you can manually invoke this script following the previous steps.
 
 ### LIBRARIES AND DEPENDENCIES ###
 import random
@@ -67,12 +82,13 @@ parser.add_argument(f'--sim_and_hardware_params', nargs='+', default=[], require
                                                                                                                 "   - N_CORE \n"
                                                                                                                 "   - N_DMA \n"
                                                                                                                 "   - N_EXT \n"
-                                                                                                                "   - N_LOG \n"
                                                                                                                 "   - N_HWPE\n"
                                                                                                                 "   - HWPE_WIDTH\n"
                                                                                                                 "   - TEST_RATIO\n"
                                                                                                                 "   - N_TEST_LOG\n"
-                                                                                                                "   - CYCLE_OFFSET")
+                                                                                                                "   - CYCLE_OFFSET_LOG\n"
+                                                                                                                "   - CYCLE_OFFSET_HWPE\n"
+                                                                                                                "   - EXACT_OR_MAX_OFFSET")
 
 parser.add_argument(f'--master_log', nargs='*', default=[], action="extend", help=f"Specify the parameters for memory access related to masters in log branch:\n"
                                                                                             "   - Memory access type: 0 (random), 1 (linear), 2 (2D), 3 (3D) \n"

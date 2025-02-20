@@ -2,10 +2,7 @@
  * tb_top.sv
  *
  * Luca Codeluppi <lcodelupp@student.ethz.ch>
- * Francesco Conti <f.conti@unibo.it>
- * Tobias Riedener <tobiasri@student.ethz.ch>
- * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
- * Sergio Mazzolla <smazzolla@iis.ee.ethz.ch>
+ *
  *
  * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
@@ -19,7 +16,7 @@
  */
 
  /**
-   Top-level module for a comprehensive and exhaustive HCI verification enviroment, including QoS measurement 
+   Top-level module of a comprehensive and exhaustive HCI verification enviroment, including QoS measurement 
  **/
 
 `include "hci_helpers.svh"
