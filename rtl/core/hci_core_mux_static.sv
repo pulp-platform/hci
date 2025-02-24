@@ -69,11 +69,11 @@ module hci_core_mux_static
     logic        [NB_CHAN-1:0]                    in_wen;
     logic        [NB_CHAN-1:0][DW-1:0]            in_data;
     logic        [NB_CHAN-1:0][DW/BW-1:0]         in_be;
-    logic        [NB_CHAN-1:0][UW-1:0]            in_user;
-    logic        [NB_CHAN-1:0][IW-1:0]            in_id;
-    logic        [NB_CHAN-1:0][EW-1:0]            in_ecc;
-    logic        [NB_CHAN-1:0][EHW-1:0]           in_egnt;
-    logic        [NB_CHAN-1:0][EHW-1:0]           in_r_evalid;
+    logic        [NB_CHAN-1:0][hci_package::iomsb(UW):0]            in_user;
+    logic        [NB_CHAN-1:0][hci_package::iomsb(IW):0]            in_id;
+    logic        [NB_CHAN-1:0][hci_package::iomsb(EW):0]            in_ecc;
+    logic        [NB_CHAN-1:0][hci_package::iomsb(EHW):0]           in_egnt;
+    logic        [NB_CHAN-1:0][hci_package::iomsb(EHW):0]           in_r_evalid;
 
     for(genvar ii=0; ii<NB_CHAN; ii++) begin: tcdm_binding
 

@@ -258,13 +258,13 @@ module hci_core_fifo
   assign tcdm_target.gnt = stream_outgoing_push.ready;
 
   logic [AW+UW+IW+EW+DW+DW/BW+1-1:0] stream_outgoing_pop_data;
-  assign stream_outgoing_pop_data = stream_outgoing_pop.data; 
+  assign stream_outgoing_pop_data = stream_outgoing_pop.data;
 
   logic [AW-1:0]    tcdm_initiator_add;
   logic [DW-1:0]    tcdm_initiator_data;
-  logic [UW-1:0]    tcdm_initiator_user;
-  logic [IW-1:0]    tcdm_initiator_id;
-  logic [EW-1:0]    tcdm_initiator_ecc;
+  logic [hci_package::iomsb(UW):0]    tcdm_initiator_user;
+  logic [hci_package::iomsb(IW):0]    tcdm_initiator_id;
+  logic [hci_package::iomsb(EW):0]    tcdm_initiator_ecc;
   logic [DW/BW-1:0] tcdm_initiator_be;
   logic             tcdm_initiator_wen;
   assign tcdm_initiator.add  = tcdm_initiator_add;
