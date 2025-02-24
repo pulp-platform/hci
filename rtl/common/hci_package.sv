@@ -15,12 +15,17 @@
 
 package hci_package;
 
-  parameter int unsigned DEFAULT_DW  = 32; // Default Data Width
-  parameter int unsigned DEFAULT_AW  = 32; // Default Address Width
-  parameter int unsigned DEFAULT_BW  = 8;  // Default Byte Width
-  parameter int unsigned DEFAULT_UW  = 1;  // Default User Width
-  parameter int unsigned DEFAULT_IW  = 8;  // Default ID Width
-  parameter int unsigned DEFAULT_EW  = 1;  // Default ECC for Data Width
+  // Return either the argument minus 1 or 0 if 0; useful for IO vector width declaration
+  function automatic integer unsigned iomsb(input integer unsigned width);
+    return (width != 32'd0) ? unsigned'(width - 1) : 32'd0;
+  endfunction
+
+  parameter int unsigned DEFAULT_DW = 32;  // Default Data Width
+  parameter int unsigned DEFAULT_AW = 32;  // Default Address Width
+  parameter int unsigned DEFAULT_BW = 8;  // Default Byte Width
+  parameter int unsigned DEFAULT_UW = 1;  // Default User Width
+  parameter int unsigned DEFAULT_IW = 8;  // Default ID Width
+  parameter int unsigned DEFAULT_EW = 1;  // Default ECC for Data Width
   parameter int unsigned DEFAULT_EHW = 1;  // Default ECC for Handhshake Width
 
   typedef struct packed {

@@ -26,6 +26,9 @@
 interface hci_core_intf (
   input logic clk
 );
+
+  import hci_package::*;
+
 `ifndef SYNTHESIS
   parameter bit WAIVE_RQ3_ASSERT  = 1'b0;
   parameter bit WAIVE_RQ4_ASSERT  = 1'b0;
@@ -52,24 +55,24 @@ interface hci_core_intf (
   logic             wen; // wen=1'b1 for LOAD, wen=1'b0 for STORE
   logic [DW-1:0]    data;
   logic [DW/BW-1:0] be;
-  logic [UW-1:0]    user;
-  logic [IW-1:0]    id;
+  logic [hci_package::iomsb(UW):0]    user;
+  logic [hci_package::iomsb(IW):0]    id;
 
   // response phase payload
   logic [DW-1:0] r_data;
-  logic [UW-1:0] r_user;
-  logic [IW-1:0] r_id;
+  logic [hci_package::iomsb(UW):0] r_user;
+  logic [hci_package::iomsb(IW):0] r_id;
   logic          r_opc;
 
   // data ECC signals
-  logic [EW-1:0] ecc;
-  logic [EW-1:0] r_ecc;
+  logic [hci_package::iomsb(EW):0] ecc;
+  logic [hci_package::iomsb(EW):0] r_ecc;
 
   // handshake ECC signals
-  logic [EHW-1:0] ereq;
-  logic [EHW-1:0] egnt;
-  logic [EHW-1:0] r_evalid;
-  logic [EHW-1:0] r_eready;
+  logic [hci_package::iomsb(EHW):0] ereq;
+  logic [hci_package::iomsb(EHW):0] egnt;
+  logic [hci_package::iomsb(EHW):0] r_evalid;
+  logic [hci_package::iomsb(EHW):0] r_eready;
 
   modport initiator (
     output req,
@@ -154,7 +157,7 @@ interface hci_core_intf (
   property hci_rq3_stability_rule;
     @(posedge clk_assert)
     ($past(req) & ~($past(req) & $past(gnt))) |-> (
-      (data == $past(data)) && 
+      (data == $past(data)) &&
       (add  == $past(add))  &&
       (wen  == $past(wen))  &&
       (be   == $past(be))   &&
@@ -174,7 +177,7 @@ interface hci_core_intf (
   property hci_rsp3_stability_rule;
     @(posedge clk_assert)
     ($past(r_valid) & ~($past(r_valid) & $past(r_ready))) |-> (
-      (r_data == $past(r_data)) && 
+      (r_data == $past(r_data)) &&
       (r_user == $past(r_user)) &&
       (r_ecc  == $past(r_ecc))  &&
       (r_id   == $past(r_id))
@@ -226,23 +229,23 @@ interface hci_mem_intf (
   logic             wen;   // wen=1'b1 for LOAD, wen=1'b0 for STORE
   logic [DW-1:0]    data;
   logic [DW/BW-1:0] be;
-  logic [IW-1:0]    id;
-  logic [UW-1:0]    user;
+  logic [hci_package::iomsb(IW):0]    id;
+  logic [hci_package::iomsb(UW):0]    user;
 
   // response phase payload
   logic [DW-1:0] r_data;
-  logic [IW-1:0] r_id;
-  logic [UW-1:0] r_user;
+  logic [hci_package::iomsb(IW):0] r_id;
+  logic [hci_package::iomsb(UW):0] r_user;
 
   // data ECC signals
-  logic [EW-1:0] ecc;
-  logic [EW-1:0] r_ecc;
+  logic [hci_package::iomsb(EW):0] ecc;
+  logic [hci_package::iomsb(EW):0] r_ecc;
 
   // handshake ECC signals
-  logic [EHW-1:0] ereq;
-  logic [EHW-1:0] egnt;
-  logic [EHW-1:0] r_evalid;
-  logic [EHW-1:0] r_eready;
+  logic [hci_package::iomsb(EHW):0] ereq;
+  logic [hci_package::iomsb(EHW):0] egnt;
+  logic [hci_package::iomsb(EHW):0] r_evalid;
+  logic [hci_package::iomsb(EHW):0] r_eready;
 
   modport initiator (
     output req,
