@@ -2,26 +2,26 @@ module end_simulation_and_final_report
 import verification_hci_package::calculate_theoretical_throughput;
 import verification_hci_package::calculate_average_latency;
 #(
-    parameter int unsigned TOT_CHECK = 1,
-    parameter int unsigned N_CORE = 1,
-    parameter int unsigned N_CORE_REAL = 1,
-    parameter int unsigned N_DMA = 1,
-    parameter int unsigned N_DMA_REAL = 1,
-    parameter int unsigned N_EXT_REAL = 1,
-    parameter int unsigned N_MASTER = 1,
-    parameter int unsigned N_MASTER_REAL = 1,
-    parameter int unsigned N_HWPE = 1,
-    parameter int unsigned N_HWPE_REAL = 1,
-    parameter int unsigned HWPE_WIDTH = 4
+  parameter int unsigned TOT_CHECK = 1,
+  parameter int unsigned N_CORE = 1,
+  parameter int unsigned N_CORE_REAL = 1,
+  parameter int unsigned N_DMA = 1,
+  parameter int unsigned N_DMA_REAL = 1,
+  parameter int unsigned N_EXT_REAL = 1,
+  parameter int unsigned N_MASTER = 1,
+  parameter int unsigned N_MASTER_REAL = 1,
+  parameter int unsigned N_HWPE = 1,
+  parameter int unsigned N_HWPE_REAL = 1,
+  parameter int unsigned HWPE_WIDTH = 4
 ) (
-    input int unsigned        n_checks,
-    input int unsigned        n_correct,
-    input logic               WARNING,
-    input real                troughput_real,
-    input real                tot_latency,
-    input real                latency_per_master[N_MASTER],
-    input real                SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE],
-    input real                SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]
+  input int unsigned n_checks,
+  input int unsigned n_correct,
+  input logic        WARNING,
+  input real         troughput_real,
+  input real         tot_latency,
+  input real         latency_per_master[N_MASTER],
+  input real         SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE],
+  input real         SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE]
 
 );  
   

@@ -1,12 +1,12 @@
 module assign_drivers_to_hwpebranch
   import hci_package::*;
 #(
-    parameter int unsigned     DRIVER_ID = 1,
-    parameter int unsigned     HWPE_WIDTH = 4,
-    parameter int unsigned     DATA_WIDTH_CORE = 32
+  parameter int unsigned     DRIVER_ID = 1,
+  parameter int unsigned     HWPE_WIDTH = 4,
+  parameter int unsigned     DATA_WIDTH_CORE = 32
 )(
-    hci_core_intf.target       driver_target,
-    hci_core_intf.initiator    hci_initiator
+  hci_core_intf.target       driver_target,
+  hci_core_intf.initiator    hci_initiator
 );
 
   localparam logic[DATA_WIDTH_CORE-1:0] DRIVER_ID_logic = DRIVER_ID[DATA_WIDTH_CORE-1:0];

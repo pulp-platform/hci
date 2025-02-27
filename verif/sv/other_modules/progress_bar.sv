@@ -1,8 +1,8 @@
 module progress_bar #(
-    parameter int unsigned TOT_CHECK = 1
+  parameter int unsigned TOT_CHECK = 1
 ) (
-    input logic           rst_n,
-    input int unsigned    n_checks
+  input logic           rst_n,
+  input int unsigned    n_checks
 );
 
   initial begin

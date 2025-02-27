@@ -1,10 +1,10 @@
 module assign_drivers_to_logbranch
   import hci_package::*;
 #(
-    parameter int unsigned     DRIVER_ID = 1
+  parameter int unsigned     DRIVER_ID = 1
 )(
-    hci_core_intf.target       driver_target,
-    hci_core_intf.initiator    hci_initiator
+  hci_core_intf.target       driver_target,
+  hci_core_intf.initiator    hci_initiator
 );
   
   assign hci_initiator.data    = hci_initiator.wen ? DRIVER_ID : driver_target.data;

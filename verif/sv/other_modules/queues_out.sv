@@ -1,21 +1,21 @@
 module queues_out 
-    import verification_hci_package::out_intc_to_mem;
+  import verification_hci_package::out_intc_to_mem;
 #(
-    parameter int unsigned N_MASTER = 1,
-    parameter int unsigned N_HWPE = 1,
-    parameter int unsigned N_BANKS = 8,
-    parameter int unsigned DATA_WIDTH = 32,
-    parameter int unsigned AddrMemWidth = 32
+  parameter int unsigned N_MASTER = 1,
+  parameter int unsigned N_HWPE = 1,
+  parameter int unsigned N_BANKS = 8,
+  parameter int unsigned DATA_WIDTH = 32,
+  parameter int unsigned AddrMemWidth = 32
 ) (
-    hci_core_intf.target           all_except_hwpe [0:N_MASTER-N_HWPE-1],
-    hci_core_intf.target           hwpe_intc       [0:N_HWPE-1],
-    hci_core_intf.target           intc_mem_wiring [0:N_BANKS-1],
-    input logic                    rst_n,
-    input logic                    clk
+  hci_core_intf.target all_except_hwpe [0:N_MASTER-N_HWPE-1],
+  hci_core_intf.target hwpe_intc       [0:N_HWPE-1],
+  hci_core_intf.target intc_mem_wiring [0:N_BANKS-1],
+  input logic          rst_n,
+  input logic          clk
 );  
 
-  out_intc_to_mem                                 queue_out_write[N_BANKS][$];
-  out_intc_to_mem                                 queue_out_read[N_BANKS][$];
+  out_intc_to_mem queue_out_write[N_BANKS][$];
+  out_intc_to_mem queue_out_read[N_BANKS][$];
 
   // Add transactions received by each BANK to different output queues
   generate

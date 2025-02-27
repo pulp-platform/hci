@@ -20,8 +20,8 @@ package hci_package;
     return (width != 32'd0) ? unsigned'(width - 1) : 32'd0;
   endfunction
 
-  parameter int unsigned DEFAULT_DW  = `DATA_WIDTH; // Default Data Width
-  parameter int unsigned DEFAULT_AW  = $clog2(`TOT_MEM_SIZE*1024); // Default Address Width
+  parameter int unsigned DEFAULT_DW  = `ifdef DATA_WIDTH `DATA_WIDTH `else 32 `endif; // Default Data Width
+  parameter int unsigned DEFAULT_AW  = `ifdef TOT_MEM_SIZE $clog2(`TOT_MEM_SIZE*1024) `else 32 `endif; // Default Address Width
   parameter int unsigned DEFAULT_BW = 8;  // Default Byte Width
   parameter int unsigned DEFAULT_UW = 1;  // Default User Width
   parameter int unsigned DEFAULT_IW = 8;  // Default ID Width

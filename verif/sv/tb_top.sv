@@ -38,8 +38,8 @@ module hci_tb
   hci_interconnect_ctrl_t     ctrl_i;
 
   assign                      clear_i = 0;
-  assign                      ctrl_i.invert_prio = `INVERT_PRIO;
-  assign                      ctrl_i.low_prio_max_stall = `LOW_PRIO_MAX_STALL;
+  assign                      ctrl_i.invert_prio = INVERT_PRIO;
+  assign                      ctrl_i.low_prio_max_stall = LOW_PRIO_MAX_STALL;
   
   ////////////////////
   // HCI interfaces //
@@ -157,7 +157,7 @@ module hci_tb
   ) memory (
     .clk_i(clk),
     .rst_ni(rst_n),
-    .test_mode_i(),        // not used inside tcdm
+    .test_mode_i(/*unconnected*/),
     .tcdm_slave(intc_mem_wiring)
   );
 
@@ -280,8 +280,8 @@ module hci_tb
   logic [N_BANKS-1:0]           HIDE_HWPE;
   logic [N_BANKS-1:0]           HIDE_LOG;
 
-  real               SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE];
-  real               SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE];
+  real                          SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE];
+  real                          SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE];
 
   ////////////////////
   // STIMULI QUEUES //
@@ -349,7 +349,7 @@ module hci_tb
   //////////////////////////////
   // CHECK WRITE TRANSACTIONS //
   //////////////////////////////
-  logic                         WARNING = 1'b0;
+  logic                  WARNING = 1'b0;
   static logic           already_checked[N_HWPE] = '{default: 0};
   static logic           STOP_CHECK = 0;
 
@@ -646,9 +646,9 @@ module hci_tb
   ////////////////////////////////////////
   // REAL TROUGHPUT AND SIMULATION TIME //
   ////////////////////////////////////////
-  real                 latency_per_master[N_MASTER];
-  real                 troughput_real;
-  real                 tot_latency;
+  real latency_per_master[N_MASTER];
+  real troughput_real;
+  real tot_latency;
 
   compute_througput_and_simtime #(
     .N_MASTER(N_MASTER),

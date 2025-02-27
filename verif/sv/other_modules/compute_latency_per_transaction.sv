@@ -1,20 +1,19 @@
 module compute_latency_per_transaction #(
-    parameter int unsigned N_MASTER = 4,
-    parameter int unsigned N_HWPE = 1
+  parameter int unsigned N_MASTER = 4,
+  parameter int unsigned N_HWPE = 1
 ) (
-    hci_core_intf.target           all_except_hwpe [0:N_MASTER-N_HWPE-1],
-    hci_core_intf.target           hwpe_intc [0:N_HWPE-1],
-    input logic                    rst_n,
-    input logic                    clk,
-    output real                    SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE],
-    output real                    SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]
-
+  hci_core_intf.target all_except_hwpe [0:N_MASTER-N_HWPE-1],
+  hci_core_intf.target hwpe_intc [0:N_HWPE-1],
+  input logic          rst_n,
+  input logic          clk,
+  output real          SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE],
+  output real          SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]
 );  
 
-
-  localparam int unsigned MAX_CYCLES_BETWEEN_GNT_RVALID             = `MAX_CYCLES_BETWEEN_GNT_RVALID + 2            ; // Maximum expected number of cycles between the gnt signal and the r_valid signal
-  static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0]     START_COMPUTE_LATENCY;
-  static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0]     FINISH_COMPUTE_LATENCY;
+  localparam int unsigned MAX_CYCLES_BETWEEN_GNT_RVALID = `ifdef MAX_CYCLES_BETWEEN_GNT_RVALID `MAX_CYCLES_BETWEEN_GNT_RVALID + 2 `else 3; // Maximum expected number of cycles between the gnt signal and the r_valid signal
+  
+  static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0] START_COMPUTE_LATENCY;
+  static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0] FINISH_COMPUTE_LATENCY;
 
   generate
     for(genvar test=0;test<MAX_CYCLES_BETWEEN_GNT_RVALID-1;test++) begin

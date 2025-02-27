@@ -17,7 +17,7 @@
  */
 
 module tcdm_banks_wrap #(
-  parameter int unsigned BankSize  = 256,         //- -> OVERRIDE
+  parameter int unsigned BankSize  = 256,         // --> OVERRIDE
   parameter int unsigned NbBanks   = 1,           // --> OVERRIDE
   parameter int unsigned DataWidth = 32,
   parameter int unsigned AddrWidth = 32,
@@ -30,7 +30,7 @@ module tcdm_banks_wrap #(
 
   hci_core_intf.target tcdm_slave[0:NbBanks-1]
 );
-   
+   localparam int unsigned RANDOM_GNT = `ifdef RANDOM_GNT `RANDOM_GNT `else 0;
 
   for(genvar i=0; i<NbBanks; i++) begin : banks_gen
 
@@ -47,23 +47,20 @@ module tcdm_banks_wrap #(
       end
     end
 
-    //gnt
-    if (`RANDOM_GNT == 1) begin
-      // random generation of gnt signal
+    // gnt
+    if (RANDOM_GNT == 1) begin
       always_ff @(posedge clk_i or negedge rst_ni) begin : gnt_gen
         if(~rst_ni) begin
-          tcdm_slave[i].gnt    <=  1'b1;
+          tcdm_slave[i].gnt <= 1'b1;
         end else begin
           tcdm_slave[i].gnt <= $urandom;
         end
       end
     end else begin 
-      //gnt signal assigned to 1
       assign tcdm_slave[i].gnt    =  1'b1;
     end
 
-
-
+    //sram
     tc_sram #(
       .NumWords   (BankSize ), // Number of Words in data array
       .DataWidth  (DataWidth), // Data signal width
@@ -88,13 +85,12 @@ module tcdm_banks_wrap #(
     //r_valid
     always_ff @(posedge clk_i or negedge rst_ni) begin : rvalid_gen
       if(~rst_ni) begin
-        tcdm_slave[i].r_valid    <=  1'b0;
+        tcdm_slave[i].r_valid <= 1'b0;
       end else begin
         if(tcdm_slave[i].req && tcdm_slave[i].gnt && tcdm_slave[i].wen) begin
           tcdm_slave[i].r_valid <= 1'b1;
         end else begin
           tcdm_slave[i].r_valid <= 1'b0;
-
       end
     end
     end

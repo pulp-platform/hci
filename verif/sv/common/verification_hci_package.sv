@@ -38,13 +38,13 @@ package verification_hci_package;
   localparam int unsigned FILTER_WRITE_R_VALID = '0;
 
   localparam int unsigned ARBITER_MODE         = (`ifdef PRIORITY_CHECK_MODE_ONE `PRIORITY_CHECK_MODE_ONE `else 0 == 1) ? 1 : 0          ;// Choosen mode for the arbiter
-
+  localparam int unsigned INVERT_PRIO          = `ifdef INVERT_PRIO `INVERT_PRIO `else 0 `endif
+  localparam int unsigned LOW_PRIO_MAX_STALL   = `ifdef LOW_PRIO_MAX_STALL `LOW_PRIO_MAX_STALL `else 3 `endif
   // Simulation parameters
   localparam int unsigned N_TRANSACTION_LOG    = `ifdef N_TRANSACTION_LOG `N_TRANSACTION_LOG `else 10 `endif;
   localparam int unsigned TRANSACTION_RATIO    = `ifdef TRANSACTION_RATIO `TRANSACTION_RATIO `else 1 `endif;
   localparam int unsigned N_TRANSACTION_HWPE   = int'(N_TRANSACTION_LOG*TRANSACTION_RATIO);
   localparam int unsigned TOT_CHECK            = N_TRANSACTION_LOG*(N_CORE_REAL + N_DMA_REAL + N_EXT_REAL)+N_HWPE_REAL*N_TRANSACTION_HWPE*HWPE_WIDTH;
-
 
   ////////////////////////
   //STRUCT              //

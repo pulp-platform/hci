@@ -1,20 +1,20 @@
 module compute_througput_and_simtime #(
-    parameter int unsigned         N_MASTER,
-    parameter int unsigned         N_TRANSACTION_LOG,
-    parameter int unsigned         CLK_PERIOD,
-    parameter int unsigned         DATA_WIDTH,
-    parameter int unsigned         N_MASTER_REAL,
-    parameter int unsigned         N_HWPE_REAL,
-    parameter int unsigned         N_TRANSACTION_HWPE,
-    parameter int unsigned         HWPE_WIDTH
+  parameter int unsigned N_MASTER,
+  parameter int unsigned N_TRANSACTION_LOG,
+  parameter int unsigned CLK_PERIOD,
+  parameter int unsigned DATA_WIDTH,
+  parameter int unsigned N_MASTER_REAL,
+  parameter int unsigned N_HWPE_REAL,
+  parameter int unsigned N_TRANSACTION_HWPE,
+  parameter int unsigned HWPE_WIDTH
 ) (
-    input logic [0:N_MASTER-1]     END_STIMULI,
-    input logic [0:N_MASTER-1]     END_LATENCY,
-    input logic                    rst_n,
-    input logic                    clk,
-    output real                    troughput_real,
-    output real                    tot_latency,
-    output real                    latency_per_master[N_MASTER]
+  input logic [0:N_MASTER-1] END_STIMULI,
+  input logic [0:N_MASTER-1] END_LATENCY,
+  input logic                rst_n,
+  input logic                clk,
+  output real                troughput_real,
+  output real                tot_latency,
+  output real                latency_per_master[N_MASTER]
 );  
 
 //througput
@@ -59,7 +59,6 @@ module compute_througput_and_simtime #(
       wait(&END_LATENCY);
       end_time = $time;
       tot_latency = (end_time - start_time)/CLK_PERIOD;
-
   end
 
 endmodule

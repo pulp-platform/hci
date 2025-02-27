@@ -1,22 +1,22 @@
 module queues_stimuli 
-    import verification_hci_package::stimuli;
-    import verification_hci_package::create_address_and_data_hwpe;
+  import verification_hci_package::stimuli;
+  import verification_hci_package::create_address_and_data_hwpe;
 #(
-    parameter int unsigned N_MASTER = 1,
-    parameter int unsigned N_HWPE = 1,
-    parameter int unsigned HWPE_WIDTH = 1,
-    parameter int unsigned DATA_WIDTH = 32,
-    parameter int unsigned ADD_WIDTH = 32
+  parameter int unsigned N_MASTER = 1,
+  parameter int unsigned N_HWPE = 1,
+  parameter int unsigned HWPE_WIDTH = 1,
+  parameter int unsigned DATA_WIDTH = 32,
+  parameter int unsigned ADD_WIDTH = 32
 ) (
-    hci_core_intf.target           all_except_hwpe [0:N_MASTER-N_HWPE-1],
-    hci_core_intf.target           hwpe_intc       [0:N_HWPE-1],
-    input logic                    rst_n,
-    input logic                    clk
+  hci_core_intf.target all_except_hwpe [0:N_MASTER-N_HWPE-1],
+  hci_core_intf.target hwpe_intc       [0:N_HWPE-1],
+  input logic          rst_n,
+  input logic          clk
 );  
 
-  stimuli   queue_all_except_hwpe[N_MASTER-N_HWPE][$];
-  stimuli   queue_hwpe[N_HWPE*HWPE_WIDTH][$];
-  logic     rolls_over_check[N_HWPE];
+  stimuli queue_all_except_hwpe[N_MASTER-N_HWPE][$];
+  stimuli queue_hwpe[N_HWPE*HWPE_WIDTH][$];
+  logic   rolls_over_check[N_HWPE];
 
 // Add CORES + DMA + EXT transactions to input queues
   generate
