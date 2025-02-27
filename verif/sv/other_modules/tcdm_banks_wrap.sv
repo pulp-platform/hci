@@ -47,21 +47,20 @@ module tcdm_banks_wrap #(
       end
     end
 
-
-    
-      if (`RANDOM_GNT == 1) begin
-        // random generation of gnt signal
-        always_ff @(posedge clk_i or negedge rst_ni) begin : gnt_gen
-          if(~rst_ni) begin
-            tcdm_slave[i].gnt    <=  1'b1;
-          end else begin
-            tcdm_slave[i].gnt <= $urandom;
-          end
+    //gnt
+    if (`RANDOM_GNT == 1) begin
+      // random generation of gnt signal
+      always_ff @(posedge clk_i or negedge rst_ni) begin : gnt_gen
+        if(~rst_ni) begin
+          tcdm_slave[i].gnt    <=  1'b1;
+        end else begin
+          tcdm_slave[i].gnt <= $urandom;
         end
-      end else begin 
-        //gnt signal assigned to 1
-        assign tcdm_slave[i].gnt    =  1'b1;
       end
+    end else begin 
+      //gnt signal assigned to 1
+      assign tcdm_slave[i].gnt    =  1'b1;
+    end
 
 
 
@@ -87,20 +86,6 @@ module tcdm_banks_wrap #(
     );
 
     //r_valid
-    /*initial begin : r_valid_gen
-      tcdm_slave[i].r_valid = 1'b0;
-      wait (rst_ni);
-      loop: forever begin
-        @(posedge clk_i);
-        if(tcdm_slave[i].req && tcdm_slave[i].gnt && tcdm_slave[i].wen) begin
-          $display("TIMEEEEEEE %0t, bank %0d, in the next cycle it will be generatd the valid signal", $time, i);
-          @(posedge clk_i);
-          tcdm_slave[i].r_valid = 1'b1;
-          @(posedge clk_i);
-          tcdm_slave[i].r_valid = 1'b0;
-        end
-      end
-    end*/
     always_ff @(posedge clk_i or negedge rst_ni) begin : rvalid_gen
       if(~rst_ni) begin
         tcdm_slave[i].r_valid    <=  1'b0;
@@ -113,9 +98,6 @@ module tcdm_banks_wrap #(
       end
     end
     end
-
-    //r_ready
-    assign tcdm_slave[i].r_ready = 1'b1;
   end
 
 endmodule

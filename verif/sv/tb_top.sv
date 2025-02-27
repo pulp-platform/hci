@@ -301,7 +301,7 @@ module hci_tb
 
   logic EMPTY_queue_out_read [0:N_BANKS-1];
   generate  
-    for(genvar ii=0;ii<N_BANKS;ii++) begin
+    for(genvar ii=0;ii<N_BANKS;ii++) begin : assign_empty_queue_out_read
       assign EMPTY_queue_out_read[ii] = i_queues_out.queue_out_read[ii].size() == 0 ? 1 : 0;
     end
   endgenerate
@@ -376,19 +376,15 @@ module hci_tb
 
             //STEP 3.1: Start looking in each master in the logarithmic branch
             for(int i=0;i<N_MASTER-N_HWPE;i++) begin
-
               //STEP 3.1.1: If the queue associated to a master is empty, go to the next master
               if (i_queues_stimuli.queue_all_except_hwpe[i].size() == 0) begin
                 continue;
               end
-
               //STEP 3.1.2: Compare the manipulated address, the data and the wen signal with the ones stored in the input queue
               if (recreated_queue == i_queues_stimuli.queue_all_except_hwpe[i][0]) begin
                 FOUND_IN_LOG = 1;
-
                 //STEP 3.1.2.1: Delete the first element of the queue associated with the master where we found the correspondence
                 i_queues_stimuli.queue_all_except_hwpe[i].delete(0);
-
                 //STEP 3.1.2.2: Check priority
                 if(HIDE_LOG[ii]) begin
                   $display("-----------------------------------------");
@@ -398,29 +394,23 @@ module hci_tb
                 end
               end
             end
-
             //STEP 3.2: If no correspondence was found in the log branch, start looking in the hwpe branch
             if (!FOUND_IN_LOG) begin
               //STEP 3.2.1: Start looking in each hwpe
               for(int k=0;k<N_HWPE;k++) begin
                 //STEP 3.2.1.2: Check each port
                 for(int i=0;i<HWPE_WIDTH;i++)  begin
-                  
                   //STEP 3.2.1.2.1: If the queue is empty, skip and go to the next iteration
                   if (i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH].size() == 0) begin
                     continue;
                   end
-
                   //STEP 3.2.1.2.2: Compare the manipulated address, the data and the wen signal with the ones stored in the input queue
                   if (recreated_queue == i_queues_stimuli.queue_hwpe[i+k*HWPE_WIDTH][0])  begin
                     FOUND_IN_HWPE = 1;
                     STOP_CHECK = 1;
-                    
                     //STEP 3.2.1.2.2.1: Start checking if all the ports of the HWPE are written at the same time.
                     //Since each involved bank would try to do this check, we avoid repeating the same verification multiple times by using the following if statement
-
                     if(!already_checked[k]) begin
-
                       //STEP 3.2.1.2.2.1.1: Check priority
                       if(HIDE_HWPE[ii]) begin
                         $display("-----------------------------------------");
@@ -428,10 +418,8 @@ module hci_tb
                         $display("The arbiter prioritized the HWPE branch, but it should have given priority to the LOG branch");
                         $finish();
                       end
-
                       //STEP 3.2.1.2.2.1.2: Check if all the ports of the hwpe are written at the same time in the banks
                       check_hwpe(i,ii,i_queues_stimuli.queue_hwpe[HWPE_WIDTH*k+:HWPE_WIDTH],i_queues_out.queue_out_write,NOT_ALL_WRITTEN_HWPE);
-
                       //STEP 3.2.1.2.2.1.3: If the condition 3.2.1.2.2.1.2 is met, then already_checked[k] is asserted to 1. In this way the adjacent banks will not repeat the same verification.
                       //hwpe_check[k] is also increased by one because one bank checked the k-th hwpe
                       if(!NOT_ALL_WRITTEN_HWPE) begin
@@ -441,7 +429,6 @@ module hci_tb
                         WARNING = 1'b1;
                       end
                       break;
-
                     //STEP 3.2.1.2.2.2: If already_checked[k] = 1, avoid 3.2.1.2.2.1.* and increment directly hwpe_check[k] 
                     end else begin
                       hwpe_check[k]++;
@@ -752,8 +739,8 @@ module hci_tb
   // ASSERTIONS //
   ////////////////
   generate
-    for(genvar ii=0;ii<N_HWPE;ii++) begin
-      input_hwpe_add: assert property (@(posedge clk) (manipulate_add(hwpe_intc[ii].add) <= TOT_MEM_SIZE*1000/N_BANKS-WIDTH_OF_MEMORY_BYTE))
+    for(genvar ii=0;ii<N_HWPE;ii++) begin : assert_hwpe_address
+      input_hwpe_add: assert property (@(posedge clk) (manipulate_add(hwpe_intc[ii].add) <= TOT_MEM_SIZE*1024/N_BANKS-WIDTH_OF_MEMORY_BYTE))
       else begin
         $display("-----------------------------------------");
         $display("Time %0t:    Test ***STOPPED*** \n",$time);

@@ -7,11 +7,11 @@ N_HWPE?=1
 # Width of an HWPE wide-word (as a multiple of DATA_WIDTH)
 HWPE_WIDTH?=4
 # Number of Core ports                                                  
-N_CORE?=2
+N_CORE?=0
 # Number of DMA ports                                                  
-N_DMA?=1
+N_DMA?=0
 # Number of External ports                                               
-N_EXT?=1
+N_EXT?=0
 # TEST_SET_BIT (for Log Interconnect)                   
 TS_BIT?=21
 # FIFO Depth for HWPE Interconnect                            
@@ -21,6 +21,6 @@ SEL_LIC?=0
 # Width of DATA in bits                                                
 DATA_WIDTH?=32
 # Total memory size (kB)                                               
-TOT_MEM_SIZE?=32
+TOT_MEM_SIZE?=64
 # Number of memory banks
-N_BANKS?=8
+N_BANKS?=32

@@ -48,9 +48,9 @@ import verification_hci_package::calculate_average_latency;
 
     calculate_theoretical_throughput(troughput_theo);
     wait(troughput_real>=0);
-    $display("\\\\THROUGHPUT\\\\");
-    $display("THEORETICAL THROUGHPUT: %f bit per cycle",troughput_theo);
-    $display("REAL THROUGHPUT: %f bit per cycle",troughput_real);
+    $display("\\\\BANDWIDTH\\\\");
+    $display("IDEAL APPLICATION PEAK BANDWIDTH (KERNEL DEPENDENT): %f bit per cycle",troughput_theo);
+    $display("REAL APPLICATION BANDWITH: %f bit per cycle",troughput_real);
     $display("PERFORMANCE RATING %f%%\n", troughput_real/troughput_theo*100);
 
     wait(tot_latency>=0);

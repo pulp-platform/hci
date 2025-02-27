@@ -12,7 +12,7 @@
 # USAGE GUIDE:
 # Run the command 'python stimuli_gen_main.py', specifying the necessary arguments
 # 1) Specify the software and hardware parameters used to generate the stimuli with the argument --sim_and_hardware_params, in the following order:  
-#    - N_BANKS
+#    - N_BANKS     
 #    - TOT_MEM_SIZE
 #    - DATA_WIDTH
 #    - N_CORE
@@ -45,7 +45,7 @@
 # Parameters:      N_BANKS = 8, TOT_MEM_SIZE = 32, DATA_WIDTH = 32, N_CORE = 1, N_DMA = 0, N_EXT = 1, N_HWPE = 1, 
 #                  HWPE_WIDTH = 4, TEST_RATIO = 2, N_TEST_LOG = 1000, CYCLE_OFFSET_LOG = 3, CYCLE_OFFSET_HWPE = 4, EXACT_OR_MAX_OFFSET = 1
 # 
-# Command:         python stimuli_gen_main.py --sim_and_hardware_params 8 32 32 1 0 1 1 4 2 1000 3 4 1 --master_log0 0 0101001 2 --master_hwpe0 2 1100100 2 3 10
+# Command:         python stimuli_gen_main.py --sim_and_hardware_params 8 32 32 1 0 1 1 4 2 1000 3 4 1 --master_log 0 0101001 2 --master_hwpe 2 1100100 2 3 10
 # 
 # Result:          The code will generate the following .txt files in the folder verif/simvectors/stimuli_processed:
 #                   - stimuli with random memory access pattern (CORE)
@@ -71,9 +71,15 @@ import argparse
 
 ### ARGPARSE ###
 parser = argparse.ArgumentParser(description="This script generates .txt files containing stimuli for use in the HCI verification suite.\n\n"
-                                 "USAGE EXAMPLE:\n"
-                                 "python stimuli_gen_main.py --master_log0 0, --master_log1 1 0101001 2 --master_hwpe0 2 1001010 3 10 2",
-                                 formatter_class=argparse.RawTextHelpFormatter,)
+                                 "# EXAMPLE:\n"
+                                 "Parameters:      N_BANKS = 8, TOT_MEM_SIZE = 32, DATA_WIDTH = 32, N_CORE = 1, N_DMA = 0, N_EXT = 1, N_HWPE = 1,\n"
+                                 "                 HWPE_WIDTH = 4, TEST_RATIO = 2, N_TEST_LOG = 1000, CYCLE_OFFSET_LOG = 3, CYCLE_OFFSET_HWPE = 4, EXACT_OR_MAX_OFFSET = 1\n"
+                                 "Command:         python stimuli_gen_main.py --sim_and_hardware_params 8 32 32 1 0 1 1 4 2 1000 3 4 1 --master_log 0 0101001 2 --master_hwpe 2 1100100 2 3 10\n"
+                                 "Result:          The code will generate the following .txt files in the folder verif/simvectors/stimuli_processed:\n"
+                                 "                  - stimuli with random memory access pattern (CORE)\n"
+                                 "                  - stimuli with linear memory access pattern, starting address 0101001 and stride0 = 2 (EXT)\n"
+                                 "                  - stimuli with a 2D memory access pattern, starting address 1100100, stride0 = 2, led_d0 = 3, stride2 = 2 (HWPE)",
+                                 formatter_class=argparse.RawTextHelpFormatter)
 
 parser.add_argument(f'--sim_and_hardware_params', nargs='+', default=[], required=True, type=int, help=f"Specify the software and hardware parameters used to generate the stimuli:\n"
                                                                                                                 "   - N_BANKS \n"
