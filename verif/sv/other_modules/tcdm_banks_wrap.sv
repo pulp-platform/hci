@@ -30,7 +30,7 @@ module tcdm_banks_wrap #(
 
   hci_core_intf.target tcdm_slave[0:NbBanks-1]
 );
-   localparam int unsigned RANDOM_GNT = `ifdef RANDOM_GNT `RANDOM_GNT `else 0;
+   localparam int unsigned RANDOM_GNT = `ifdef RANDOM_GNT `RANDOM_GNT `else 0 `endif;
 
   for(genvar i=0; i<NbBanks; i++) begin : banks_gen
 

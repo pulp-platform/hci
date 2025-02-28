@@ -10,7 +10,7 @@ module compute_latency_per_transaction #(
   output real          SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE]
 );  
 
-  localparam int unsigned MAX_CYCLES_BETWEEN_GNT_RVALID = `ifdef MAX_CYCLES_BETWEEN_GNT_RVALID `MAX_CYCLES_BETWEEN_GNT_RVALID + 2 `else 3; // Maximum expected number of cycles between the gnt signal and the r_valid signal
+  localparam int unsigned MAX_CYCLES_BETWEEN_GNT_RVALID = `ifdef MAX_CYCLES_BETWEEN_GNT_RVALID `MAX_CYCLES_BETWEEN_GNT_RVALID + 2 `else 3 `endif; // Maximum expected number of cycles between the gnt signal and the r_valid signal
   
   static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0] START_COMPUTE_LATENCY;
   static logic [N_MASTER-1:0][MAX_CYCLES_BETWEEN_GNT_RVALID-1:0] FINISH_COMPUTE_LATENCY;
