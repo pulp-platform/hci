@@ -63,6 +63,7 @@ module hci_ecc_interconnect
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
+  parameter int unsigned FILTER_WRITE_R_VALID[0:N_HWPE-1] = '{default: 0},
   parameter int unsigned CHUNK_SIZE = 32                    , // Chunk size of data to be encoded separately (HWPE branch)
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(mems)  = '0,
@@ -81,7 +82,7 @@ module hci_ecc_interconnect
   hci_core_intf.target           dma     [0:N_DMA-1] ,
   hci_core_intf.target           ext     [0:N_EXT-1] ,
   hci_core_intf.initiator        mems    [0:N_MEM-1] ,
-  hci_core_intf.target           hwpe
+  hci_core_intf.target           hwpe    [0:N_HWPE-1]
 );
 
   localparam int unsigned AWC = `HCI_SIZE_GET_AW(cores);
@@ -194,7 +195,7 @@ module hci_ecc_interconnect
     end
   end
 
-  assign hwpe_valid_handshake = hwpe.req && hwpe.gnt;
+  assign hwpe_valid_handshake = hwpe[0].req && hwpe[0].gnt;
 
   `REG_BUS_TYPEDEF_ALL(hci_ecc, logic[AWC-1:0], logic[DW_LIC-1:0], logic[BW_LIC-1:0])
   hci_ecc_req_t hci_ecc_req;
@@ -357,7 +358,7 @@ module hci_ecc_interconnect
         .data_multi_err_o  (  ),
         .meta_single_err_o ( meta_single_err ),
         .meta_multi_err_o  ( meta_multi_err  ),
-        .tcdm_target       ( hwpe            ),
+        .tcdm_target       ( hwpe[0]         ),
         .tcdm_initiator    ( hwpe_dec        )
       );
 
@@ -365,6 +366,7 @@ module hci_ecc_interconnect
         .FIFO_DEPTH           ( EXPFIFO                   ),
         .NB_OUT_CHAN          ( N_MEM                     ),
         .UseECC               ( 1                         ),
+        .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID[0]  ),
         .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe_dec) ),
         .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
       ) i_ecc_router (
@@ -442,9 +444,13 @@ module hci_ecc_interconnect
 `ifndef SYNTHESIS
 `ifndef VERILATOR
 
-  `HCI_SIZE_CHECK_ASSERTS(hwpe);
+  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(hwpe), hwpe[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(cores), cores[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(mems), mems[0]);
+
+  initial begin : no_multi_hwpe_check
+    assert(N_HWPE <= 1) else $fatal("Multiple HWPEs are not supported in the ECC HCI.");
+  end
 
 `endif
 `endif;
