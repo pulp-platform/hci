@@ -1,6 +1,6 @@
 package:
   name: hci
-  authors: 
+  authors:
     - "Francesco Conti <f.conti@unibo.it>"
     - "Gianna Paulin <pauling@iis.ee.ethz.ch"
     - "Tobias Riedener <tobiasri@student.ethz.ch>"
@@ -33,6 +33,7 @@ sources:
       - rtl/core/hci_core_mux_ooo.sv
       - rtl/core/hci_core_r_valid_filter.sv
       - rtl/core/hci_core_r_id_filter.sv
+      - rtl/core/hci_core_source.sv
       - rtl/core/hci_core_source_v2.sv
       - rtl/core/hci_core_split.sv
       - rtl/interco/hci_log_interconnect.sv
