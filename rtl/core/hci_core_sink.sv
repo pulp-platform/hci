@@ -331,7 +331,7 @@ module hci_core_sink
   end
   else begin : no_ecc_handshake_gen
     assign tcdm_target.ereq     = '0;
-    assign tcdm_target.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm_target.r_eready = '1; // assign all gnt's to 1
   end
 
 /*
@@ -348,7 +348,7 @@ module hci_core_sink
     initial
       dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
   end
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm);
 `endif
 `endif

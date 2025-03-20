@@ -25,7 +25,7 @@
  * out a predefined pattern from an **hwpe_stream_addressgen_v3** to perform
  * a burst of loads via a HCI-Core interface, producing a HWPE-Stream
  * data stream from the HCI-Core `r_data` field.
- * By default, the HCI-Core streamer supports delayed accesses using a HCI-Core 
+ * By default, the HCI-Core streamer supports delayed accesses using a HCI-Core
  * interface.
  *
  * Misaligned accesses are supported by widening the HCI-Core data width of 32
@@ -153,7 +153,7 @@ module hci_core_source_v2
   assign job_push.valid   = ctrl_i.valid;
   assign flags_o.ready    = job_push.ready;
   assign job_push.strb    = '1;
- 
+
   hwpe_stream_fifo #(
     .DATA_WIDTH ( $bits(ctrl_i.addressgen_ctrl) ),
     .FIFO_DEPTH ( JOB_FIFO_DEPTH  )
@@ -218,7 +218,7 @@ module hci_core_source_v2
   logic [TRANS_CNT-1:0] stream_cnt_d, stream_cnt_q;
 
   // this is simply exploiting the fact that we can make a wider data access than strictly necessary!
-  assign stream_data_misaligned = tcdm.r_valid ? tcdm.r_data : stream_data_q; // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
+  assign stream_data_misaligned = tcdm.r_valid ? tcdm.r_data : stream_data_q;
 
   if (MISALIGNED_ACCESSES==1 ) begin : missaligned_access_gen
     always_comb
@@ -255,9 +255,9 @@ module hci_core_source_v2
   assign tcdm.ecc     = '0;
   assign stream.strb  = '1;
   assign stream.data  = stream_data_aligned;
-  assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
+  assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q);
   assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready & tcdm.gnt : 1'b0;
-  
+
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 8 ) // only 2 significant
   ) addr_misaligned_push (
@@ -344,7 +344,7 @@ module hci_core_source_v2
         ns = STREAMER_WORKING;
         address_gen_en = 1'b1;
         presample =1'b1;
-      end  
+      end
       STREAMER_WORKING : begin
         address_gen_en = 1'b1;
         if(flags_o.addressgen_flags.done) begin
@@ -364,7 +364,7 @@ module hci_core_source_v2
           end
           else begin
             ns = STREAMER_IDLE;
-          end  
+          end
         end
       end
     endcase
@@ -392,7 +392,7 @@ module hci_core_source_v2
   end
   else begin : no_ecc_handshake_gen
     assign tcdm.ereq     = '0;
-    assign tcdm.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm.r_eready = '1; // assign all gnt's to 1
   end
 
 /*
@@ -409,10 +409,10 @@ module hci_core_source_v2
     initial
       dw :  assert(stream.DATA_WIDTH <= tcdm.DW);
   end
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm);
 `endif
 `endif
 `endif
 
-endmodule // hci_core_source nuovo
+endmodule // hci_core_source_v2
