@@ -41,6 +41,7 @@ sources:
       - rtl/core/hci_core_mux_ooo.sv
       - rtl/core/hci_core_r_valid_filter.sv
       - rtl/core/hci_core_r_id_filter.sv
+      - rtl/core/hci_core_source.sv
       - rtl/core/hci_core_source_v2.sv
       - rtl/core/hci_core_split.sv
       - rtl/ecc/hci_ecc_dec.sv
