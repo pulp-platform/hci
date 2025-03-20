@@ -108,14 +108,14 @@ module hci_core_source_biased
   input logic clear_i,
   input logic enable_i,
 
-  hwpe_stream_intf_stream.sink   bias_i;
+  hwpe_stream_intf_stream.sink      bias_i,
 
-  hci_core_intf.initiator        tcdm,
-  hwpe_stream_intf_stream.source stream,
+  hci_core_intf.initiator           tcdm,
+  hwpe_stream_intf_stream.source    stream,
 
   // control plane
-  input  hci_streamer_ctrl_t   ctrl_i,
-  output hci_streamer_flags_t  flags_o
+  input  hci_streamer_biased_ctrl_t ctrl_i,
+  output hci_streamer_flags_t       flags_o
 );
 
   localparam int unsigned DATA_WIDTH = `HCI_SIZE_GET_DW(tcdm);
@@ -187,7 +187,7 @@ module hci_core_source_biased
     .flags_o     ( flags_o.addressgen_flags )
   );
 
-  assign addr_push_v.valid = addr_push.valid && bias_q.valid;
+  assign addr_push_v.valid = addr_push.valid && (bias_q.valid || ctrl_i.ignore_bias);
   assign addr_push_v.data  = addr_push.data;
   assign addr_push_v.strb  = addr_push.strb;
   assign bias_q.ready      = addr_push_v.ready;
