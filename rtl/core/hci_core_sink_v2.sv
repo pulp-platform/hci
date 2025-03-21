@@ -284,16 +284,6 @@ module hci_core_sink_v2
 
   assign tcdm_inflight = tcdm.req;
 
-  /*always_ff @(posedge clk_i or negedge rst_ni)
-  begin : done_sink_ff
-    if(~rst_ni)
-      flags_o.done <= 1'b0;
-    else if(clear_i)
-      flags_o.done <= 1'b0;
-    else if(enable_i)
-      flags_o.done <= done;
-  end*/
-
   always_ff @(posedge clk_i, negedge rst_ni)
   begin : fsm_seq
     if(rst_ni == 1'b0) begin
@@ -327,7 +317,7 @@ module hci_core_sink_v2
         ns = STREAMER_WORKING;
         address_gen_en = 1'b1;
         presample = 1'b1;
-      end 
+      end
       STREAMER_WORKING : begin
         address_gen_en = 1'b1;
         if(flags_o.addressgen_flags.done) begin
@@ -347,7 +337,7 @@ module hci_core_sink_v2
           end
           else begin
             ns = STREAMER_IDLE;
-          end  
+          end
         end
       end
     endcase
@@ -375,7 +365,7 @@ module hci_core_sink_v2
   end
   else begin : no_ecc_handshake_gen
     assign tcdm_target.ereq     = '0;
-    assign tcdm_target.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm_target.r_eready = '1; // assign all gnt's to 1
   end
 
 /*
@@ -392,10 +382,10 @@ module hci_core_sink_v2
     initial
       dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
   end
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm);
 `endif
 `endif
 `endif
 
-endmodule // hci_core_sink nuovo
+endmodule // hci_core_sink_v2

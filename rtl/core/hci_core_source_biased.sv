@@ -148,25 +148,7 @@ module hci_core_source_biased
     .clk ( clk_i )
   );
 
-  hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( BIAS_WIDTH )
-  )  bias_q (
-    .clk ( clk_i )
-  );
-
-  hwpe_stream_fifo #(
-    .DATA_WIDTH ( BIAS_WIDTH      ),
-    .FIFO_DEPTH ( BIAS_FIFO_DEPTH )
-  ) bias_fifo (
-    .clk_i   ( clk_i           ),
-    .rst_ni  ( rst_ni          ),
-    .clear_i ( clear_i         ),
-    .flags_o (                 ),
-    .push_i  ( bias_i          ),
-    .pop_o   ( bias_q          )
-  );
-
-  assign addressgen_ctrl_biased.base_addr     = ctrl_i.addressgen_ctrl.base_addr + bias_q.data;
+  assign addressgen_ctrl_biased.base_addr     = ctrl_i.addressgen_ctrl.base_addr + bias_i.data;
   assign addressgen_ctrl_biased.tot_len       = ctrl_i.addressgen_ctrl.tot_len                ;
   assign addressgen_ctrl_biased.d0_len        = ctrl_i.addressgen_ctrl.d0_len                 ;
   assign addressgen_ctrl_biased.d0_stride     = ctrl_i.addressgen_ctrl.d0_stride              ;
@@ -187,10 +169,10 @@ module hci_core_source_biased
     .flags_o     ( flags_o.addressgen_flags )
   );
 
-  assign addr_push_v.valid = addr_push.valid && (bias_q.valid || ctrl_i.ignore_bias);
+  assign addr_push_v.valid = addr_push.valid && (bias_i.valid || ctrl_i.ignore_bias);
   assign addr_push_v.data  = addr_push.data;
   assign addr_push_v.strb  = addr_push.strb;
-  assign bias_q.ready      = addr_push_v.ready;
+  assign bias_i.ready      = addr_push_v.ready;
 
   if (PASSTHROUGH_FIFO) begin : passthrough_gen
     hwpe_stream_fifo_passthrough #(
