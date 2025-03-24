@@ -35,6 +35,7 @@ sources:
       - rtl/core/hci_core_r_id_filter.sv
       - rtl/core/hci_core_source.sv
       - rtl/core/hci_core_source_v2.sv
+      - rtl/core/hci_core_source_biased.sv
       - rtl/core/hci_core_split.sv
       - rtl/interco/hci_log_interconnect.sv
       - rtl/interco/hci_log_interconnect_l2.sv
