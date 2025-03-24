@@ -197,7 +197,7 @@ module hci_core_source_biased
       .rst_ni  ( rst_ni          ),
       .clear_i ( clear_i         ),
       .flags_o ( addr_fifo_flags ),
-      .push_i  ( addr_push       ),
+      .push_i  ( addr_push_v     ),
       .pop_o   ( addr_pop        )
     );
   end
