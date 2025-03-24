@@ -148,7 +148,7 @@ module hci_core_source_biased
     .clk ( clk_i )
   );
 
-  assign addressgen_ctrl_biased.base_addr     = ctrl_i.addressgen_ctrl.base_addr + bias_i.data;
+  assign addressgen_ctrl_biased.base_addr     = ctrl_i.ignore_bias ? ctrl_i.addressgen_ctrl.base_addr : ctrl_i.addressgen_ctrl.base_addr + bias_i.data;
   assign addressgen_ctrl_biased.tot_len       = ctrl_i.addressgen_ctrl.tot_len                ;
   assign addressgen_ctrl_biased.d0_len        = ctrl_i.addressgen_ctrl.d0_len                 ;
   assign addressgen_ctrl_biased.d0_stride     = ctrl_i.addressgen_ctrl.d0_stride              ;
@@ -172,6 +172,7 @@ module hci_core_source_biased
   assign addr_push_v.valid = addr_push.valid && (bias_i.valid || ctrl_i.ignore_bias);
   assign addr_push_v.data  = addr_push.data;
   assign addr_push_v.strb  = addr_push.strb;
+  assign addr_push.ready   = addr_push_v.ready && (bias_i.valid || ctrl_i.ignore_bias);
   assign bias_i.ready      = addr_push_v.ready;
 
   if (PASSTHROUGH_FIFO) begin : passthrough_gen
