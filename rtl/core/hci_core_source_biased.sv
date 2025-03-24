@@ -148,14 +148,17 @@ module hci_core_source_biased
     .clk ( clk_i )
   );
 
-  assign addressgen_ctrl_biased.base_addr     = ctrl_i.ignore_bias ? ctrl_i.addressgen_ctrl.base_addr : ctrl_i.addressgen_ctrl.base_addr + bias_i.data;
-  assign addressgen_ctrl_biased.tot_len       = ctrl_i.addressgen_ctrl.tot_len                ;
-  assign addressgen_ctrl_biased.d0_len        = ctrl_i.addressgen_ctrl.d0_len                 ;
-  assign addressgen_ctrl_biased.d0_stride     = ctrl_i.addressgen_ctrl.d0_stride              ;
-  assign addressgen_ctrl_biased.d1_len        = ctrl_i.addressgen_ctrl.d1_len                 ;
-  assign addressgen_ctrl_biased.d1_stride     = ctrl_i.addressgen_ctrl.d1_stride              ;
-  assign addressgen_ctrl_biased.d2_stride     = ctrl_i.addressgen_ctrl.d2_stride              ;
-  assign addressgen_ctrl_biased.dim_enable_1h = ctrl_i.addressgen_ctrl.dim_enable_1h          ;
+  assign addressgen_ctrl_biased.base_addr     = ctrl_i.ignore_bias ? ctrl_i.addressgen_ctrl.base_addr :
+                                                                     ctrl_i.addressgen_ctrl.base_addr + bias_i.data;
+  assign addressgen_ctrl_biased.tot_len       = ctrl_i.addressgen_ctrl.tot_len      ;
+  assign addressgen_ctrl_biased.d0_len        = ctrl_i.addressgen_ctrl.d0_len       ;
+  assign addressgen_ctrl_biased.d0_stride     = ctrl_i.addressgen_ctrl.d0_stride    ;
+  assign addressgen_ctrl_biased.d1_len        = ctrl_i.addressgen_ctrl.d1_len       ;
+  assign addressgen_ctrl_biased.d1_stride     = ctrl_i.addressgen_ctrl.d1_stride    ;
+  assign addressgen_ctrl_biased.d2_stride     = ctrl_i.addressgen_ctrl.d2_stride    ;
+  assign addressgen_ctrl_biased.d2_len        = ctrl_i.addressgen_ctrl.d2_len       ;
+  assign addressgen_ctrl_biased.d3_stride     = ctrl_i.addressgen_ctrl.d3_stride    ;
+  assign addressgen_ctrl_biased.dim_enable_1h = ctrl_i.addressgen_ctrl.dim_enable_1h;
 
   // generate addresses
   hwpe_stream_addressgen_v3 i_addressgen (
