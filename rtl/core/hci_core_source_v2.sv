@@ -182,7 +182,7 @@ module hci_core_source_v2
 
   if (PASSTHROUGH_FIFO) begin : passthrough_gen
     hwpe_stream_fifo_passthrough #(
-      .DATA_WIDTH ( 36 ),
+      .DATA_WIDTH ( 32 ),
       .FIFO_DEPTH ( 2  )
     ) i_fifo_addr (
       .clk_i   ( clk_i           ),
@@ -195,7 +195,7 @@ module hci_core_source_v2
   end
   else begin : nopassthrough_gen
     hwpe_stream_fifo #(
-      .DATA_WIDTH ( 36 ),
+      .DATA_WIDTH ( 32 ),
       .FIFO_DEPTH ( 2  )
     ) i_fifo_addr (
       .clk_i   ( clk_i           ),
