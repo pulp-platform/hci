@@ -25,7 +25,7 @@
  * out a predefined pattern from an **hwpe_stream_addressgen_v3** to perform
  * a burst of loads via a HCI-Core interface, producing a HWPE-Stream
  * data stream from the HCI-Core `r_data` field.
- * By default, the HCI-Core streamer supports delayed accesses using a HCI-Core 
+ * By default, the HCI-Core streamer supports delayed accesses using a HCI-Core
  * interface.
  *
  * Misaligned accesses are supported by widening the HCI-Core data width of 32
@@ -153,7 +153,7 @@ module hci_core_source
 
   if (PASSTHROUGH_FIFO) begin : passthrough_gen
     hwpe_stream_fifo_passthrough #(
-      .DATA_WIDTH ( 36 ),
+      .DATA_WIDTH ( 32 ),
       .FIFO_DEPTH ( 2  )
     ) i_fifo_addr (
       .clk_i   ( clk_i           ),
@@ -166,7 +166,7 @@ module hci_core_source
   end
   else begin : nopassthrough_gen
     hwpe_stream_fifo #(
-      .DATA_WIDTH ( 36 ),
+      .DATA_WIDTH ( 32 ),
       .FIFO_DEPTH ( 2  )
     ) i_fifo_addr (
       .clk_i   ( clk_i           ),
@@ -228,7 +228,7 @@ module hci_core_source
   assign stream.data  = stream_data_aligned;
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
   assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready & tcdm.gnt : 1'b0;
-  
+
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 8 ) // only 2 significant
   ) addr_misaligned_push (
@@ -355,7 +355,7 @@ module hci_core_source
   end
   else begin : no_ecc_handshake_gen
     assign tcdm.ereq     = '0;
-    assign tcdm.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm.r_eready = '1; // assign all gnt's to 1
   end
 
 /*
@@ -372,7 +372,7 @@ module hci_core_source
     initial
       dw :  assert(stream.DATA_WIDTH <= tcdm.DW);
   end
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm);
 `endif
 `endif
