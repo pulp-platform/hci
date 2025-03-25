@@ -176,7 +176,7 @@ module hci_core_source_biased
   assign addr_push_v.data  = addr_push.data;
   assign addr_push_v.strb  = addr_push.strb;
   assign addr_push.ready   = addr_push_v.ready && (bias_i.valid || ctrl_i.ignore_bias);
-  assign bias_i.ready      = addr_push_v.ready;
+  assign bias_i.ready      = addr_push_v.ready && addr_push.valid;
 
   if (PASSTHROUGH_FIFO) begin : passthrough_gen
     hwpe_stream_fifo_passthrough #(
