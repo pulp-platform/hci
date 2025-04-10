@@ -56,25 +56,25 @@ This repository also contains an environment for verifying the Heterogeneous Clu
 
 Before running the simulation, follow these steps:
 
-1. **Configure HCI Parameters**
-Edit the 'hci_config' file inside the config folder and insert the correct configuration values as needed for your verification environment.
+1. **Configure HCI Parameters** <br>
+Edit the 'hci_config' file inside the config folder and insert the correct configuration values as needed for your verification environment. <br>  
 
 2. **Run Setup**
 ```bash
 make setup
-```
-3. ***Configure the Parameters of the Masters***
-Edit the files in the folder /config/hardware_config/masters_config to set the parameters of the masters
+```  
+3. **Configure the Parameters of the Masters** <br>
+Edit the files in the folder /config/hardware_config/masters_config to set the parameters of the masters  
 
-4. ***Choose the Test***
-Choose the test in /config/config.mk
+4. **Choose the Test** <br>
+Choose the test in /config/config.mk  
 
-5. ***Create stimuli***
+5. **Create stimuli** <br>
 ```bash
 make stimuli
-```
+```  
 
-6. ***Run the simulation***
+6. **Run the simulation** <br>
 ```bash
 make clean build run &
 ```
