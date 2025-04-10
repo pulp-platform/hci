@@ -57,7 +57,7 @@ This repository also contains an environment for verifying the Heterogeneous Clu
 Before running the simulation, follow these steps:
 
 1. **Configure HCI Parameters** <br>
-Edit the 'hci_config' file inside the config folder and insert the correct configuration values as needed for your verification environment. <br>  
+Edit the 'hci_config.mk' file inside config/hardware_config folder and insert the correct configuration values as needed for your verification environment. <br>  
 
 2. **Run Setup**
 ```bash
