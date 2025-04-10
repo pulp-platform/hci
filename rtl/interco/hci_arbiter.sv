@@ -27,6 +27,16 @@
  * by the output channels. To prevent starvation effects, depending on the control
  * settings and on the arbiter mode, the other input channel is always granted after a
  * certain number of cycles.
+ * Two possible arbitration mode are provided:
+ *
+ * - Mode 0 (default): the signal "low_prio_max_stall" sets the maximum number of consecutive cycles with at least one request in both
+ *  the high and low priority channel. **NOTE** The name of the signal could be misleading, but it is kept as it is to maintain consistency with previous verions 
+ *  of the hci_arbiter, where there was no distinction between Mode 0 and Mode 1 and where this signal was actually used improperly,                                           
+ *                                                                               
+ * - Mode 1: the signal "low_prio_max_stall" sets the maximum number of consecutive stalls on low-priority channel.
+ *
+ * There is also a third hardware implementation (Mode 2), not yet tested, with the same theoretical behaviour of Mode 1, but with less logic gates.
+ *
  * For more details, see:
  *  - https://ieeexplore.ieee.org/document/9903915, Sec. II-A (open-access);
  *  - https://ieeexplore.ieee.org/document/10247945 , Sec. II-A, III-B, and III-C.
