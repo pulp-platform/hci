@@ -21,6 +21,6 @@ SEL_LIC?=0
 # Width of DATA in bits                                                
 DATA_WIDTH?=32
 # Total memory size (kB)                                               
-TOT_MEM_SIZE?=64
+TOT_MEM_SIZE?=32
 # Number of memory banks
-N_BANKS?=8
+N_BANKS?=64

@@ -66,9 +66,9 @@ class stimuli_generator:
             for test in range(self.N_TEST):
                 data, wen, cycle_offset = self.data_wen_offset()
                 while True:
-                    add_decimal = int((random.randint(0, int((self.TOT_MEM_SIZE*1000-self.WIDTH_OF_MEMORY_BYTE)/self.WIDTH_OF_MEMORY_BYTE)))*(self.WIDTH_OF_MEMORY_BYTE)) # generate a random word-aligned memory address.
-                    if add_decimal > self.TOT_MEM_SIZE*1000-self.WIDTH_OF_MEMORY_BYTE :
-                        add_decimal = add_decimal - self.TOT_MEM_SIZE*1000 #rolls over
+                    add_decimal = int((random.randint(0, int((self.TOT_MEM_SIZE*1024-self.WIDTH_OF_MEMORY_BYTE)/self.WIDTH_OF_MEMORY_BYTE)))*(self.WIDTH_OF_MEMORY_BYTE)) # generate a random word-aligned memory address.
+                    if add_decimal > self.TOT_MEM_SIZE*1024-self.WIDTH_OF_MEMORY_BYTE :
+                        add_decimal = add_decimal - self.TOT_MEM_SIZE*1024 #rolls over
                     add = bin(add_decimal)[2:].zfill(self.ADD_WIDTH)
 
                     if wen:
@@ -92,24 +92,24 @@ class stimuli_generator:
         LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW = []
         with open(self.filepath, 'w', encoding="ascii") as file: #write an ascii file for each port of each generator
             next_address = int(start_address,2)
-            if next_address > self.TOT_MEM_SIZE*1000-self.WIDTH_OF_MEMORY_BYTE :
-                        next_address = next_address - self.TOT_MEM_SIZE*1000 #rolls over
+            if next_address > self.TOT_MEM_SIZE*1024-self.WIDTH_OF_MEMORY_BYTE :
+                        next_address = next_address - self.TOT_MEM_SIZE*1024 #rolls over
             for test in range(self.N_TEST):
                 data, wen, cycle_offset = self.data_wen_offset()
-                while True:
-                    add = bin(next_address)[2:].zfill(self.ADD_WIDTH)
-                    next_address += (self.WIDTH_OF_MEMORY_BYTE)*stride0 #word-aligned memory address
-                    if next_address > self.TOT_MEM_SIZE*1000-self.WIDTH_OF_MEMORY_BYTE :
-                        next_address = next_address - self.TOT_MEM_SIZE*1000 #rolls over
-                    if wen:
-                        if add not in LIST_OF_FORBIDDEN_ADDRESSES_READ:
-                            LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
-                            break
-                    else:
-                        if add not in LIST_OF_FORBIDDEN_ADDRESSES_WRITE:
-                            LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
-                            LIST_OF_FORBIDDEN_ADDRESSES_READ_NEW.append(add)
-                            break
+                
+                add = bin(next_address)[2:].zfill(self.ADD_WIDTH)
+                next_address += (self.WIDTH_OF_MEMORY_BYTE)*stride0 #word-aligned memory address
+                if next_address > self.TOT_MEM_SIZE*1024-self.WIDTH_OF_MEMORY_BYTE :
+                    next_address = next_address - self.TOT_MEM_SIZE*1024 #rolls over
+                if wen:
+                    if add not in LIST_OF_FORBIDDEN_ADDRESSES_READ:
+                        LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
+                        break
+                else:
+                    if add not in LIST_OF_FORBIDDEN_ADDRESSES_WRITE:
+                        LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
+                        LIST_OF_FORBIDDEN_ADDRESSES_READ_NEW.append(add)
+                        break
                 file.write(bin(id)[2:].zfill(self.IW) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
                 id = id + 1
 
@@ -132,8 +132,8 @@ class stimuli_generator:
                     data, wen, cycle_offset = self.data_wen_offset()
                     next_address = start_address + i*(self.WIDTH_OF_MEMORY_BYTE)*stride0 + j*(self.WIDTH_OF_MEMORY_BYTE)*stride1 #word-aligned memory address
                     add = bin(next_address)[2:].zfill(self.ADD_WIDTH)
-                    if next_address > self.TOT_MEM_SIZE*1000-self.WIDTH_OF_MEMORY_BYTE :
-                        next_address = next_address - self.TOT_MEM_SIZE*1000 #rolls over
+                    if next_address > self.TOT_MEM_SIZE*1024-self.WIDTH_OF_MEMORY_BYTE :
+                        next_address = next_address - self.TOT_MEM_SIZE*1024 #rolls over
 
                     if wen:
                         if add not in LIST_OF_FORBIDDEN_ADDRESSES_READ:
@@ -174,8 +174,8 @@ class stimuli_generator:
                     for i in range(len_d0):
                         data, wen, cycle_offset = self.data_wen_offset()
                         next_address = start_address + i*(self.WIDTH_OF_MEMORY_BYTE)*stride0 + j*(self.WIDTH_OF_MEMORY_BYTE)*stride1 + k*(self.WIDTH_OF_MEMORY_BYTE)*stride2 #word-aligned memory address
-                        if next_address > self.TOT_MEM_SIZE*1000-self.WIDTH_OF_MEMORY_BYTE :
-                            next_address = next_address - self.TOT_MEM_SIZE*1000 #rolls over
+                        if next_address > self.TOT_MEM_SIZE*1024-self.WIDTH_OF_MEMORY_BYTE :
+                            next_address = next_address - self.TOT_MEM_SIZE*1024 #rolls over
                         add = bin(next_address)[2:].zfill(self.ADD_WIDTH)
 
                         if wen:

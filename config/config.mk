@@ -1,5 +1,5 @@
 # Select desired test configuration
-SELECT_TEST ?= bandwidth
+SELECT_TEST ?= bandwidth_check
 
 
 MASTERS_CONFIG_PATH := config/hardware_config/masters_config
