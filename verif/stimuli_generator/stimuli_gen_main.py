@@ -231,7 +231,6 @@ for n in range(N_MASTER):
     stride1 = int(stride1)
     len_d1 = int(len_d1)
     stride2 = int(stride2)
-    print(n," ",start_address)
     match config:
         case '0':
             next_start_id = master.random_gen(next_start_id,LIST_OF_FORBIDDEN_ADDRESSES_READ,LIST_OF_FORBIDDEN_ADDRESSES_WRITE)
