@@ -139,8 +139,6 @@ module hci_core_split
                                           ~tcdm_req_masked_q[ii]; // if state is NO-GNT, only propagate request that were not granted before
       hci_core_fifo #(
         .FIFO_DEPTH                      ( FIFO_DEPTH                 ),
-        .DW                              ( DW_OUT                     ),
-        .UW                              ( UW                         ),
         .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(tcdm_fifo) )
       ) i_fifo (
         .clk_i          ( clk_i          ),

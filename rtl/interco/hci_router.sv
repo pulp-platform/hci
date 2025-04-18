@@ -144,10 +144,6 @@ module hci_router
     else begin: fifo_gen
       hci_core_fifo #(
         .FIFO_DEPTH                      ( FIFO_DEPTH                ),
-        .DW                              ( DWH                       ),
-        .BW                              ( AWH                       ),
-        .AW                              ( BWH                       ),
-        .UW                              ( UWH                       ),
         .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(postfifo) )
       ) i_fifo (
         .clk_i          ( clk_i         ),
