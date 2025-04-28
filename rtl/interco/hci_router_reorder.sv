@@ -37,6 +37,8 @@ module hci_router_reorder
 
 );
 
+  // FIXME: make this a localparam
+  // if UseECC = 1, use 32b + 7b for ECC
   localparam int unsigned RespDataWidth = (UseECC) ? (32+7) : 32;
   localparam int unsigned EW            = (UseECC) ?  7     : 1;
 
@@ -62,6 +64,7 @@ module hci_router_reorder
   logic [NB_OUT_CHAN-1:0][EW-1:0] out_r_ecc;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0] ma_req;
 
+  // rdata as seen by addr_dec_resp_mux in input/output
   logic [NB_IN_CHAN-1:0 ][RespDataWidth-1:0] adrm_rdata_o;
   logic [NB_OUT_CHAN-1:0][RespDataWidth-1:0] adrm_rdata_i;
 

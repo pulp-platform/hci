@@ -106,7 +106,7 @@ module hci_router
     BW:  8,
     UW:  0,
     IW:  0,
-    EW:  7*UseECC,
+    EW:  7*UseECC, // 7 bits for ECC, FIXME: make this more parametric/elegant
     EHW: EHW
   };
   hci_core_intf #(
@@ -194,6 +194,7 @@ module hci_router
       
       assign virt_in[ii].r_ready = postfifo.r_ready;
 
+      // 7 bits for ECC, FIXME: make this more parametric/elegant
       if(UseECC) begin : ecc_assignment
         assign virt_in[ii].ecc             = postfifo.ecc[ii*7+6:ii*7];
         assign postfifo.r_ecc[ii*7+6:ii*7] = virt_in[ii].r_ecc;
