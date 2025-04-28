@@ -49,43 +49,43 @@ module hci_ecc_manager
   input  hci_ecc_req_t        hci_ecc_req_i,
   output hci_ecc_rsp_t        hci_ecc_rsp_o,
 
-  input  logic [ParData-1:0][N_CHUNK-1:0] data_correctable_err_i,
-  input  logic [ParData-1:0][N_CHUNK-1:0] data_uncorrectable_err_i,
-  input  logic [ParMeta-1:0]              meta_correctable_err_i,
-  input  logic [ParMeta-1:0]              meta_uncorrectable_err_i
+  input  logic [PAR_DATA-1:0][N_CHUNK-1:0] data_correctable_err_i,
+  input  logic [PAR_DATA-1:0][N_CHUNK-1:0] data_uncorrectable_err_i,
+  input  logic [PAR_META-1:0]              meta_correctable_err_i,
+  input  logic [PAR_META-1:0]              meta_uncorrectable_err_i
 );
 
   hci_ecc_manager_reg2hw_t reg2hw;
   hci_ecc_manager_hw2reg_t hw2reg;
 
-  logic [$clog2(ParData*N_CHUNK):0] data_correctable_err_num;
-  logic [$clog2(ParData*N_CHUNK):0] data_uncorrectable_err_num;
-  logic [$clog2(ParMeta):0] meta_correctable_err_num;
-  logic [$clog2(ParMeta):0] meta_uncorrectable_err_num;
+  logic [$clog2(PAR_DATA*N_CHUNK):0] data_correctable_err_num;
+  logic [$clog2(PAR_DATA*N_CHUNK):0] data_uncorrectable_err_num;
+  logic [$clog2(PAR_META):0] meta_correctable_err_num;
+  logic [$clog2(PAR_META):0] meta_uncorrectable_err_num;
 
   popcount #(
-    .INPUT_WIDTH ( ParData*N_CHUNK )
+    .INPUT_WIDTH ( PAR_DATA*N_CHUNK )
   ) i_popcount_data_single (
     .data_i      ( data_correctable_err_i   ),
     .popcount_o  ( data_correctable_err_num )
   );
 
   popcount #(
-    .INPUT_WIDTH ( ParData*N_CHUNK )
+    .INPUT_WIDTH ( PAR_DATA*N_CHUNK )
   ) i_popcount_data_multi (
     .data_i      ( data_uncorrectable_err_i   ),
     .popcount_o  ( data_uncorrectable_err_num )
   );
 
   popcount #(
-    .INPUT_WIDTH ( ParMeta )
+    .INPUT_WIDTH ( PAR_META )
   ) i_popcount_meta_single (
     .data_i      ( meta_correctable_err_i   ),
     .popcount_o  ( meta_correctable_err_num )
   );
 
   popcount #(
-    .INPUT_WIDTH ( ParMeta )
+    .INPUT_WIDTH ( PAR_META )
   ) i_popcount_meta_multi (
     .data_i      ( meta_uncorrectable_err_i   ),
     .popcount_o  ( meta_uncorrectable_err_num )

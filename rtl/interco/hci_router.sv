@@ -55,7 +55,7 @@ module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
   parameter int unsigned NB_OUT_CHAN = 8,
-  parameter bit          UseECC      = 0,
+  parameter bit          USE_ECC     = 0,
   parameter int unsigned FILTER_WRITE_R_VALID = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(in)  = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
@@ -110,7 +110,7 @@ module hci_router
     BW:  8,
     UW:  0,
     IW:  0,
-    EW:  7*UseECC, // 7 bits for ECC, FIXME: make this more parametric/elegant
+    EW:  7*USE_ECC,
     EHW: EHW
   };
   hci_core_intf #(
@@ -166,7 +166,7 @@ module hci_router
     // unimplemented id bits = 0
     assign postfifo.r_id = '0;
 
-    if(!UseECC)
+    if(!USE_ECC)
       // unimplemented ECC bits = 0
       assign postfifo.r_ecc = '0;
 
@@ -198,9 +198,8 @@ module hci_router
       
       assign virt_in[ii].r_ready = postfifo.r_ready;
 
-      // 7 bits for ECC, FIXME: make this more parametric/elegant
-      if(UseECC) begin : ecc_assignment
       // ecc and r_ecc are each EW=7 bits wide
+      if(USE_ECC) begin : ecc_assignment
         assign virt_in[ii].ecc             = postfifo.ecc[ii*7+6:ii*7];
         assign postfifo.r_ecc[ii*7+6:ii*7] = virt_in[ii].r_ecc;
       end else
@@ -247,7 +246,7 @@ module hci_router
       // unimplemented id bits = 0
       assign out[ii].id = '0;
 
-      if(UseECC) begin : ecc_assignment
+      if(USE_ECC) begin : ecc_assignment
         assign out[ii].ecc  = virt_out[ii].ecc;
         assign virt_out[ii].r_ecc  = out[ii].r_ecc;
       end else begin
@@ -264,7 +263,7 @@ module hci_router
   hci_router_reorder #(
     .NB_IN_CHAN  ( NB_IN_CHAN  ),
     .NB_OUT_CHAN ( NB_OUT_CHAN ),
-    .UseECC      ( UseECC      ),
+    .USE_ECC     ( USE_ECC     ),
     .FILTER_WRITE_R_VALID(FILTER_WRITE_R_VALID)
   ) i_reorder (
     .clk_i   ( clk_i         ),
