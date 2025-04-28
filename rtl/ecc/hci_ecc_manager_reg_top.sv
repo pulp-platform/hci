@@ -69,23 +69,32 @@ module hci_ecc_manager_reg_top #(
   // Format: <reg>_<field>_{wd|we|qs}
   //        or <reg>_{wd|we|qs} if field == 1 or 0
   logic [31:0] data_correctable_errors_qs;
+  logic [31:0] data_correctable_errors_wd;
+  logic data_correctable_errors_we;
   logic [31:0] data_uncorrectable_errors_qs;
+  logic [31:0] data_uncorrectable_errors_wd;
+  logic data_uncorrectable_errors_we;
   logic [31:0] metadata_correctable_errors_qs;
+  logic [31:0] metadata_correctable_errors_wd;
+  logic metadata_correctable_errors_we;
   logic [31:0] metadata_uncorrectable_errors_qs;
+  logic [31:0] metadata_uncorrectable_errors_wd;
+  logic metadata_uncorrectable_errors_we;
 
   // Register instances
   // R[data_correctable_errors]: V(False)
 
   prim_subreg #(
     .DW      (32),
-    .SWACCESS("RO"),
+    .SWACCESS("W0C"),
     .RESVAL  (32'h0)
   ) u_data_correctable_errors (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    .we     (1'b0),
-    .wd     ('0  ),
+    // from register interface
+    .we     (data_correctable_errors_we),
+    .wd     (data_correctable_errors_wd),
 
     // from internal hardware
     .de     (hw2reg.data_correctable_errors.de),
@@ -104,14 +113,15 @@ module hci_ecc_manager_reg_top #(
 
   prim_subreg #(
     .DW      (32),
-    .SWACCESS("RO"),
+    .SWACCESS("W0C"),
     .RESVAL  (32'h0)
   ) u_data_uncorrectable_errors (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    .we     (1'b0),
-    .wd     ('0  ),
+    // from register interface
+    .we     (data_uncorrectable_errors_we),
+    .wd     (data_uncorrectable_errors_wd),
 
     // from internal hardware
     .de     (hw2reg.data_uncorrectable_errors.de),
@@ -130,14 +140,15 @@ module hci_ecc_manager_reg_top #(
 
   prim_subreg #(
     .DW      (32),
-    .SWACCESS("RO"),
+    .SWACCESS("W0C"),
     .RESVAL  (32'h0)
   ) u_metadata_correctable_errors (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    .we     (1'b0),
-    .wd     ('0  ),
+    // from register interface
+    .we     (metadata_correctable_errors_we),
+    .wd     (metadata_correctable_errors_wd),
 
     // from internal hardware
     .de     (hw2reg.metadata_correctable_errors.de),
@@ -156,14 +167,15 @@ module hci_ecc_manager_reg_top #(
 
   prim_subreg #(
     .DW      (32),
-    .SWACCESS("RO"),
+    .SWACCESS("W0C"),
     .RESVAL  (32'h0)
   ) u_metadata_uncorrectable_errors (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    .we     (1'b0),
-    .wd     ('0  ),
+    // from register interface
+    .we     (metadata_uncorrectable_errors_we),
+    .wd     (metadata_uncorrectable_errors_wd),
 
     // from internal hardware
     .de     (hw2reg.metadata_uncorrectable_errors.de),
@@ -199,6 +211,18 @@ module hci_ecc_manager_reg_top #(
                (addr_hit[2] & (|(HCI_ECC_MANAGER_PERMIT[2] & ~reg_be))) |
                (addr_hit[3] & (|(HCI_ECC_MANAGER_PERMIT[3] & ~reg_be)))));
   end
+
+  assign data_correctable_errors_we = addr_hit[0] & reg_we & !reg_error;
+  assign data_correctable_errors_wd = reg_wdata[31:0];
+
+  assign data_uncorrectable_errors_we = addr_hit[1] & reg_we & !reg_error;
+  assign data_uncorrectable_errors_wd = reg_wdata[31:0];
+
+  assign metadata_correctable_errors_we = addr_hit[2] & reg_we & !reg_error;
+  assign metadata_correctable_errors_wd = reg_wdata[31:0];
+
+  assign metadata_uncorrectable_errors_we = addr_hit[3] & reg_we & !reg_error;
+  assign metadata_uncorrectable_errors_wd = reg_wdata[31:0];
 
   // Read data return
   always_comb begin
@@ -267,12 +291,12 @@ module hci_ecc_manager_reg_top_intf
 
   reg_bus_req_t s_reg_req;
   reg_bus_rsp_t s_reg_rsp;
-
+  
   // Assign SV interface to structs
   `REG_BUS_ASSIGN_TO_REQ(s_reg_req, regbus_slave)
   `REG_BUS_ASSIGN_FROM_RSP(regbus_slave, s_reg_rsp)
 
-
+  
 
   hci_ecc_manager_reg_top #(
     .reg_req_t(reg_bus_req_t),
@@ -287,7 +311,7 @@ module hci_ecc_manager_reg_top_intf
     .hw2reg, // Read
     .devmode_i
   );
-
+  
 endmodule
 
 
