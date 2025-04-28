@@ -199,7 +199,6 @@ module hci_ecc_interconnect
 
   assign hwpe_valid_handshake = hwpe[0].req && hwpe[0].gnt;
 
-  `REG_BUS_TYPEDEF_ALL(hci_ecc, logic[AWC-1:0], logic[DW_LIC-1:0], logic[BW_LIC-1:0])
   hci_ecc_req_t hci_ecc_req;
   hci_ecc_rsp_t hci_ecc_rsp;
 
@@ -229,10 +228,8 @@ module hci_ecc_interconnect
   );
 
   hci_ecc_manager #(
-    .ParData                  ( N_MEM                          ),
-    .ParMeta                  ( N_MEM + 1                      ),
-    .hci_ecc_req_t            ( hci_ecc_req_t                  ),
-    .hci_ecc_rsp_t            ( hci_ecc_rsp_t                  )
+    .PAR_DATA                 ( N_MEM                          ),
+    .PAR_META                 ( N_MEM + 1                      )
   ) i_hci_ecc_manager (
     .clk_i                    ( clk_i                          ),
     .rst_ni                   ( rst_ni                         ),
@@ -453,6 +450,11 @@ module hci_ecc_interconnect
 
   initial begin : no_multi_hwpe_check
     assert(N_HWPE <= 1) else $fatal("Multiple HWPEs are not supported in the ECC HCI.");
+  end
+  initial begin : reg_struct_check
+    assert (AWC == 32)    else $fatal("AWC value not supported for default reg_{req,resp} struct");
+    assert (DW_LIC == 32) else $fatal("DW_LIC value not supported for default reg_{req,resp} struct");
+    assert (BW_LIC == 8)  else $fatal("BW_LIC value not supported for default reg_{req,resp} struct");
   end
 
 `endif

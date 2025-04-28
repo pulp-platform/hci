@@ -35,13 +35,12 @@
 
 
 module hci_ecc_manager
+  import hci_package::*;
   import hci_ecc_manager_reg_pkg::*;
 #(
   parameter int unsigned N_CHUNK = 1,
-  parameter int unsigned ParData = 1,
-  parameter int unsigned ParMeta = 1,
-  parameter type         hci_ecc_req_t = logic,
-  parameter type         hci_ecc_rsp_t = logic
+  parameter int unsigned PAR_DATA = 1,
+  parameter int unsigned PAR_META = 1
 ) (
   input  logic                clk_i,
   input  logic                rst_ni,
