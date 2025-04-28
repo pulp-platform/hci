@@ -353,7 +353,7 @@ module hci_ecc_interconnect
 
       hci_ecc_dec #(
         .CHUNK_SIZE ( CHUNK_SIZE ),
-        .EnableData ( 0          ),
+        .ENABLE_DATA ( 0          ),
         .`HCI_SIZE_PARAM(tcdm_target) ( `HCI_SIZE_PARAM(hwpe) )
       ) i_ecc_dec_meta (
         .data_single_err_o (  ),
@@ -367,7 +367,7 @@ module hci_ecc_interconnect
       hci_router #(
         .FIFO_DEPTH           ( EXPFIFO                   ),
         .NB_OUT_CHAN          ( N_MEM                     ),
-        .UseECC               ( 1                         ),
+        .USE_ECC              ( 1                         ),
         .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID[0]  ),
         .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe_dec) ),
         .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
@@ -381,7 +381,7 @@ module hci_ecc_interconnect
 
       for (genvar i=0; i < N_MEM; i++) begin : after_router_enc
         hci_ecc_enc #(
-          .EnableData ( 0 ),
+          .ENABLE_DATA ( 0 ),
           .`HCI_SIZE_PARAM(tcdm_target)    ( `HCI_SIZE_PARAM(hwpe_mem)     ),
           .`HCI_SIZE_PARAM(tcdm_initiator) ( `HCI_SIZE_PARAM(hwpe_mem_enc) )
         ) i_ecc_enc_meta (

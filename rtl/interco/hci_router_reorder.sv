@@ -23,7 +23,7 @@ module hci_router_reorder
   parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 2,
   parameter int unsigned FILTER_WRITE_R_VALID = 0,
-  parameter bit          UseECC = 0
+  parameter bit          USE_ECC = 0
 )
 (
   input  logic                       clk_i,
@@ -37,13 +37,11 @@ module hci_router_reorder
 
 );
 
-  // FIXME: make this a localparam
-  // if UseECC = 1, use 32b + 7b for ECC
-  localparam int unsigned RespDataWidth = (UseECC) ? (32+7) : 32;
-  localparam int unsigned EW            = (UseECC) ?  7     : 1;
   // Hsiao SEC-DED ECC needs $clog2(DW)+2 check bits
   // At this level only data are ECC-protected and with DW fixed at 32 that is 5+2 = 7
   // When USE_ECC == 1 those 7 bits are appended to the 32-bit data word
+  localparam int unsigned EW              = (USE_ECC) ?  7     : 1;
+  localparam int unsigned RESP_DATA_WIDTH = (USE_ECC) ? (32+7) : 32;
 
   logic [NB_IN_CHAN-1:0]       in_req;
   logic [NB_IN_CHAN-1:0]       in_req_q;
@@ -67,9 +65,8 @@ module hci_router_reorder
   logic [NB_OUT_CHAN-1:0][EW-1:0] out_r_ecc;
   logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0] ma_req;
 
-  // rdata as seen by addr_dec_resp_mux in input/output
-  logic [NB_IN_CHAN-1:0 ][RespDataWidth-1:0] adrm_rdata_o;
-  logic [NB_OUT_CHAN-1:0][RespDataWidth-1:0] adrm_rdata_i;
+  logic [NB_IN_CHAN-1:0 ][RESP_DATA_WIDTH-1:0] resp_data_o;
+  logic [NB_OUT_CHAN-1:0][RESP_DATA_WIDTH-1:0] resp_data_i;
 
   generate
 
@@ -115,12 +112,12 @@ module hci_router_reorder
 
       // address decoder mux from TCDM XBAR
       addr_dec_resp_mux #(
-        .NumOut        ( NB_OUT_CHAN   ),
-        .ReqDataWidth  ( 1             ),
-        .RespDataWidth ( RespDataWidth ),
-        .RespLat       ( 1             ),
-        .BroadCastOn   ( 0             ),
-        .WriteRespOn   ( 1             )
+        .NumOut        ( NB_OUT_CHAN     ),
+        .ReqDataWidth  ( 1               ),
+        .RespDataWidth ( RESP_DATA_WIDTH ),
+        .RespLat       ( 1               ),
+        .BroadCastOn   ( 0               ),
+        .WriteRespOn   ( 1               )
       ) i_addr_dec_resp_mux (
         .clk_i   ( clk_i           ),
         .rst_ni  ( rst_ni          ),
@@ -130,11 +127,11 @@ module hci_router_reorder
         .data_i  ( '0              ),
         .gnt_o   (                 ), // unused
         .vld_o   (                 ), // unused
-        .rdata_o ( adrm_rdata_o[i] ),
+        .rdata_o ( resp_data_o[i] ),
         .req_o   ( ma_req[i]       ),
         .gnt_i   ( '0              ),
         .data_o  (                 ), // unused
-        .rdata_i ( adrm_rdata_i    )
+        .rdata_i ( resp_data_i    )
       );
     
       // bindings
@@ -155,10 +152,11 @@ module hci_router_reorder
       assign in[i].egnt     = '1;
       assign in[i].r_evalid = '0;
 
-      if (UseECC)
-        assign { in_r_data[i], in_r_ecc[i] } = adrm_rdata_o[i];
+      // When ECC is enabled, resp_data_o holds {data, check-bits}; otherwise it carries data only
+      if (USE_ECC)
+        assign { in_r_data[i], in_r_ecc[i] } = resp_data_o[i];
       else begin
-        assign in_r_data[i] = adrm_rdata_o[i];
+        assign in_r_data[i] = resp_data_o[i];
         assign in_r_ecc[i]  = '0;
       end
 
@@ -202,10 +200,11 @@ module hci_router_reorder
       assign out[i].ereq     = '0;
       assign out[i].r_eready = '1;
 
-      if (UseECC)
-        assign adrm_rdata_i[i] = { out_r_data[i], out_r_ecc[i] };
+      // When ECC is enabled, resp_data_i holds {data, check-bits}; otherwise it carries data only
+      if (USE_ECC)
+        assign resp_data_i[i] = { out_r_data[i], out_r_ecc[i] };
       else
-        assign adrm_rdata_i[i] = out_r_data[i];
+        assign resp_data_i[i] = out_r_data[i];
 
     end // out_chan_gen
 

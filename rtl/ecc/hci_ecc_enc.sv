@@ -72,7 +72,7 @@ module hci_ecc_enc
   import hci_package::*;
 #(
   parameter int unsigned CHUNK_SIZE  = 32,
-  parameter bit EnableData = 1,
+  parameter bit ENABLE_DATA = 1,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_initiator) = '0,
   // Dependent parameters, do not override
@@ -93,14 +93,14 @@ module hci_ecc_enc
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm_target);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_initiator);
 
-  localparam bit          UseUW   = (UW > 1) ? 1 : 0;
+  localparam bit          USE_UW   = (UW > 1) ? 1 : 0;
 
-  localparam int unsigned RQMETAW = (UseUW) ? AW + DW/BW + UW + 1 : AW + DW/BW + 1;
-  localparam int unsigned RSMETAW = (UseUW) ? UW : 0;
+  localparam int unsigned RQMETAW = (USE_UW) ? AW + DW/BW + UW + 1 : AW + DW/BW + 1;
+  localparam int unsigned RSMETAW = (USE_UW) ? UW : 0;
 
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
   localparam int unsigned EW_RQMETA = $clog2(RQMETAW)+2;
-  localparam int unsigned EW_RSMETA = (UseUW) ? $clog2(RSMETAW)+2 : 0;
+  localparam int unsigned EW_RSMETA = (USE_UW) ? $clog2(RSMETAW)+2 : 0;
 
   logic [N_CHUNK-1:0][EW_DW-1:0]      data_ecc;
   logic [1:0]                         r_meta_err;
@@ -109,7 +109,7 @@ module hci_ecc_enc
 
   // REQUEST PHASE PAYLOAD ENCODING
   // data hsiao encoders
-  if (EnableData) begin : gen_data_encoding
+  if (ENABLE_DATA) begin : gen_data_encoding
 
     logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] data_enc;
 
@@ -127,7 +127,7 @@ module hci_ecc_enc
 
   // metadata (add/wen/be/user) hsiao encoder
   generate
-    if (UseUW) begin : meta_user_enc
+    if (USE_UW) begin : meta_user_enc
       hsiao_ecc_enc #(
         .DataWidth ( RQMETAW ),
         .ProtWidth ( EW_RQMETA )
@@ -148,7 +148,7 @@ module hci_ecc_enc
   endgenerate
 
   // RESPONSE PHASE PAYLOAD DECODING
-  if (EnableData) begin : gen_r_data_decoding
+  if (ENABLE_DATA) begin : gen_r_data_decoding
 
     logic [N_CHUNK-1:0][CHUNK_SIZE-1:0] r_data_dec;
     logic [N_CHUNK-1:0][EW_DW-1:0]      r_data_ecc;
@@ -183,7 +183,7 @@ module hci_ecc_enc
 
   // metadata (r_user) hsiao decoder
   generate
-    if (UseUW) begin : meta_user_dec
+    if (USE_UW) begin : meta_user_dec
       hsiao_ecc_dec #(
         .DataWidth ( RSMETAW ),
         .ProtWidth ( EW_RSMETA )
@@ -220,7 +220,7 @@ module hci_ecc_enc
   assign tcdm_target.r_evalid    = tcdm_initiator.r_evalid;
   assign tcdm_initiator.r_eready = tcdm_target.r_eready;
   assign tcdm_initiator.ecc      = { data_ecc, meta_ecc };
-  assign tcdm_target.r_ecc       = (!EnableData) ? tcdm_initiator.r_ecc[EW_RSMETA+:EW_DW*N_CHUNK] : '0;
+  assign tcdm_target.r_ecc       = (!ENABLE_DATA) ? tcdm_initiator.r_ecc[EW_RSMETA+:EW_DW*N_CHUNK] : '0;
 
   assign r_meta_single_err_o = r_meta_err[0];
   assign r_meta_multi_err_o  = r_meta_err[1];
