@@ -14,7 +14,56 @@
  */
 
 /**
- * ADD DESCRIPTION
+ * The **hci_ecc_enc** module handles ECC encoding and decoding of the HCI-Core interface payloads.
+ * It encodes the **request phase** payload, applying ECC protection to both `data` and metadata (`add`, `wen`,
+ * `be`, and optionally `user` fields).
+ * It decodes the **response phase** payload, recovering `r_data` and `r_user` fields from the ECC-protected response.
+ *
+ * The **request phase** encoding covers:
+ * - If `ENABLE_DATA` is set, ECC protection is applied to the `data` field, split into multiple chunks.
+ * - Always applies ECC protection to the request metadata.
+ *
+ * The **response phase** decoding covers:
+ * - ECC correction on the `r_data` field, chunked in the same manner as `data`.
+ * - ECC correction on the `r_user` field, if used.
+ *
+ * The ECC encoding scheme follows a Hsiao code, providing single error correction and double
+ * error detection (SEC-DED). See https://github.com/pulp-platform/redundancy_cells).
+ * Errors are separately flagged for data and metadata, distinguishing single-bit and multi-bit corrections.
+ *
+ * This module is the complementary counterpart to `hci_ecc_dec`, which instead applies ECC decoding
+ * during request and encoding during response.
+ *
+ * .. tabularcolumns:: |J|J|
+ * .. _hci_ecc_enc_request_encoding:
+ * .. table:: **hci_ecc_enc** Request Phase ECC layout (tcdm_initiator.ecc).
+ *
+ *   +-------------------------------+--------------------------+
+ *   | **data_ecc**                  | **meta_ecc**             |
+ *   | [EW-1 : EW_RQMETA]            | [EW_RQMETA-1 : 0]        |
+ *   +-------------------------------+--------------------------+
+ *
+ * .. tabularcolumns:: |J|J|J|
+ * .. _hci_ecc_enc_response_encoding:
+ * .. table:: **hci_ecc_enc** Response Phase ECC layout (tcdm_target.r_ecc).
+ *
+ *   +----------------------------------+-----------------------------------------+-------------------+
+ *   | **Zero padding**                 | **r_data_ecc**                          | **r_meta_ecc**    |
+ *   | [EW-1 : EW_RQMETA+EW_DW*N_CHUNK] | [EW_RQMETA+EW_DW*N_CHUNK-1 : EW_RQMETA] | [EW_RQMETA-1 : 0] |
+ *   +----------------------------------+-----------------------------------------+-------------------+
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_ecc_enc_params:
+ * .. table:: **hci_ecc_enc** design-time parameters.
+ *
+ *   +----------------------------+-------------+------------------------------------------------------------------+
+ *   | **Name**                   | **Default** | **Description**                                                  |
+ *   +----------------------------+-------------+------------------------------------------------------------------+
+ *   | *CHUNK_SIZE*               | 32          | Width in bits of each chunk of data to protect individually.     |
+ *   +----------------------------+-------------+------------------------------------------------------------------+
+ *   | *ENABLE_DATA*              | 1           | If set to 1, performs data field's encoding as well as metadata. |
+ *   +----------------------------+-------------+------------------------------------------------------------------+
+ *
  */
 
 `include "hci_helpers.svh"

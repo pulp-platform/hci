@@ -13,6 +13,23 @@
  * specific language governing permissions and limitations under the License.
  */
 
+/*
+ * The **hci_ecc_source** module acts as an ECC-extended wrapper around the **hci_core_source** module.
+ * It extends the functionality with ECC support, while preserving it's original behavior.
+ * Please refer to **hci_core_source** for detailed functional information.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_ecc_source_params:
+ * .. table:: **hci_ecc_source** design-time parameters.
+ *
+ *   +---------------------+-------------+--------------------------------------------------------------+
+ *   | **Name**             | **Default** | **Description**                                              |
+ *   +---------------------+-------------+--------------------------------------------------------------+
+ *   | *CHUNK_SIZE*         | 32          | Width in bits of each chunk of data to protect individually. |
+ *   +---------------------+-------------+--------------------------------------------------------------+
+ *
+ */
+
 `include "hci_helpers.svh"
 
 module hci_ecc_source

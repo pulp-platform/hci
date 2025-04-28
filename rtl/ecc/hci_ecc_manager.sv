@@ -13,6 +13,27 @@
  * specific language governing permissions and limitations under the License.
 */
 
+/*
+ * The **hci_ecc_manager** module logs faults on data and metadata fields,
+ * distinguishing correctable and uncorrectable errors, as detected along the
+ * **hci_ecc_interconnect**, and collects them into software-accessible registers.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_ecc_manager_params:
+ * .. table:: **hci_ecc_manager** design-time parameters.
+ *
+ *   +---------------------+-------------+--------------------------------------------------------------------------------------------+
+ *   | **Name**            | **Default** | **Description**                                                                            |
+ *   +---------------------+-------------+--------------------------------------------------------------------------------------------+
+ *   | *N_CHUNK*           | 1           | Number of chunks in which the wide data channel is split for independent ECC processing.   |
+ *   +---------------------+-------------+--------------------------------------------------------------------------------------------+
+ *   | *PAR_DATA*          | 1           | Number of independent parallel data error sources monitored across the interconnect.       |
+ *   +---------------------+-------------+--------------------------------------------------------------------------------------------+
+ *   | *PAR_META*          | 1           | Number of independent parallel metadata error sources monitored across the interconnect.   |
+ *   +---------------------+-------------+--------------------------------------------------------------------------------------------+
+ * */
+
+
 module hci_ecc_manager
   import hci_ecc_manager_reg_pkg::*;
 #(
