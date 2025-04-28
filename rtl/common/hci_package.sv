@@ -76,4 +76,19 @@ package hci_package;
     CTRL_ONLY    // Do not assign either ecc nor data signals
   } hci_copy_t;
 
+  typedef struct packed {
+    logic [32-1:0] addr;
+    logic          write;
+    logic [32-1:0] wdata;
+    logic [8-1:0]  wstrb;
+    logic          valid;
+  } hci_ecc_req_t;
+
+  typedef struct packed {
+    logic [32-1:0] rdata;
+    logic          error;
+    logic          ready;
+  } hci_ecc_rsp_t;
+
+
 endpackage // hci_package
