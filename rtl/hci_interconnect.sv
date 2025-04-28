@@ -165,9 +165,10 @@ module hci_interconnect
     .UW(UWH),
     .IW(IWH),
     .EW(DEFAULT_EW),
-    .EHW(DEFAULT_EHW)) hwpe_to_router (
-      .clk(clk_i)
-    );
+    .EHW(DEFAULT_EHW)
+  ) hwpe_to_router (
+    .clk(clk_i)
+  );
   generate
 
     if(SEL_LIC==0) begin : l1_interconnect_gen
