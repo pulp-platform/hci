@@ -13,6 +13,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
+ /*
+ * The **hci_ecc_sink** module acts as an ECC-extended wrapper around the **hci_core_sink** module.
+ * It extends the functionality with ECC support, while preserving it's original behavior.
+ * Please refer to **hci_core_sink** for detailed functional information.
+ *
+ */
+
 `include "hci_helpers.svh"
 
 module hci_ecc_sink

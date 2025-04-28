@@ -44,6 +44,8 @@
  *   +---------------------+-------------+-------------------------------------------------------------------+
  *   | *NB_OUT_CHAN*       | 8           | Number of output HCI channel                                      |
  *   +---------------------+-------------+-------------------------------------------------------------------+
+ *   | *USE_ECC*           | 0           | If set to 1, enables ECC check bits propagation.                  |
+ *   +---------------------+-------------+-------------------------------------------------------------------+
  */
 
 `include "hci_helpers.svh"
@@ -100,6 +102,8 @@ module hci_router
   `HCI_INTF(postfifo, clk_i);
 
   // using the interface from hwpe-stream here
+  // Hsiao SEC-DED ECC needs $clog2(DW)+2 check bits
+  // At this level only data are ECC-protected and with DW fixed at 32, EW is 5+2 = 7
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(virt_in) = '{
     DW:  32,
     AW:  32,
@@ -196,6 +200,7 @@ module hci_router
 
       // 7 bits for ECC, FIXME: make this more parametric/elegant
       if(UseECC) begin : ecc_assignment
+      // ecc and r_ecc are each EW=7 bits wide
         assign virt_in[ii].ecc             = postfifo.ecc[ii*7+6:ii*7];
         assign postfifo.r_ecc[ii*7+6:ii*7] = virt_in[ii].r_ecc;
       end else

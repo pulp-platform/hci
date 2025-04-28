@@ -41,6 +41,9 @@ module hci_router_reorder
   // if UseECC = 1, use 32b + 7b for ECC
   localparam int unsigned RespDataWidth = (UseECC) ? (32+7) : 32;
   localparam int unsigned EW            = (UseECC) ?  7     : 1;
+  // Hsiao SEC-DED ECC needs $clog2(DW)+2 check bits
+  // At this level only data are ECC-protected and with DW fixed at 32 that is 5+2 = 7
+  // When USE_ECC == 1 those 7 bits are appended to the 32-bit data word
 
   logic [NB_IN_CHAN-1:0]       in_req;
   logic [NB_IN_CHAN-1:0]       in_req_q;
