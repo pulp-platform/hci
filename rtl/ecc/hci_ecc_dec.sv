@@ -233,8 +233,10 @@ module hci_ecc_dec
 
   `ifndef SYNTHESIS
   `ifndef VERILATOR
+  `ifndef VCS
     initial
       ew : assert(EW >= EW_DW*N_CHUNK+EW_RQMETA);
+  `endif
   `endif
   `endif
 

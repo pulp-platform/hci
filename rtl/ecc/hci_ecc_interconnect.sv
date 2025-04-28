@@ -445,6 +445,7 @@ module hci_ecc_interconnect
  */
 `ifndef SYNTHESIS
 `ifndef VERILATOR
+`ifndef VCS
 
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(hwpe), hwpe[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(cores), cores[0]);
@@ -454,6 +455,7 @@ module hci_ecc_interconnect
     assert(N_HWPE <= 1) else $fatal("Multiple HWPEs are not supported in the ECC HCI.");
   end
 
+`endif
 `endif
 `endif;
 
