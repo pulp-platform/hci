@@ -190,8 +190,8 @@ module hci_core_mux_ooo
     if(rr_counter_en_q | ~any_req_q) begin
       winner_d = rr_counter_q;
       for(int jj=0; jj<NB_CHAN; jj++) begin
-        if (in_req[rr_priority_d[NB_CHAN-jj-1]] == 1'b1)
-          winner_d = rr_priority_d[NB_CHAN-jj-1];
+        if (in_req[rr_priority_d[jj]] == 1'b1)
+          winner_d = rr_priority_d[jj];
       end
     end
   end
