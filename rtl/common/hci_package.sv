@@ -80,6 +80,7 @@ typedef struct packed {
   typedef struct packed {
     logic                                     req_start;
     logic                                     ignore_bias;
+    logic                                     ignore_skip;
     hwpe_stream_package::ctrl_addressgen_v3_t addressgen_ctrl;
   } hci_streamer_biased_ctrl_t;
 
