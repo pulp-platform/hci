@@ -109,6 +109,7 @@ module hci_core_source_biased
   input logic enable_i,
 
   hwpe_stream_intf_stream.sink      bias_i,
+  hwpe_stream_intf_stream.sink      skip_i,
 
   hci_core_intf.initiator           tcdm,
   hwpe_stream_intf_stream.source    stream,
@@ -172,11 +173,12 @@ module hci_core_source_biased
     .flags_o     ( flags_o.addressgen_flags )
   );
 
-  assign addr_push_v.valid = addr_push.valid && (bias_i.valid || ctrl_i.ignore_bias);
+  assign addr_push_v.valid = addr_push.valid && (bias_i.valid || ctrl_i.ignore_bias) && (~skip_i.data && skip_i.valid || ctrl_i.ignore_skip);
   assign addr_push_v.data  = addr_push.data;
   assign addr_push_v.strb  = addr_push.strb;
-  assign addr_push.ready   = addr_push_v.ready && (bias_i.valid || ctrl_i.ignore_bias);
+  assign addr_push.ready   = addr_push_v.ready && (bias_i.valid || ctrl_i.ignore_bias) && (skip_i.valid || ctrl_i.ignore_skip);
   assign bias_i.ready      = addr_push_v.ready && addr_push.valid;
+  assign skip_i.ready      = addr_push_v.ready && addr_push.valid;
 
   if (PASSTHROUGH_FIFO) begin : passthrough_gen
     hwpe_stream_fifo_passthrough #(
