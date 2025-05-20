@@ -217,6 +217,8 @@ module hci_core_source_biased
   logic stream_cnt_en, stream_cnt_clr;
   logic [TRANS_CNT-1:0] stream_cnt_d, stream_cnt_q;
 
+  logic [TRANS_CNT-1:0] skip_cnt_d, skip_cnt_q;
+
   // this is simply exploiting the fact that we can make a wider data access than strictly necessary!
   assign stream_data_misaligned = tcdm.r_valid ? tcdm.r_data : stream_data_q; // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
 
@@ -350,7 +352,7 @@ module hci_core_source_biased
       end
       STREAMER_DONE : begin
         address_gen_en = 1'b1;
-        if((addr_fifo_flags.empty==1'b1) && (stream_cnt_q==ctrl_i.addressgen_ctrl.tot_len)) begin
+        if((addr_fifo_flags.empty==1'b1) && ((stream_cnt_q+skip_cnt_q)==ctrl_i.addressgen_ctrl.tot_len)) begin
           ns = STREAMER_IDLE;
           flags_o.done = 1'b1;
           done = 1'b1;
@@ -361,6 +363,19 @@ module hci_core_source_biased
       end
     endcase
   end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : skip_counter
+    if (~rst_ni) begin
+      skip_cnt_q <= '0;
+    end else begin
+      if (clear_i || stream_cnt_clr) begin
+        skip_cnt_q <= '0;
+      end else begin
+        skip_cnt_q <= skip_cnt_d;
+      end
+    end
+  end
+  assign skip_cnt_d = addr_push_v.valid && ~ctrl_i.ignore_skip && skip_i.data ? skip_cnt_q + 1 : skip_cnt_q;
 
   assign stream_cnt_en = stream.valid & stream.ready;
 
