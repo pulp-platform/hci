@@ -293,14 +293,6 @@ module hci_core_sink
           address_gen_en = 1'b1;
         end
       end
-<<<<<<< HEAD
-      STREAMER_PRESAMPLE : begin
-        ns = STREAMER_WORKING;
-        address_gen_en = 1'b1;
-        presample = 1'b1;
-      end
-=======
->>>>>>> fba8b9d (update to v2: use of fifo to manage jobs)
       STREAMER_WORKING : begin
         address_gen_en = 1'b1;
         if(flags_o.addressgen_flags.done) begin
@@ -315,15 +307,6 @@ module hci_core_sink
           address_gen_en  = 1'b0;
           address_gen_clr = 1'b1;
           address_cnt_clr = 1'b1;
-<<<<<<< HEAD
-          if(job_pop.valid) begin
-            ns = STREAMER_PRESAMPLE;
-          end
-          else begin
-            ns = STREAMER_IDLE;
-          end
-=======
->>>>>>> fba8b9d (update to v2: use of fifo to manage jobs)
         end
       end
     endcase
