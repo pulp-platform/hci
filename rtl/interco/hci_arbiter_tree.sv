@@ -39,6 +39,7 @@ module hci_arbiter_tree
 #(
   parameter int unsigned NB_REQUESTS = 1,
   parameter int unsigned NB_CHAN = 16,
+  parameter int unsigned MODE = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(out)  = '0
 )
 (
@@ -92,7 +93,8 @@ module hci_arbiter_tree
           localparam out_index  	 = lvl*MAX_ARBITERS_PER_LEVEL*NB_CHAN + (ii>>1)*NB_CHAN;
           if(ii < 2*nb_arbiters) begin : arbiter_path 
             hci_arbiter #(
-              .NB_CHAN ( NB_CHAN )
+              .NB_CHAN ( NB_CHAN ),
+              .MODE( MODE )
             ) i_arbiter (
               .clk_i   ( clk_i                                          ),
               .rst_ni  ( rst_ni                                         ),
@@ -117,7 +119,8 @@ module hci_arbiter_tree
             
             if(ii < 2*nb_arbiters) begin : arbiter_path
               hci_arbiter #(
-                .NB_CHAN ( NB_CHAN )
+                .NB_CHAN ( NB_CHAN ),
+                .MODE( MODE )
               ) i_arbiter (
                 .clk_i   ( clk_i                                              ),
                 .rst_ni  ( rst_ni                                             ),
