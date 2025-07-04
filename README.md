@@ -48,3 +48,33 @@ If you are using HCI IPs for an academic publication, we recommend citing one or
   doi={10.1109/DAC56929.2023.10247945}
 }
 ```
+# HCI Verification Environment
+
+This repository also contains an environment for verifying the Heterogeneous Cluster Interconnect (HCI)
+
+## Setup Instructions
+
+Before running the simulation, follow these steps:
+
+1. **Configure HCI Parameters** <br>
+Edit the 'hci_config.mk' file inside config/hardware_config folder and insert the correct configuration values as needed for your verification environment. <br>  
+
+2. **Run Setup**
+```bash
+make setup
+```  
+3. **Configure the Parameters of the Masters** <br>
+Edit the files in the folder /config/hardware_config/masters_config to set the parameters of the masters  
+
+4. **Choose the Test** <br>
+Choose the test in /config/config.mk  
+
+5. **Create stimuli** <br>
+```bash
+make stimuli
+```  
+
+6. **Run the simulation** <br>
+```bash
+make clean build run &
+```
