@@ -92,13 +92,17 @@ module hci_core_source
   import hci_package::*;
 #(
   // Stream interface params
-  parameter int unsigned LATCH_FIFO  = 0,
-  parameter int unsigned TRANS_CNT = 16,
-  parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
-  parameter int unsigned MISALIGNED_ACCESSES = 1,
-  parameter int unsigned PASSTHROUGH_FIFO = 0,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
+  parameter int unsigned LATCH_FIFO           = 0,
+  parameter int unsigned TRANS_CNT            = 16,
+  parameter int unsigned ADDR_MIS_DEPTH       = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
+  parameter int unsigned MISALIGNED_ACCESSES  = 1,
+  parameter int unsigned PASSTHROUGH_FIFO     = 0,
+  parameter  int unsigned ELEMENT_WIDTH       = 8,  // e.g., 8 bits per element
+  parameter  int unsigned ELEMENTS_PER_BANK   = 4,  // number of elements in one memory bank
+  localparam int unsigned BANK_DATA_WIDTH     = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
+  localparam  int unsigned ELEMENT_INDEX_WIDTH = $clog2(ELEMENTS_PER_BANK),
   parameter bit [2:0] DIM_ENABLE_1H = 3'b011 // Number of dimensions enabled in the address generator
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
   input logic clk_i,
@@ -138,7 +142,7 @@ module hci_core_source
   );
 
   // generate addresses
-  hwpe_stream_addressgen_v3 #(
+  hwpe_stream_addressgen_v4 #(
     .DIM_ENABLE_1H ( DIM_ENABLE_1H )
   ) i_addressgen (
     .clk_i       ( clk_i                    ),
