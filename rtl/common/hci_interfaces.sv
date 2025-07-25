@@ -1,6 +1,7 @@
 /*
  * hci_interfaces.sv
  * Francesco Conti <f.conti@unibo.it>
+ * Marco Bertuletti <mbertuletti@iis.ee.ethz.ch>
  *
  * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
@@ -206,6 +207,91 @@ interface hci_core_intf (
 `endif
 
 endinterface // hci_core_intf
+
+interface hci_outstanding_intf (
+  input logic clk
+);
+
+  import hci_package::*;
+
+  parameter int unsigned DW  = hci_package::DEFAULT_DW;  /// Data Width
+  parameter int unsigned AW  = hci_package::DEFAULT_AW;  /// Address Width
+  parameter int unsigned BW  = hci_package::DEFAULT_BW;  /// Width of a "byte" in bits (default 8)
+  parameter int unsigned UW  = hci_package::DEFAULT_UW;  /// User Width
+  parameter int unsigned IW  = hci_package::DEFAULT_IW;  /// ID Width
+
+  // handshake signals
+  logic req_valid;
+  logic req_ready;
+  logic resp_valid;
+  logic resp_ready;
+
+  // request phase payload
+  logic [AW-1:0]    req_add;
+  logic             req_wen; // wen=1'b1 for LOAD, wen=1'b0 for STORE
+  logic [DW-1:0]    req_data;
+  logic [DW/BW-1:0] req_be;
+  logic [hci_package::iomsb(UW):0] req_user;
+  logic [hci_package::iomsb(IW):0] req_id;
+
+  // response phase payload
+  logic [DW-1:0] resp_data;
+  logic [hci_package::iomsb(UW):0] resp_user;
+  logic [hci_package::iomsb(IW):0] resp_id;
+  logic resp_opc;
+
+  modport initiator (
+    output req_add,
+    output req_wen,
+    output req_data,
+    output req_be,
+    output req_user,
+    output req_id,
+    output req_valid,
+    input  req_ready,
+    input  resp_data,
+    input  resp_user,
+    input  resp_id,
+    input  resp_opc,
+    input  resp_valid,
+    output resp_ready
+  );
+
+  modport target (
+    input  req_add,
+    input  req_wen,
+    input  req_data,
+    input  req_be,
+    input  req_user,
+    input  req_id,
+    input  req_valid,
+    output req_ready,
+    output resp_data,
+    output resp_user,
+    output resp_id,
+    output resp_opc,
+    output resp_valid,
+    input  resp_ready
+  );
+
+  modport monitor (
+    input req_add,
+    input req_wen,
+    input req_data,
+    input req_be,
+    input req_user,
+    input req_id,
+    input req_valid,
+    input req_ready,
+    input resp_data,
+    input resp_user,
+    input resp_id,
+    input resp_opc,
+    input resp_valid,
+    input resp_ready
+  );
+
+endinterface // hci_outstanding_intf
 
 `ifdef BUILD_DEPRECATED
 interface hci_mem_intf (
