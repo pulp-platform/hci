@@ -83,11 +83,15 @@ module hci_core_sink
   import hci_package::*;
 #(
   // Stream interface params
-  parameter int unsigned TCDM_FIFO_DEPTH = 0,
-  parameter int unsigned TRANS_CNT       = 16,
-  parameter int unsigned MISALIGNED_ACCESSES = 1,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
-  parameter bit [2:0] DIM_ENABLE_1H = 3'b011 // Number of dimensions enabled in the address generator
+  parameter  int unsigned TCDM_FIFO_DEPTH     = 0,
+  parameter  int unsigned TRANS_CNT           = 16,
+  parameter  int unsigned MISALIGNED_ACCESSES = 1,
+  parameter  int unsigned ELEMENT_WIDTH       = 8,  // e.g., 8 bits per element
+  parameter  int unsigned ELEMENTS_PER_BANK   = 4,  // number of elements in one memory bank
+  localparam int unsigned BANK_DATA_WIDTH     = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
+  localparam  int unsigned ELEMENT_INDEX_WIDTH = $clog2(ELEMENTS_PER_BANK),
+  parameter bit [3:0] DIM_ENABLE_1H = 4'b011 // Number of dimensions enabled in the address generator
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
   input logic clk_i,
@@ -106,6 +110,7 @@ module hci_core_sink
 
   localparam int unsigned DATA_WIDTH = `HCI_SIZE_GET_DW(tcdm);
   localparam int unsigned EHW        = `HCI_SIZE_GET_EHW(tcdm);
+  localparam int unsigned BW         = `HCI_SIZE_GET_BW(tcdm);
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -115,6 +120,8 @@ module hci_core_sink
   logic done;
 
   logic tcdm_inflight;
+
+  assign flags_o.no_valid_transfers = (~tcdm_inflight);
 
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( 36 )
@@ -131,7 +138,7 @@ module hci_core_sink
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '{
     DW:  DATA_WIDTH,
     AW:  DEFAULT_AW,
-    BW:  DEFAULT_BW,
+    BW:  BW,
     UW:  DEFAULT_UW,
     IW:  DEFAULT_IW,
     EW:  DEFAULT_EW,
@@ -139,7 +146,7 @@ module hci_core_sink
   };
   `HCI_INTF(tcdm_target, clk_i);
 
-  hwpe_stream_addressgen_v3 #(
+  hwpe_stream_addressgen_v4 #(
     .DIM_ENABLE_1H ( DIM_ENABLE_1H )
   ) i_addressgen (
     .clk_i       ( clk_i                    ),
@@ -168,46 +175,51 @@ module hci_core_sink
   logic [TRANS_CNT-1:0] address_cnt_d, address_cnt_q;
 
   logic [DATA_WIDTH-1:0]   stream_data_misaligned;
-  logic [DATA_WIDTH/8-1:0] stream_strb_misaligned;
+  logic [DATA_WIDTH/ELEMENT_WIDTH-1:0] stream_strb_misaligned;
+  logic [ELEMENTS_PER_BANK-1:0][DATA_WIDTH-1:0]   stream_data_aligned_array;
+  logic [ELEMENTS_PER_BANK-1:0][DATA_WIDTH/ELEMENT_WIDTH-1:0] stream_strb_aligned_array;
   logic [DATA_WIDTH-1:0]   stream_data_aligned;
-  logic [DATA_WIDTH/8-1:0] stream_strb_aligned;
+  logic [DATA_WIDTH/ELEMENT_WIDTH-1:0] stream_strb_aligned;
+
+  logic [ELEMENT_INDEX_WIDTH-1:0] bank_offset;
+
+  assign bank_offset = addr_pop.data[ELEMENT_INDEX_WIDTH-1:0]; 
+
+  generate
+    if (MISALIGNED_ACCESSES == 1) begin: missaligned_access_gen
+      for (genvar offs = 0; offs < ELEMENTS_PER_BANK; offs++) begin : aligned_stream_gen
+        if (offs > 0) begin 
+          assign stream_data_aligned_array[offs][offs*ELEMENT_WIDTH-1:0] = '0;
+          assign stream_strb_aligned_array[offs][offs-1:0] = '0;
+        end
+
+        localparam int unsigned DATA_OFFSET_MSB = DATA_WIDTH - BANK_DATA_WIDTH + offs * ELEMENT_WIDTH;
+        localparam int unsigned DATA_OFFSET_LSB = DATA_OFFSET_MSB - (DATA_WIDTH - BANK_DATA_WIDTH);
+        localparam int unsigned STRB_OFFSET_MSB = DATA_OFFSET_MSB / ELEMENT_WIDTH;
+        localparam int unsigned STRB_OFFSET_LSB = DATA_OFFSET_LSB / ELEMENT_WIDTH;
+        
+        assign stream_data_aligned_array[offs][DATA_WIDTH-1:DATA_OFFSET_MSB] = '0;
+        assign stream_data_aligned_array[offs][DATA_OFFSET_MSB-1:DATA_OFFSET_LSB] = stream_data_misaligned[DATA_WIDTH-BANK_DATA_WIDTH-1:0];
+
+        assign stream_strb_aligned_array[offs][DATA_WIDTH/ELEMENT_WIDTH-1:STRB_OFFSET_MSB] = '0;
+        assign stream_strb_aligned_array[offs][STRB_OFFSET_MSB-1:STRB_OFFSET_LSB] = stream_strb_misaligned[(DATA_WIDTH-BANK_DATA_WIDTH)/ELEMENT_WIDTH-1:0];
+      end
+        assign stream_data_aligned = stream_data_aligned_array[bank_offset];
+        assign stream_strb_aligned = stream_strb_aligned_array[bank_offset];
+    end else begin 
+      assign stream_data_aligned[DATA_WIDTH-1:0]   = stream_data_misaligned[DATA_WIDTH-1:0];
+      assign stream_strb_aligned[DATA_WIDTH/ELEMENT_WIDTH-1:0] = stream_strb_misaligned[DATA_WIDTH/ELEMENT_WIDTH-1:0];
+    end 
+  endgenerate
+
+      
 
   assign stream_data_misaligned = stream.data;
   assign stream_strb_misaligned = stream.strb;
 
-  if (MISALIGNED_ACCESSES==1 ) begin : missaligned_access_gen
-    always_comb
-    begin
-      stream_data_aligned = '0;
-      stream_strb_aligned = '0;
-      case(addr_pop.data[1:0])
-        2'b00: begin
-          stream_data_aligned[DATA_WIDTH-32-1:0]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
-          stream_strb_aligned[(DATA_WIDTH-32)/8-1:0] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
-        end
-        2'b01: begin
-          stream_data_aligned[DATA_WIDTH-24-1:8]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
-          stream_strb_aligned[(DATA_WIDTH-24)/8-1:1] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
-        end
-        2'b10: begin
-          stream_data_aligned[DATA_WIDTH-16-1:16]    = stream_data_misaligned[DATA_WIDTH-32-1:0];
-          stream_strb_aligned[(DATA_WIDTH-16)/8-1:2] = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
-        end
-        2'b11: begin
-          stream_data_aligned[DATA_WIDTH-8-1:24]     = stream_data_misaligned[DATA_WIDTH-32-1:0];
-          stream_strb_aligned[(DATA_WIDTH-8)/8-1:3]  = stream_strb_misaligned[(DATA_WIDTH-32)/8-1:0];
-        end
-      endcase
-    end
-  end
-  else begin
-    assign stream_data_aligned[DATA_WIDTH-1:0]   = stream_data_misaligned[DATA_WIDTH-1:0];
-    assign stream_strb_aligned[DATA_WIDTH/8-1:0] = stream_strb_misaligned[DATA_WIDTH/8-1:0];
-  end
-
   // hci port binding
   assign tcdm_target.req     = (cs != STREAMER_IDLE) ? stream.valid & addr_pop.valid : '0;
-  assign tcdm_target.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
+  assign tcdm_target.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:ELEMENT_INDEX_WIDTH],{ELEMENT_INDEX_WIDTH{1'b0}}}    : '0;
   assign tcdm_target.wen     = '0;
   assign tcdm_target.be      = (cs != STREAMER_IDLE) ? stream_strb_aligned           : '0;
   assign tcdm_target.data    = (cs != STREAMER_IDLE) ? stream_data_aligned           : '0;
@@ -349,7 +361,7 @@ module hci_core_sink
   end
   else begin
     initial
-      dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
+      dw :  assert(stream.DATA_WIDTH+BANK_DATA_WIDTH == tcdm.DW);
   end
   
   `HCI_SIZE_CHECK_ASSERTS(tcdm);
