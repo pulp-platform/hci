@@ -83,14 +83,14 @@ module hci_core_sink
   import hci_package::*;
 #(
   // Stream interface params
-  parameter  int unsigned TCDM_FIFO_DEPTH     = 0,
-  parameter  int unsigned TRANS_CNT           = 16,
-  parameter  int unsigned MISALIGNED_ACCESSES = 1,
-  parameter  int unsigned ELEMENT_WIDTH       = 8,  // e.g., 8 bits per element
-  parameter  int unsigned ELEMENTS_PER_BANK   = 4,  // number of elements in one memory bank
-  localparam int unsigned BANK_DATA_WIDTH     = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
+  parameter  int unsigned TCDM_FIFO_DEPTH      = 0,
+  parameter  int unsigned TRANS_CNT            = 16,
+  parameter  int unsigned MISALIGNED_ACCESSES  = 1,
+  parameter  int unsigned ELEMENT_WIDTH        = 8,  // e.g., 8 bits per element
+  parameter  int unsigned ELEMENTS_PER_BANK    = 4,  // number of elements in one memory bank
+  localparam int unsigned BANK_DATA_WIDTH      = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
   localparam  int unsigned ELEMENT_INDEX_WIDTH = $clog2(ELEMENTS_PER_BANK),
-  parameter bit [3:0] DIM_ENABLE_1H = 4'b011 // Number of dimensions enabled in the address generator
+  parameter bit [3:0] DIM_ENABLE_1H            = 4'b1111, // Number of dimensions enabled in the address generator
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (

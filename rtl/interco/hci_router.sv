@@ -55,7 +55,10 @@ module hci_router
 #(
   parameter int unsigned FIFO_DEPTH  = 0,
   parameter int unsigned NB_OUT_CHAN = 8,
-  parameter bit          USE_ECC     = 0,
+  parameter int unsigned BANK_WORD_WIDTH = 32,
+  parameter int unsigned BANK_ELEM_WIDTH = 8,
+  localparam int unsigned NUM_ELEM_WORD  = BANK_WORD_WIDTH / BANK_ELEM_WIDTH,
+  parameter bit          USE_ECC         = 0,
   parameter int unsigned FILTER_WRITE_R_VALID = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(in)  = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(out) = '0
@@ -79,12 +82,13 @@ module hci_router
 
   //There is only one input port, but with variable data width.
   //NB_IN_CHAN states, to how many standard (32-bit) ports the input port is equivalent
-  localparam int unsigned NB_IN_CHAN  = DWH / 32;
+  localparam int unsigned NB_IN_CHAN  = DWH / BANK_WORD_WIDTH;
   //Word-interleaved scheme:
   // - First bits of requested address are shared
   // - Lowest 2 bits are byte offset within a DWORD -> ignored
   // - The bits inbetween designate the selected bank
-  localparam int unsigned LSB_COMMON_ADDR = $clog2(NB_OUT_CHAN) + 2;
+  localparam int unsigned ELEM_ADDR_OFFSET = NUM_ELEM_WORD == 1 ? 0 : $clog2(NUM_ELEM_WORD);
+  localparam int unsigned LSB_COMMON_ADDR = $clog2(NB_OUT_CHAN) + ELEM_ADDR_OFFSET;
   localparam int unsigned AWC = AWM+$clog2(NB_OUT_CHAN);
 
   logic [$clog2(NB_OUT_CHAN)-1:0] bank_offset_s;
@@ -105,9 +109,9 @@ module hci_router
   // Hsiao SEC-DED ECC needs $clog2(DW)+2 check bits
   // At this level only data are ECC-protected and with DW fixed at 32, EW is 5+2 = 7
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(virt_in) = '{
-    DW:  32,
+    DW:  BANK_WORD_WIDTH,
     AW:  32,
-    BW:  8,
+    BW:  BANK_ELEM_WIDTH,
     UW:  0,
     IW:  0,
     EW:  7*USE_ECC,
@@ -173,15 +177,15 @@ module hci_router
     // unimplemented operation code = 0
     assign postfifo.r_opc = '0;
     
-    assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:2];
+    assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:ELEM_ADDR_OFFSET];
 
     for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : virt_in_bind
 
       assign virt_in[ii].req      = postfifo.req;
       assign virt_in[ii].wen      = postfifo.wen;
-      assign virt_in[ii].be       = postfifo.be[ii*4+3:ii*4];
-      assign virt_in[ii].data     = postfifo.data[ii*32+31:ii*32];
-      assign postfifo.r_data[ii*32+31:ii*32]  = virt_in[ii].r_data;
+      assign virt_in[ii].be       = postfifo.be[ii*NUM_ELEM_WORD+:NUM_ELEM_WORD];
+      assign virt_in[ii].data     = postfifo.data[ii*BANK_WORD_WIDTH+:BANK_WORD_WIDTH];
+      assign postfifo.r_data[ii*BANK_WORD_WIDTH+:BANK_WORD_WIDTH]  = virt_in[ii].r_data;
       assign virt_in[ii].user     = postfifo.user;
       assign virt_in[ii].id       = postfifo.id;
       assign virt_in[ii].ereq     = postfifo.ereq;
@@ -190,10 +194,19 @@ module hci_router
       // by the highest set of bits in postfifo[0].add, plus the bank-level offset
       always_comb
       begin : bank_level_address_generation
-        if(bank_offset_s + ii >= NB_OUT_CHAN)
-          virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR] + 1, 2'b0}; //bank level address
-        else
-          virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR], 2'b0}; //bank level address
+        if(bank_offset_s + ii >= NB_OUT_CHAN) begin 
+          if(ELEM_ADDR_OFFSET == 0) begin 
+            virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR] + 1}; //bank level address
+          end else begin
+            virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR] + 1, {ELEM_ADDR_OFFSET{1'b0}}}; //bank level address
+          end 
+        end else begin 
+          if(ELEM_ADDR_OFFSET == 0) begin 
+            virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR]}; //bank level address
+          end else begin
+            virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR], {ELEM_ADDR_OFFSET{1'b0}}}; //bank level address
+          end 
+        end 
       end : bank_level_address_generation
       
       assign virt_in[ii].r_ready = postfifo.r_ready;
