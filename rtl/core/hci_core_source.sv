@@ -104,7 +104,7 @@ module hci_core_source
   parameter int unsigned ELEMENTS_PER_BANK    = 4,  // number of elements in one memory bank
   localparam int unsigned BANK_DATA_WIDTH     = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
   localparam int unsigned ELEMENT_INDEX_WIDTH = $clog2(ELEMENTS_PER_BANK),
-  parameter bit [2:0] DIM_ENABLE_1H = 3'b011 // Number of dimensions enabled in the address generator
+  parameter bit [3:0] DIM_ENABLE_1H           = 4'b011, // Number of dimensions enabled in the address generator
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
@@ -264,9 +264,9 @@ module hci_core_source
   );
 
   assign tcdm.req        = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
-  assign tcdm.add        = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
+  assign tcdm.add        = (cs != STREAMER_IDLE) ? {addr_pop.data[31:ELEMENT_INDEX_WIDTH],{ELEMENT_INDEX_WIDTH{1'b0}}}    : '0;
   assign tcdm.wen        = 1'b1;
-  assign tcdm.be         = 4'h0;
+  assign tcdm.be         = {ELEMENTS_PER_BANK{1'b0}};
   assign tcdm.data       = '0;
   assign tcdm.user       = '0;
   assign tcdm.id         = '0;
