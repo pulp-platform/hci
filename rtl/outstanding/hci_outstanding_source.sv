@@ -212,8 +212,8 @@ module hci_outstanding_source
   );
 
   // this is simply exploiting the fact that we can make a wider data access than strictly necessary!
-  assign addr_misaligned = (tcdm.resp_valid & tcdm.resp_ready) ? addr_misaligned_pop.data[1:0] : '0;
-  assign stream_data_misaligned = (tcdm.resp_valid & tcdm.resp_ready) ? tcdm.resp_data  : '0;
+  assign addr_misaligned = tcdm.resp_valid ? addr_misaligned_pop.data[1:0] : '0;
+  assign stream_data_misaligned = tcdm.resp_valid ? tcdm.resp_data  : '0;
 
   if (MISALIGNED_ACCESSES==1 ) begin : misaligned_access_gen
     always_comb
@@ -239,28 +239,8 @@ module hci_outstanding_source
     assign stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
   end
 
-  logic streamer_ready_q, streamer_ready_d;
+  // HANDSHAKES Request
 
-  always_ff @(posedge clk_i, negedge rst_ni) begin 
-  	if(rst_ni == 1'b0) begin
-  		streamer_ready_q <= 1'b0;
-  	end else begin
-  		streamer_ready_q <= streamer_ready_d;
-  	end
-  end
-
-  always_comb begin
-  	streamer_ready_d = streamer_ready_q;
-  	if (stream.ready) begin
-  	  streamer_ready_d = 1'b1;
-  	end else begin
-  	  if (streamer_ready_q) begin
-  		streamer_ready_d = !addr_pop.valid | (addr_pop.valid & tcdm.req_ready);
-  	  end
-  	end
-  end
-
-  assign tcdm.resp_ready = stream.ready;
   assign tcdm.req_valid  = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
   assign tcdm.req_add    = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0} : '0;
   assign tcdm.req_wen    = 1'b1;
@@ -268,11 +248,42 @@ module hci_outstanding_source
   assign tcdm.req_data   = '0;
   assign tcdm.req_user   = '0;
   assign tcdm.req_id     = '0;
-  assign stream.strb     = '1;
-  assign stream.data     = stream_data_aligned;
-  assign stream.valid    = enable_i & (tcdm.resp_valid & tcdm.resp_ready);
   assign addr_pop.ready  = (cs != STREAMER_IDLE) ? addr_misaligned_push.ready & (tcdm.req_valid & tcdm.req_ready) : 1'b0;
 
+  // HANDSHAKES Response
+
+  hwpe_stream_intf_stream #(
+    .DATA_WIDTH ( DATA_WIDTH )
+  ) resp_push (
+    .clk ( clk_i )
+  );
+  hwpe_stream_intf_stream #(
+    .DATA_WIDTH ( DATA_WIDTH )
+  ) resp_pop (
+    .clk ( clk_i )
+  );
+
+  assign resp_push.data  = stream_data_aligned;
+  assign resp_push.strb  = '1;
+  assign resp_push.valid = enable_i & (tcdm.resp_valid & tcdm.resp_ready);
+  assign tcdm.resp_ready = resp_push.ready;
+
+  hwpe_stream_fifo #(
+    .DATA_WIDTH ( DATA_WIDTH ),
+    .FIFO_DEPTH ( 8          )
+  ) i_resp_fifo (
+    .clk_i   ( clk_i     ),
+    .rst_ni  ( rst_ni    ),
+    .clear_i ( clear_i   ),
+    .flags_o (           ),
+    .push_i  ( resp_push ),
+    .pop_o   ( resp_pop  )
+  );
+
+  assign stream.data  = resp_pop.data;
+  assign stream.valid = resp_pop.valid;
+  assign stream.strb  = resp_pop.strb;
+  assign resp_pop.ready  = stream.ready;
 
   always_ff @(posedge clk_i, negedge rst_ni)
   begin : fsm_seq
