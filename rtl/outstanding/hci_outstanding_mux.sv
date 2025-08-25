@@ -73,8 +73,6 @@ module hci_outstanding_mux
   logic        [NB_CHAN-1:0][DW/BW-1:0]                in_req_be;
   logic        [NB_CHAN-1:0][hci_package::iomsb(UW):0] in_req_user;
   logic        [NB_CHAN-1:0][hci_package::iomsb(IW):0] in_req_id;
-
-  logic        [NB_CHAN-1:0]                           in_resp_valid;
   logic        [NB_CHAN-1:0]                           in_resp_ready;
 
   logic [$clog2(NB_CHAN)-1:0]              rr_counter_q;
@@ -160,7 +158,7 @@ module hci_outstanding_mux
     assign in[ii].resp_opc       = out.resp_opc;
     assign in[ii].resp_user      = out.resp_user;
     assign in[ii].resp_id        = out.resp_id;
-    assign in[ii].resp_valid     = (out.resp_id == ii) ? (out.resp_valid & in[ii].resp_ready) : 1'b0;
+    assign in[ii].resp_valid     = (out.resp_id == ii) ? out.resp_valid : 1'b0;
     assign in_resp_ready    [ii] = in[ii].resp_ready;
 
     // assign priorities to each port depending on round-robin counter
