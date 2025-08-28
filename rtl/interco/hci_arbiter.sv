@@ -35,7 +35,8 @@
  *                                                                               
  * - Mode 1: the signal "low_prio_max_stall" sets the maximum number of consecutive stalls on low-priority channel.
  *
- * There is also a third hardware implementation (Mode 2), not yet tested, with the same theoretical behaviour of Mode 1, but with less logic gates.
+ * There is also a third hardware implementation (Mode 2), which is **experimental and not yet tested**. It is intended to have the same theoretical behaviour as Mode 1, but with fewer logic gates.
+ * **WARNING: Mode 2 is experimental and must not be used in production.**
  *
  * For more details, see:
  *  - https://ieeexplore.ieee.org/document/9903915, Sec. II-A (open-access);
