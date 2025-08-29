@@ -31,7 +31,7 @@
  *
  * - Mode 0 (default): the signal "low_prio_max_stall" sets the maximum number of consecutive cycles with at least one request in both
  *  the high and low priority channel. **NOTE** The name of the signal could be misleading, but it is kept as it is to maintain consistency with previous versions 
- *  of the hci_arbiter, where there was no distinction between Mode 0 and Mode 1 and where this signal was actually used improperly,                                           
+ *  of the hci_arbiter, where there was no distinction between Mode 0 and Mode 1 and where this signal was actually used improperly.                                           
  *                                                                               
  * - Mode 1: the signal "low_prio_max_stall" sets the maximum number of consecutive stalls on low-priority channel.
  *
