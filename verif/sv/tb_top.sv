@@ -16,7 +16,7 @@
  */
 
  /**
-   Top-level module of a comprehensive and exhaustive HCI verification enviroment, including QoS measurement 
+   Top-level module of a comprehensive and exhaustive HCI verification environment, including QoS measurement 
  **/
 
 `include "hci_helpers.svh"
