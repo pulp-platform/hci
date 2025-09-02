@@ -20,16 +20,16 @@
  * Their usage is optional and they can always be replaced by (slightly more
  * boilerplate-y) SystemVerilog code.
  * Basically, this is a big "workaround" for some tools not allowing one
- * to "extract" constant parameters out of interfaces. Shame on you, non-compliant 
+ * to "extract" constant parameters out of interfaces. Shame on you, non-compliant
  * EDA tools!
- * 
+ *
  * Defining a new HCI interface
  * ############################
  *
  * To define a new interface, one would normally have to define the
  * size parameters (DW, AW, BW, UW, IW, EW, EHW) and pass them to the interface;
  * moreover the same parameters can be passed to other modules. The process is
- * error-prone, so the helpers provide a structured solution: a macro to 1. declare the 
+ * error-prone, so the helpers provide a structured solution: a macro to 1. declare the
  * size parameters with a standard name referred to the interface name (e.g.,
  * `HCI_SIZE_tcdm_init` for the `tcdm_init` interface); 2. declare the interface
  * itself, using the parameters just defined.
@@ -67,18 +67,18 @@
  *     .EHW ( HCI_SIZE_tcdm_init.EHW )
  *   ) tcdm_init (
  *     .clk ( clk_i )
- *   ); 
+ *   );
  *
  * In case we have an array of interfaces, e.g., `tcdm_init[0:N-1]`, we can use the
  * following macro instead of `HCI_INTF:
- * 
+ *
  *   `HCI_INTF_ARRAY(tcdm_init, clk_i, 0:N-1);
  *
  * Apart from removing a bit of boilerplate, the idea behind this macro is that
  * we reduce clutter by hiding the fact that the `tcdm_init` interface and parameters
  * are carried by two different SystemVerilog entities (an interface and a localparam
  * struct).
- * 
+ *
  * Parametrizing an interface at a module's boundary
  * #################################################
  *
@@ -112,7 +112,7 @@
  *   );
  *
  * Basically the main advantage of using the macro here is better consistency and readability.
- * 
+ *
  * Propagating interface parametrization through hierarchy
  * #######################################################
  *
@@ -142,7 +142,7 @@
  *     // [other interfaces and signals...]
  *     .tcdm        ( ext_tcdm )
  *   );
- * 
+ *
  * Consistency assertions
  * ######################
  *
@@ -206,6 +206,7 @@
 `define HCI_SIZE_GET_IW(__x)  (`HCI_SIZE_PARAM(__x).IW)
 `define HCI_SIZE_GET_EW(__x)  (`HCI_SIZE_PARAM(__x).EW)
 `define HCI_SIZE_GET_EHW(__x) (`HCI_SIZE_PARAM(__x).EHW)
+`define HCI_SIZE_GET_FD(__x)  (`HCI_SIZE_PARAM(__x).FD)
 
 // Shorthand for defining a HCI interface compatible with a parameter
 `define HCI_INTF_EXPLICIT_PARAM(__name, __clk, __param) \
@@ -216,7 +217,8 @@
     .UW  ( __param.UW  ), \
     .IW  ( __param.IW  ), \
     .EW  ( __param.EW  ), \
-    .EHW ( __param.EHW ) \
+    .EHW ( __param.EHW ), \
+    .FD  ( __param.FD  )  \
   ) __name ( \
     .clk ( __clk ) \
   )
@@ -231,6 +233,7 @@
   `define HCI_SIZE_GET_IW_CHECK(__x)  (__x.IW)
   `define HCI_SIZE_GET_EW_CHECK(__x)  (__x.EW)
   `define HCI_SIZE_GET_EHW_CHECK(__x) (__x.EHW)
+  `define HCI_SIZE_GET_FD_CHECK(__x)  (__x.FD)
 
   // Asserts (generic definition usable with any parameter name)
   `define HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(__xparam, __xintf) \
@@ -240,7 +243,8 @@
   initial __xparam``_intf_size_check_uw  : assert(__xparam.UW  == `HCI_SIZE_GET_UW_CHECK(__xintf)); \
   initial __xparam``_intf_size_check_iw  : assert(__xparam.IW  == `HCI_SIZE_GET_IW_CHECK(__xintf)); \
   initial __xparam``_intf_size_check_ew  : assert(__xparam.EW  == `HCI_SIZE_GET_EW_CHECK(__xintf)); \
-  initial __xparam``_intf_size_check_ehw : assert(__xparam.EHW == `HCI_SIZE_GET_EHW_CHECK(__xintf))
+  initial __xparam``_intf_size_check_ehw : assert(__xparam.EHW == `HCI_SIZE_GET_EHW_CHECK(__xintf)); \
+  initial __xparam``_intf_size_check_fd  : assert(__xparam.FD  == `HCI_SIZE_GET_FD_CHECK(__xintf))
 
   // Asserts (specialized definition for conventional param names
   `define HCI_SIZE_CHECK_ASSERTS(__intf) `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(__intf), __intf)

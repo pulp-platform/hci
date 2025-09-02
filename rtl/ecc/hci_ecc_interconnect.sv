@@ -42,11 +42,9 @@
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  *   | *IW*                | `N_HWPE+N_CORE+N_DMA+N_EXT` | ID Width.                                                                        |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
- *   | *EXPFIFO*           | 0                           | Depth of HCI router FIFO.                                                        |
+ *   | *FD*                | 0                           | Depth of HCI router FIFO.                                                        |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  *   | *SEL_LIC*           | 0                           | Kind of LIC to instantiate (0=regular L1, 1=L2).                                 |
- *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
- *   | *CHUNK_SIZE*        | 32                          | Width in bits of each chunk of data to protect individually.                     |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  */
 
@@ -63,7 +61,6 @@ module hci_ecc_interconnect
   parameter int unsigned N_MEM   = 16                       , // Number of Memory banks
   parameter int unsigned TS_BIT  = 21                       , // TEST_SET_BIT (for Log Interconnect)
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
-  parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
   parameter int unsigned FILTER_WRITE_R_VALID[0:N_HWPE-1] = '{default: 0},
   parameter int unsigned CHUNK_SIZE = 32                    , // Chunk size of data to be encoded separately (HWPE branch)
@@ -98,6 +95,7 @@ module hci_ecc_interconnect
   localparam int unsigned BWH = `HCI_SIZE_GET_BW(hwpe);
   localparam int unsigned UWH = `HCI_SIZE_GET_UW(hwpe);
   localparam int unsigned EWH = `HCI_SIZE_GET_EW(hwpe);
+  localparam int unsigned FDH = `HCI_SIZE_GET_FD(hwpe);
   localparam int unsigned N_CHUNK = DWH / CHUNK_SIZE;
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
 
@@ -108,7 +106,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  DEFAULT_IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   hci_core_intf #(
     .DW  ( DEFAULT_DW  ),
@@ -117,7 +116,8 @@ module hci_ecc_interconnect
     .UW  ( UW_LIC      ),
     .IW  ( DEFAULT_IW  ),
     .EW  ( DEFAULT_EW  ),
-    .EHW ( DEFAULT_EHW )
+    .EHW ( DEFAULT_EHW ),
+    .FD  ( DEFAULT_FD  )
 `ifndef SYNTHESIS
     ,
     .WAIVE_RQ3_ASSERT  ( WAIVE_RQ3_ASSERT  ),
@@ -136,7 +136,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(all_except_hwpe_mem, clk_i, 0:N_MEM-1);
 
@@ -147,7 +148,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(all_except_hwpe_mem_assign, clk_i, 0:N_MEM-1);
 
@@ -158,7 +160,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  EWM,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(all_except_hwpe_mem_enc, clk_i, 0:N_MEM-1);
 
@@ -169,7 +172,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  EW_DW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(hwpe_mem, clk_i, 0:N_MEM-1);
 
@@ -368,7 +372,7 @@ module hci_ecc_interconnect
         );
 
         hci_router #(
-          .FIFO_DEPTH           ( EXPFIFO                   ),
+          .FIFO_DEPTH           ( FDH                       ),
           .NB_OUT_CHAN          ( N_MEM                     ),
           .USE_ECC              ( 1                         ),
           .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID[ii]  ),
