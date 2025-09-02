@@ -206,6 +206,7 @@
 `define HCI_SIZE_GET_IW(__x)  (`HCI_SIZE_PARAM(__x).IW)
 `define HCI_SIZE_GET_EW(__x)  (`HCI_SIZE_PARAM(__x).EW)
 `define HCI_SIZE_GET_EHW(__x) (`HCI_SIZE_PARAM(__x).EHW)
+`define HCI_SIZE_GET_FD(__x)  (`HCI_SIZE_PARAM(__x).FD)
 
 // Shorthand for defining a HCI interface compatible with a parameter
 `define HCI_INTF_EXPLICIT_PARAM(__name, __clk, __param) \
@@ -216,7 +217,8 @@
     .UW  ( __param.UW  ), \
     .IW  ( __param.IW  ), \
     .EW  ( __param.EW  ), \
-    .EHW ( __param.EHW ) \
+    .EHW ( __param.EHW ), \
+    .FD  ( __param.FD )   \
   ) __name ( \
     .clk ( __clk ) \
   )
@@ -231,6 +233,7 @@
   `define HCI_SIZE_GET_IW_CHECK(__x)  (__x.IW)
   `define HCI_SIZE_GET_EW_CHECK(__x)  (__x.EW)
   `define HCI_SIZE_GET_EHW_CHECK(__x) (__x.EHW)
+  `define HCI_SIZE_GET_FD_CHECK(__x)  (__x.FD)
 
   // Asserts (generic definition usable with any parameter name)
   `define HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(__xparam, __xintf) \
@@ -240,7 +243,8 @@
   initial __xparam``_intf_size_check_uw  : assert(__xparam.UW  == `HCI_SIZE_GET_UW_CHECK(__xintf)); \
   initial __xparam``_intf_size_check_iw  : assert(__xparam.IW  == `HCI_SIZE_GET_IW_CHECK(__xintf)); \
   initial __xparam``_intf_size_check_ew  : assert(__xparam.EW  == `HCI_SIZE_GET_EW_CHECK(__xintf)); \
-  initial __xparam``_intf_size_check_ehw : assert(__xparam.EHW == `HCI_SIZE_GET_EHW_CHECK(__xintf))
+  initial __xparam``_intf_size_check_ehw : assert(__xparam.EHW == `HCI_SIZE_GET_EHW_CHECK(__xintf)); \
+  initial __xparam``_intf_size_check_fd  : assert(__xparam.FD  == `HCI_SIZE_GET_FD_CHECK(__xintf))
 
   // Asserts (specialized definition for conventional param names
   `define HCI_SIZE_CHECK_ASSERTS(__intf) `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(__intf), __intf)

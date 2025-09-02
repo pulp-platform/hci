@@ -27,6 +27,7 @@ package hci_package;
   parameter int unsigned DEFAULT_IW = 8;  // Default ID Width
   parameter int unsigned DEFAULT_EW = 1;  // Default ECC for Data Width
   parameter int unsigned DEFAULT_EHW = 1;  // Default ECC for Handhshake Width
+  parameter int unsigned DEFAULT_FD  = 0;  // Default FIFO Depth
 
   typedef struct packed {
     int unsigned DW;
@@ -36,6 +37,7 @@ package hci_package;
     int unsigned IW;
     int unsigned EW;
     int unsigned EHW;
+    int unsigned FD;
   } hci_size_parameter_t;
 
   parameter hci_size_parameter_t DEFAULT_HCI_SIZE = '{
@@ -45,7 +47,8 @@ package hci_package;
     UW  : DEFAULT_UW,
     IW  : DEFAULT_IW,
     EW  : DEFAULT_EW,
-    EHW : DEFAULT_EHW
+    EHW : DEFAULT_EHW,
+    FD  : DEFAULT_FD
   };
 
   typedef struct packed {
