@@ -153,7 +153,14 @@ module hci_core_mux_static
       ehw : assert(in[i].EHW == out.EHW);
   end
 
-  `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(in), in[0]);
+  initial HCI_SIZE_in_intf_size_check_dw  : assert(`HCI_SIZE_PARAM(in).DW  == in[0].DW);
+  initial HCI_SIZE_in_intf_size_check_bw  : assert(`HCI_SIZE_PARAM(in).BW  == in[0].BW);
+  initial HCI_SIZE_in_intf_size_check_aw  : assert(`HCI_SIZE_PARAM(in).AW  == in[0].AW);
+  initial HCI_SIZE_in_intf_size_check_uw  : assert(`HCI_SIZE_PARAM(in).UW  == in[0].UW);
+  initial HCI_SIZE_in_intf_size_check_iw  : assert(`HCI_SIZE_PARAM(in).IW  == in[0].IW);
+  initial HCI_SIZE_in_intf_size_check_ew  : assert(`HCI_SIZE_PARAM(in).EW  == in[0].EW);
+  initial HCI_SIZE_in_intf_size_check_ehw : assert(`HCI_SIZE_PARAM(in).EHW == in[0].EHW);
+  // initial HCI_SIZE_in_intf_size_check_fd  : assert(`HCI_SIZE_PARAM(in).FD  == in[0].FD);
 
 `endif
 `endif
