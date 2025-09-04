@@ -15,7 +15,7 @@
 
 /**
  * The **hci_outstanding_assign** module implements a simple assignment for
- * HCI-Core streams.
+ * HCI-Outstanding streams.
  *
  */
 
@@ -42,4 +42,4 @@ module hci_outstanding_assign
   assign tcdm_target.resp_valid    = tcdm_initiator.resp_valid;
   assign tcdm_initiator.resp_ready = tcdm_target.resp_ready;
 
-endmodule // hci_core_assign
+endmodule // hci_outstanding_assign
