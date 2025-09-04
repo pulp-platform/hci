@@ -287,4 +287,24 @@ module hci_outstanding_sink
   end
   assign address_cnt_d = address_cnt_q + 1;
 
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+`ifndef VCS
+  if(MISALIGNED_ACCESSES == 0) begin
+    initial
+      dw :  assert(stream.DATA_WIDTH == tcdm.DW);
+  end
+  else begin
+    initial
+      dw :  assert(stream.DATA_WIDTH+32 == tcdm.DW);
+  end
+
+  `HCI_OUTSTANDING_SIZE_CHECK_ASSERTS(tcdm);
+`endif
+`endif
+`endif
+
 endmodule // hci_outstanding_source

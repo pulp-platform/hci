@@ -341,4 +341,24 @@ module hci_outstanding_source
   end
   assign stream_cnt_d = stream_cnt_q + 1;
 
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+`ifndef VCS
+  if(MISALIGNED_ACCESSES == 0) begin
+    initial
+      dw :  assert(stream.DATA_WIDTH == tcdm.DW);
+  end
+  else begin
+    initial
+      dw :  assert(stream.DATA_WIDTH <= tcdm.DW);
+  end
+
+  `HCI_OUTSTANDING_SIZE_CHECK_ASSERTS(tcdm);
+`endif
+`endif
+`endif
+
 endmodule // hci_outstanding_source
