@@ -1,6 +1,6 @@
 /*
- * hci_core_sink.sv
- * Francesco Conti <f.conti@unibo.it>
+ * hci_outstanding_sink.sv
+ * Marco Bertuletti <mbertuletti@iis.ee.ethz.ch>
  *
  * Copyright (C) 2014-2022 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
@@ -14,35 +14,31 @@
  */
 
 /**
- * The **hci_core_sink** module is the high-level sink streamer
- * performing a series of stores on a HCI-Core interface
- * from an incoming HWPE-Stream data stream from a HWPE engine/datapath.
+ * The **hci_outstanding_sink** module is the high-level sink streamer
+ * performing a series of stores on a HCI-Outstanding interface from an
+ * incoming HWPE-Stream data stream from a HWPE engine/datapath.
  * The sink streamer is a composite module that makes use of many other
  * fundamental IPs.
  *
  * Fundamentally, a sink streamer acts as a specialized DMA engine acting
  * out a predefined pattern from an **hwpe_stream_addressgen_v3** to perform
- * a burst of stores via a HCI-Core interface, consuming a HWPE-Stream data
- * stream into the HCI-Core `data` field.
- * The sink streamer is insensitive to memory latency.
- * This is due to the nature of store streams, which are unidirectional
- * (i.e. `addr` and `data` move in the same direction).
+ * a burst of stores via a HCI-Outstanding interface, consuming a HWPE-Stream
+ * data stream into the HCI-Outstanding `data` field.
  *
- * Misaligned accesses are supported by widening the HCI-Core data width of 32
- * bits compared to the HWPE-Stream that gets consumed by the streamer.
- * The stream is shifted according to the address alignment and invalid bytes
- * are disabled by unsetting their `strb`. This feature can be deactivated by
- * unsetting the `MISALIGNED_ACCESS` parameter; in this case, the sink will
- * only work correctly if all data is aligned to a word boundary.
+ * Misaligned accesses are supported by widening the HCI-Outstanding data
+ * width of 32 bits compared to the HWPE-Stream that gets consumed by the
+ * streamer. The stream is shifted according to the address alignment and
+ * invalid bytes are disabled by unsetting their `strb`. This feature can be
+ * deactivated by unsetting the `MISALIGNED_ACCESS` parameter; in this case,
+ * the sink will only work correctly if all data is aligned to a word
+ * boundary.
  *
  * .. tabularcolumns:: |l|l|J|
- * .. _hci_core_sink_params:
- * .. table:: **hci_core_sink** design-time parameters.
+ * .. _hci_outstanding_sink_params:
+ * .. table:: **hci_outstanding_sink** design-time parameters.
  *
  *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  *   | **Name**            | **Default** | **Description**                                                                                                        |
- *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
- *   | *TCDM_FIFO_DEPTH*   | 2           | If >0, the module produces a HWPE-MemDecoupled interface and includes a TCDM FIFO of this depth.                       |
  *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  *   | *TRANS_CNT*         | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.   |
  *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
@@ -50,7 +46,7 @@
  *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
- * .. _hci_core_sink_ctrl:
+ * .. _hci_outstanding_sink_ctrl:
  * .. table:: **hci_core_sink** input control signals.
  *
  *   +-------------------+------------------------+----------------------------------------------------------------------------+
@@ -62,7 +58,7 @@
  *   +-------------------+------------------------+----------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
- * .. _hci_core_sink_flags:
+ * .. _hci_outstanding_sink_flags:
  * .. table:: **hci_core_sink** output flags.
  *
  *   +--------------------+------------------------+-----------------------------------------------------------------------------------------------+
@@ -291,4 +287,4 @@ module hci_outstanding_sink
   end
   assign address_cnt_d = address_cnt_q + 1;
 
-endmodule // hci_core_sink
+endmodule // hci_outstanding_source
