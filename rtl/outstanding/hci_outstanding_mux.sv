@@ -1,6 +1,6 @@
 /*
  * hci_core_mux_ooo.sv
- * Francesco Conti <f.conti@unibo.it>
+ * Marco Bertuletti <mbertuletti@iis.ee.ethz.ch>
  *
  * Copyright (C) 2017-2023 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
@@ -14,21 +14,16 @@
  */
 
 /**
- * The **HCI dynamic OoO N-to-1 multiplexer** enables to funnel multiple HCI ports
- * into a single one. It supports out-of-order responses by means of ID.
- * As the ID is implemented as user signal, any FIFO coming after (i.e., 
+ * The **HCI-Outstanding N-to-1 multiplexer** enables to funnel multiple HCI
+ * ports into a single one. It supports out-of-order responses by means of ID.
+ * As the ID is implemented as user signal, any module coming after (i.e.,
  * nearer to memory side) with respect to this block must respect id
  * signals - specifically it must return them identical in the response.
- * At the end of the chain, there will typically be a `hci_core_r_id_filter`
- * block reflecting back all the IDs. This must be placed at the 0-latency 
- * boundary with the memory system.
- * Priority is normally round-robin but can also be forced from the outside
- * by setting `priority_force_i` to 1 and driving the `priority_i` array
- * to the desired priority values.
+ * Priority is normally round-robin.
  *
  * .. tabularcolumns:: |l|l|J|
- * .. _hci_core_mux_ooo_params:
- * .. table:: **hci_core_mux_ooo** design-time parameters.
+ * .. _hci_outstanding_mux_params:
+ * .. table:: **hci_outstanding_mux** design-time parameters.
  *
  *   +------------+-------------+--------------------------------+
  *   | **Name**   | **Default** | **Description**                |
@@ -191,5 +186,32 @@ module hci_outstanding_mux
   assign out.req_id      = in_req_id    [winner_d];
   assign out.req_valid   = in_req_valid [winner_d];
   assign out.resp_ready  = in_resp_ready[out.resp_id];
+
+/*
+ * Interface size asserts
+ */
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+`ifndef VCS
+  for(genvar i=0; i<NB_CHAN; i++) begin
+    initial
+      dw :  assert(in[i].DW  == out.DW);
+    initial
+      bw :  assert(in[i].BW  == out.BW);
+    initial
+      aw :  assert(in[i].AW  == out.AW);
+    initial
+      uw :  assert(in[i].UW  == out.UW);
+    // initial
+    //   iw_in :  assert(in[i].IW  == 0);
+    initial
+      iw_out :  assert(out.IW  >= $clog2(NB_CHAN));
+  end
+
+  `HCI_OUTSTANDING_SIZE_CHECK_ASSERTS(out);
+
+`endif
+`endif
+`endif;
 
 endmodule // hci_outstanding_mux
