@@ -245,6 +245,17 @@
   // Asserts (specialized definition for conventional param names
   `define HCI_SIZE_CHECK_ASSERTS(__intf) `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(__intf), __intf)
 
+  // Asserts (generic definition usable with any parameter name)
+  `define HCI_OUTSTANDING_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(__xparam, __xintf) \
+  initial __xparam``_intf_size_check_dw  : assert(__xparam.DW  == `HCI_SIZE_GET_DW_CHECK(__xintf)); \
+  initial __xparam``_intf_size_check_bw  : assert(__xparam.BW  == `HCI_SIZE_GET_BW_CHECK(__xintf)); \
+  initial __xparam``_intf_size_check_aw  : assert(__xparam.AW  == `HCI_SIZE_GET_AW_CHECK(__xintf)); \
+  initial __xparam``_intf_size_check_uw  : assert(__xparam.UW  == `HCI_SIZE_GET_UW_CHECK(__xintf)); \
+  initial __xparam``_intf_size_check_iw  : assert(__xparam.IW  == `HCI_SIZE_GET_IW_CHECK(__xintf));
+
+  // Asserts (specialized definition for conventional param names
+  `define HCI_OUTSTANDING_SIZE_CHECK_ASSERTS(__intf) `HCI_OUTSTANDING_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(__intf), __intf)
+
 `endif
 
 `endif /* `ifndef __HCI_HELPERS__ */

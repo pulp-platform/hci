@@ -197,10 +197,29 @@ module hci_outstanding_rob
    *  Assertions  *
    ****************/
 
+`ifndef SYNTHESIS
+`ifndef VERILATOR
+`ifndef VCS
+
   if (ROB_NW == 0)
     $error("ROB_NW cannot be 0.");
 
-  if (UW < ROB_IW)
-  	$error("UW must contain the ROB ID. UW = %0d, ROB_IW = %0d", UW, ROB_IW);
+  // Interface size asserts
+  initial
+    dw :  assert(in.DW  == out.DW);
+  initial
+    bw :  assert(in.BW  == out.BW);
+  initial
+    aw :  assert(in.AW  == out.AW);
+  initial
+    uw :  assert(in.UW  == out.UW);
+  initial
+    iw_out :  assert(out.UW  >= $clog2(ROB_NW));
+
+  `HCI_OUTSTANDING_SIZE_CHECK_ASSERTS(out);
+
+`endif
+`endif
+`endif;
 
 endmodule: hci_outstanding_rob
