@@ -88,7 +88,7 @@ module hci_outstanding_source
   // Stream interface params
   parameter int unsigned LATCH_FIFO  = 0,
   parameter int unsigned TRANS_CNT = 16,
-  parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
+  parameter int unsigned ADDR_MIS_DEPTH = 8,
   parameter int unsigned MISALIGNED_ACCESSES = 1,
   parameter int unsigned PASSTHROUGH_FIFO = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
@@ -262,8 +262,8 @@ module hci_outstanding_source
   assign tcdm.resp_ready = resp_push.ready;
 
   hwpe_stream_fifo #(
-    .DATA_WIDTH ( DATA_WIDTH ),
-    .FIFO_DEPTH ( 8          )
+    .DATA_WIDTH ( DATA_WIDTH     ),
+    .FIFO_DEPTH ( ADDR_MIS_DEPTH )
   ) i_resp_fifo (
     .clk_i   ( clk_i     ),
     .rst_ni  ( rst_ni    ),
