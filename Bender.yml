@@ -18,8 +18,6 @@ dependencies:
 # this is necessary to expose hci_helpers.svh to dependent packages
 export_include_dirs:
   - rtl/common
-
-export_include_dirs:
   - rtl/include
 
 sources:
