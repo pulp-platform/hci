@@ -9,23 +9,30 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-`define HCI_TYPEDEF_REQ_T(req_t, addr_t, data_t, strb_t, boffs_t, user_t)\
-  typedef struct packed {                                                \
-    logic   req;                                                         \
-    logic   wen;                                                         \
-    strb_t  be;                                                          \
-    boffs_t boffs;                                                       \
-    addr_t  add;                                                         \
-    data_t  data;                                                        \
-    logic   lrdy;                                                        \
-    user_t  user;                                                        \
+`define HCI_TYPEDEF_REQ_T(req_t, addr_t, data_t, be_t, user_t, id_t, ecc_t)\
+  typedef struct packed {                                                  \
+    logic  req;                                                            \
+    addr_t add;                                                            \
+    logic  wen;                                                            \
+    data_t data;                                                           \
+    be_t   be;                                                             \
+    logic  r_ready;                                                        \
+    user_t user;                                                           \
+    id_t   id;                                                             \
+    ecc_t  ecc;                                                            \
+    logic  ereq;                                                           \
+    logic  r_eready;                                                       \
   } req_t;
 
-`define HCI_TYPEDEF_RSP_T(rsp_t, data_t, user_t)\
-  typedef struct packed {                       \
-    logic  gnt;                                 \
-    logic  r_valid;                             \
-    data_t r_data;                              \
-    logic  r_opc;                               \
-    user_t r_user;                              \
+`define HCI_TYPEDEF_RSP_T(rsp_t, data_t, user_t, id_t, ecc_t)\
+  typedef struct packed {                                    \
+    logic  gnt;                                              \
+    data_t r_data;                                           \
+    logic  r_valid;                                          \
+    user_t r_user;                                           \
+    id_t   r_id;                                             \
+    logic  r_opc;                                            \
+    ecc_t  r_ecc;                                            \
+    logic  egnt;                                             \
+    logic  r_evalid;                                         \
   } rsp_t;
