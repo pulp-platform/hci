@@ -30,10 +30,10 @@ interface hci_core_intf (
   import hci_package::*;
 
 `ifndef SYNTHESIS
-  parameter bit WAIVE_RQ3_ASSERT  = 1'b0;
-  parameter bit WAIVE_RQ4_ASSERT  = 1'b0;
-  parameter bit WAIVE_RSP3_ASSERT = 1'b0;
-  parameter bit WAIVE_RSP5_ASSERT = 1'b0;
+  parameter bit WAIVE_RQ3_ASSERT  = 1'b1;
+  parameter bit WAIVE_RQ4_ASSERT  = 1'b1;
+  parameter bit WAIVE_RSP3_ASSERT = 1'b1;
+  parameter bit WAIVE_RSP5_ASSERT = 1'b1;
 `endif
 
   parameter int unsigned DW  = hci_package::DEFAULT_DW;  /// Data Width
