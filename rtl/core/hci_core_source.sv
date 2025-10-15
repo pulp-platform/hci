@@ -210,6 +210,35 @@ module hci_core_source
         end
       endcase
     end
+
+    hwpe_stream_intf_stream #(
+      .DATA_WIDTH ( 8 ) // only 2 significant
+    ) addr_misaligned_push (
+      .clk ( clk_i )
+    );
+    hwpe_stream_intf_stream #(
+      .DATA_WIDTH ( 8 ) // only 2 significant
+    ) addr_misaligned_pop (
+      .clk ( clk_i )
+    );
+    assign addr_misaligned_push.data  = {6'b0, addr_pop.data[1:0]};
+    assign addr_misaligned_push.strb  = '1;
+    assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
+    assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & stream.ready;
+    assign addr_misaligned_q = addr_misaligned_pop.data[1:0];
+
+    hwpe_stream_fifo #(
+      .DATA_WIDTH ( 8              ), // only [1:0] significant
+      .FIFO_DEPTH ( ADDR_MIS_DEPTH )
+    ) i_addr_misaligned_fifo (
+      .clk_i   ( clk_i                ),
+      .rst_ni  ( rst_ni               ),
+      .clear_i ( clear_i              ),
+      .flags_o (                      ),
+      .push_i  ( addr_misaligned_push ),
+      .pop_o   ( addr_misaligned_pop  )
+    );
+
   end
   else begin
     assign stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
@@ -228,34 +257,6 @@ module hci_core_source
   assign stream.data  = stream_data_aligned;
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
   assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready & tcdm.gnt : 1'b0;
-  
-  hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( 8 ) // only 2 significant
-  ) addr_misaligned_push (
-    .clk ( clk_i )
-  );
-  hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( 8 ) // only 2 significant
-  ) addr_misaligned_pop (
-    .clk ( clk_i )
-  );
-  assign addr_misaligned_push.data  = {6'b0, addr_pop.data[1:0]};
-  assign addr_misaligned_push.strb  = '1;
-  assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
-  assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & stream.ready;
-  assign addr_misaligned_q = addr_misaligned_pop.data[1:0];
-
-  hwpe_stream_fifo #(
-    .DATA_WIDTH ( 8              ), // only [1:0] significant
-    .FIFO_DEPTH ( ADDR_MIS_DEPTH )
-  ) i_addr_misaligned_fifo (
-    .clk_i   ( clk_i                ),
-    .rst_ni  ( rst_ni               ),
-    .clear_i ( clear_i              ),
-    .flags_o (                      ),
-    .push_i  ( addr_misaligned_push ),
-    .pop_o   ( addr_misaligned_pop  )
-  );
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
