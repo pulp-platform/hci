@@ -185,7 +185,7 @@ module hci_router_reorder
       // bindings
       assign out[i].req  = out_req  [i];
       assign out[i].add  = out_add  [i];
-      assign out[i].wen  = out_wen  [i];
+      assign out[i].wen  = out_wen  [i] | ~(|out_be[i]);
       assign out[i].be   = out_be   [i];
       assign out[i].data = out_data [i];
       assign out[i].ecc  = out_ecc  [i];
