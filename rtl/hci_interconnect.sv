@@ -62,6 +62,7 @@ module hci_interconnect
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
+  parameter int unsigned ARBITER_MODE = 0                   , // Chosen mode for the arbiter
   parameter int unsigned FILTER_WRITE_R_VALID[0:N_HWPE-1] = '{default: 0},
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(mems)  = '0,
@@ -257,6 +258,7 @@ module hci_interconnect
       hci_arbiter_tree #(
         .NB_REQUESTS(N_HWPE),
         .NB_CHAN ( N_MEM ),
+        .MODE( ARBITER_MODE ),
         .`HCI_SIZE_PARAM(out)(`HCI_SIZE_PARAM(hwpe_mem_muxed))
       ) i_wide_port_arbiter_tree (
         .clk_i   ( clk_i               ),
@@ -268,7 +270,8 @@ module hci_interconnect
       );
 
       hci_arbiter #(
-        .NB_CHAN ( N_MEM )
+        .NB_CHAN ( N_MEM ),
+        .MODE( ARBITER_MODE )
       ) i_wide_vs_narrow_arbiter (
         .clk_i   ( clk_i               ),
         .rst_ni  ( rst_ni              ),
