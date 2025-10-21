@@ -100,7 +100,7 @@ module hci_core_source
   parameter  int unsigned ELEMENT_WIDTH        = 8,  // e.g., 8 bits per element
   parameter  int unsigned ELEMENTS_PER_BANK    = 4,  // number of elements in one memory bank
   localparam int unsigned BANK_DATA_WIDTH      = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
-  localparam  int unsigned ELEMENT_INDEX_WIDTH = $clog2(ELEMENTS_PER_BANK),
+  localparam  int unsigned ADDR_OFFSET         = ELEMENTS_PER_BANK == 1 ? 1 : $clog2(ELEMENTS_PER_BANK),
   parameter bit [3:0] DIM_ENABLE_1H            = 4'b011, // Number of dimensions enabled in the address generator
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
@@ -184,8 +184,7 @@ module hci_core_source
 
   logic                  stream_valid_q;
   logic [DATA_WIDTH-1:0] stream_data_q;
-  logic [1:0]            addr_misaligned_q;
-  logic                  addr_misaligned_valid;
+  logic [ADDR_OFFSET-1:0]addr_misaligned_q;
   logic [DATA_WIDTH-1:0] stream_data_misaligned;
   logic [DATA_WIDTH-1:0] stream_data_aligned;
 
@@ -199,20 +198,10 @@ module hci_core_source
     always_comb
     begin
       stream_data_aligned = '0;
-      case(addr_misaligned_q)
-        2'b00: begin
-          stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
-        end
-        2'b01: begin
-          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-24-1:8];
-        end
-        2'b10: begin
-          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-16-1:16];
-        end
-        2'b11: begin
-          stream_data_aligned[DATA_WIDTH-32-1:0] = stream_data_misaligned[DATA_WIDTH-8-1:24];
-        end
-      endcase
+      if(addr_misaligned_q == 0)
+        stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
+      else 
+        stream_data_aligned[0+:BANK_DATA_WIDTH] = stream_data_misaligned[addr_misaligned_q*ELEMENT_WIDTH+:BANK_DATA_WIDTH];
     end
   end
   else begin
@@ -221,7 +210,10 @@ module hci_core_source
 
   assign tcdm.r_ready = stream.ready;
   assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready : '0;
-  assign tcdm.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:ELEMENT_INDEX_WIDTH],{ELEMENT_INDEX_WIDTH{1'b0}}}    : '0;
+  if(ADDR_OFFSET == 1)
+    assign tcdm.add     = (cs != STREAMER_IDLE) ? addr_pop.data[31:0] : '0;
+  else 
+    assign tcdm.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:ADDR_OFFSET],{ADDR_OFFSET{1'b0}}} : '0;
   assign tcdm.wen     = 1'b1;
   assign tcdm.be      = {ELEMENTS_PER_BANK{1'b0}};
   assign tcdm.data    = '0;
@@ -233,25 +225,32 @@ module hci_core_source
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
   // assign stream.valid = enable_i & tcdm.r_valid; // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
   assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready & tcdm.gnt : 1'b0;
+
+  // hwpe stream is a factor of 8 hardcoded. Until this is fixed have to use this
+  localparam int unsigned ADDR_OFFSET_BYTE = 8*((ADDR_OFFSET + 8 - 1) / 8);
   
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( 8 ) // only 2 significant
+    .DATA_WIDTH ( ADDR_OFFSET_BYTE ) // only 2 significant
   ) addr_misaligned_push (
     .clk ( clk_i )
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( 8 ) // only 2 significant
+    .DATA_WIDTH ( ADDR_OFFSET_BYTE ) // only 2 significant
   ) addr_misaligned_pop (
     .clk ( clk_i )
   );
-  assign addr_misaligned_push.data  = {6'b0, addr_pop.data[1:0]};
+  if(ADDR_OFFSET_BYTE == ADDR_OFFSET)
+    assign addr_misaligned_push.data  = addr_pop.data[ADDR_OFFSET-1:0];
+  else 
+    assign addr_misaligned_push.data  = {{(ADDR_OFFSET_BYTE-ADDR_OFFSET){1'b0}}, addr_pop.data[ADDR_OFFSET-1:0]};
+
   assign addr_misaligned_push.strb  = '1;
   assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
   assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & stream.ready;
-  assign addr_misaligned_q = addr_misaligned_pop.data[1:0];
+  assign addr_misaligned_q = addr_misaligned_pop.data[ADDR_OFFSET-1:0];
 
   hwpe_stream_fifo #(
-    .DATA_WIDTH ( 8              ), // only [1:0] significant
+    .DATA_WIDTH ( ADDR_OFFSET_BYTE), // only [1:0] significant
     .FIFO_DEPTH ( ADDR_MIS_DEPTH )
   ) i_addr_misaligned_fifo (
     .clk_i   ( clk_i                ),
