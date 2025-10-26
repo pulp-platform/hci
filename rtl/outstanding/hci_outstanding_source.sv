@@ -99,6 +99,7 @@ module hci_outstanding_source
   input logic test_mode_i,
   input logic clear_i,
   input logic enable_i,
+  input logic mask_y,
 
   hci_outstanding_intf.initiator tcdm,
   hwpe_stream_intf_stream.source stream,
@@ -310,7 +311,10 @@ module hci_outstanding_source
       end
       STREAMER_WORKING : begin
         address_gen_en = 1'b1;
-        if(flags_o.addressgen_flags.done) begin
+        if (mask_y) begin
+          ns = STOP;
+          address_gen_en = 1'b0;
+        end else if(flags_o.addressgen_flags.done) begin
           ns = STREAMER_DONE;
         end
       end
@@ -324,6 +328,11 @@ module hci_outstanding_source
           address_gen_clr = 1'b1;
           stream_cnt_clr = 1'b1;
         end
+      end
+      STOP : begin 
+        if (~mask_y) begin
+          ns = STREAMER_WORKING;
+        end   
       end
     endcase
   end
