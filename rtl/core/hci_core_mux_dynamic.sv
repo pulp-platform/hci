@@ -82,15 +82,15 @@ module hci_core_mux_dynamic
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_data;
   logic [NB_IN_CHAN-1:0][UW-1:0]             in_user;
   logic [NB_IN_CHAN-1:0][IW-1:0]             in_id;
-  logic [NB_IN_CHAN-1:0][EW-1:0]             in_ecc;
+  logic [NB_IN_CHAN-1:0][hci_package::iomsb(EW):0]             in_ecc;
   logic [NB_IN_CHAN-1:0][DW-1:0]             in_r_data;
   logic [NB_IN_CHAN-1:0]                     in_r_valid;
   logic [NB_IN_CHAN-1:0][UW-1:0]             in_r_user;
   logic [NB_IN_CHAN-1:0][IW-1:0]             in_r_id;
   logic [NB_IN_CHAN-1:0]                     in_r_opc;
-  logic [NB_IN_CHAN-1:0][EW-1:0]             in_r_ecc;
-  logic [NB_IN_CHAN-1:0][EHW-1:0]            in_egnt;
-  logic [NB_IN_CHAN-1:0][EHW-1:0]            in_r_evalid;
+  logic [NB_IN_CHAN-1:0][hci_package::iomsb(EW):0]             in_r_ecc;
+  logic [NB_IN_CHAN-1:0][hci_package::iomsb(EHW):0]            in_egnt;
+  logic [NB_IN_CHAN-1:0][hci_package::iomsb(EHW):0]            in_r_evalid;
 
   logic [NB_OUT_CHAN-1:0]                    out_req;
   logic [NB_OUT_CHAN-1:0]                    out_gnt;
@@ -101,15 +101,15 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_data;
   logic [NB_OUT_CHAN-1:0][UW-1:0]            out_user;
   logic [NB_OUT_CHAN-1:0][IW-1:0]            out_id;
-  logic [NB_OUT_CHAN-1:0][EW-1:0]            out_ecc;
+  logic [NB_OUT_CHAN-1:0][hci_package::iomsb(EW):0]            out_ecc;
   logic [NB_OUT_CHAN-1:0][DW-1:0]            out_r_data;
   logic [NB_OUT_CHAN-1:0]                    out_r_valid;
   logic [NB_OUT_CHAN-1:0][UW-1:0]            out_r_user;
   logic [NB_OUT_CHAN-1:0][IW-1:0]            out_r_id;
   logic [NB_OUT_CHAN-1:0]                    out_r_opc;
-  logic [NB_OUT_CHAN-1:0][EW-1:0]            out_r_ecc;
-  logic [NB_OUT_CHAN-1:0][EHW-1:0]           out_ereq;
-  logic [NB_OUT_CHAN-1:0][EHW-1:0]           out_r_eready;
+  logic [NB_OUT_CHAN-1:0][hci_package::iomsb(EW):0]            out_r_ecc;
+  logic [NB_OUT_CHAN-1:0][hci_package::iomsb(EHW):0]           out_ereq;
+  logic [NB_OUT_CHAN-1:0][hci_package::iomsb(EHW):0]           out_r_eready;
 
   logic [$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                                              rr_counter;
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN/NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0] rr_priority;
