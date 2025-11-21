@@ -99,7 +99,7 @@ module hci_outstanding_source
   input logic test_mode_i,
   input logic clear_i,
   input logic enable_i,
-  input logic mask_y,
+  input logic mask_y_i,
 
   hci_outstanding_intf.initiator tcdm,
   hwpe_stream_intf_stream.source stream,
@@ -235,7 +235,7 @@ module hci_outstanding_source
 
   // HANDSHAKES Request
 
-  assign tcdm.req_valid  = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
+  assign tcdm.req_valid  = (cs != STREAMER_IDLE && ns != STOP) ? addr_pop.valid : '0;
   assign tcdm.req_add    = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0} : '0;
   assign tcdm.req_wen    = 1'b1;
   assign tcdm.req_be     = 4'h0;
@@ -311,12 +311,11 @@ module hci_outstanding_source
       end
       STREAMER_WORKING : begin
         address_gen_en = 1'b1;
-        if (mask_y) begin
-          ns = STOP;
-          address_gen_en = 1'b0;
-        end else if(flags_o.addressgen_flags.done) begin
+        if(flags_o.addressgen_flags.done) begin
           ns = STREAMER_DONE;
-        end
+        end else if (mask_y_i) begin
+          ns = STOP;
+        end 
       end
       STREAMER_DONE : begin
         address_gen_en = 1'b1;
@@ -330,7 +329,8 @@ module hci_outstanding_source
         end
       end
       STOP : begin 
-        if (~mask_y) begin
+        address_gen_en = 1'b1;
+        if (~mask_y_i) begin
           ns = STREAMER_WORKING;
         end   
       end
