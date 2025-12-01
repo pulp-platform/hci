@@ -84,12 +84,12 @@ module hci_core_mux_static
       assign in_data    [ii] = in[ii].data;
       assign in_be      [ii] = in[ii].be;
       assign in_user    [ii] = in[ii].user;
-      assign in_id      [ii] = ii;
+      assign in_id      [ii] = in[ii].id;
       assign in_ecc     [ii] = in[ii].ecc;
 
       assign in_gnt[ii]      = (sel_i == ii) ? out.gnt     : 1'b0;
       assign in[ii].gnt      = in_gnt[ii];
-      assign in_r_valid[ii]  = (out.r_id == ii) ? out.r_valid : 1'b0;
+      assign in_r_valid[ii]  = (sel_i == ii) ? out.r_valid : 1'b0;
       assign in[ii].r_valid  = in_r_valid[ii];
       assign in[ii].r_data   = out.r_data;
       assign in[ii].r_user   = out.r_user;
@@ -105,7 +105,7 @@ module hci_core_mux_static
     assign out.wen     = in_wen   [sel_i];
     assign out.be      = in_be    [sel_i];
     assign out.data    = in_data  [sel_i];
-    assign out.r_ready = in_lrdy  [out.r_id];
+    assign out.r_ready = in_lrdy  [sel_i];
     assign out.user    = in_user  [sel_i];
     assign out.ecc     = in_ecc   [sel_i];
     assign out.id      = in_id    [sel_i];
