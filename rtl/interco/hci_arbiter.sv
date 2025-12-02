@@ -2,6 +2,7 @@
  * hci_arbiter.sv
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
+ * Luca Codeluppi  <lcodelupp@student.ethz.ch>
  *
  * Copyright (C) 2019-2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
@@ -24,8 +25,19 @@
  * The arbiter uses a starvation-free unbalanced-priority scheme where one of
  * the input channels has by default access to most of the bandwidth guaranteed
  * by the output channels. To prevent starvation effects, depending on the control
- * settings, the other input channel is always granted after a given number
- * of stall cycles.
+ * settings and on the arbiter mode, the other input channel is always granted after a
+ * certain number of cycles.
+ * Two possible arbitration mode are provided:
+ *
+ * - Mode 0 (default): the signal "low_prio_max_stall" sets the maximum number of consecutive cycles with at least one request in both
+ *  the high and low priority channel. **NOTE** The name of the signal could be misleading, but it is kept as it is to maintain consistency with previous versions 
+ *  of the hci_arbiter, where there was no distinction between Mode 0 and Mode 1 and where this signal was actually used improperly.                                           
+ *                                                                               
+ * - Mode 1: the signal "low_prio_max_stall" sets the maximum number of consecutive stalls on low-priority channel.
+ *
+ * There is also a third hardware implementation (Mode 2), which is **experimental and not yet tested**. It is intended to have the same theoretical behaviour as Mode 1, but with fewer logic gates.
+ * **WARNING: Mode 2 is experimental and must not be used in production.**
+ *
  * For more details, see:
  *  - https://ieeexplore.ieee.org/document/9903915, Sec. II-A (open-access);
  *  - https://ieeexplore.ieee.org/document/10247945 , Sec. II-A, III-B, and III-C.
@@ -44,20 +56,25 @@
  * .. _hci_arbiter_ctrl:
  * .. table:: **hci_arbiter** input control signals.
  *
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | **Name**             | **Type**               | **Description**                                               |
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | *invert_prio*        | `logic`                | When 1, invert priorities between `in_high` and `in_low`.     |
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | *low_prio_max_stall* | `logic[7:0]`           | Maximum number of consecutive stalls on low-priority channel. |
- *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   +----------------------+------------------------+-------------------------------------------------------------------------------------------+
+ *   | **Name**             | **Type**               | **Description**                                                                           |
+ *   +----------------------+------------------------+-------------------------------------------------------------------------------------------+
+ *   | *invert_prio*        | `logic`                | When 1, invert priorities between `in_high` and `in_low`.                                 |
+ *   +----------------------+------------------------+-------------------------------------------------------------------------------------------+
+ *   |                      |                        | - Mode 0: Maximum number of consecutive cycles with at least one request in both          |
+ *   |                      |                        |   the high and low priority channel.                                                      |
+ *   | *low_prio_max_stall* | `logic[7:0]`           |                                                                                           |
+ *   |                      |                        | - Mode 1 & Mode 2: Maximum number of consecutive stalls on low-priority channel.          |
+ *   |                      |                        |                                                                                           |
+ *   +----------------------+------------------------+-------------------------------------------------------------------------------------------+
  *
  */
  
 module hci_arbiter
   import hci_package::*;
 #(
-  parameter int unsigned NB_CHAN = 2
+  parameter int unsigned NB_CHAN = 2,
+  parameter int unsigned MODE = 0
 )
 (
   input  logic                   clk_i,
@@ -76,32 +93,13 @@ module hci_arbiter
   logic hs_req_d;
   logic ls_req_d;
   logic switch_channels_d;
+  logic invert_prio_one_cycle;
+  logic conflict;
   logic unsigned [7:0] ls_stall_ctr_d;
 
-  // priority_req is the OR of all requests coming out of the log interconnect.
-  // it should be simplified to simply an OR of all requests coming *into* the
-  // log interconnect directly within the synthesis tool.
-  always_comb
-  begin
-    hs_req_d = |hs_req_in;
-    ls_req_d = |ls_req_in;
-    if (ctrl_i.low_prio_max_stall > 0) //Set to 0 to disable this functionality
-    begin
-      if (ls_stall_ctr_d >= ctrl_i.low_prio_max_stall)
-        hs_req_d = 0; //Let low side through for once
-    end
-  end
-  
-  //Low side stall counter
-	always_ff @(posedge clk_i or negedge rst_ni)
-	begin
-		if (~rst_ni)
-			ls_stall_ctr_d <= 0;
-		else if (hs_req_d & ls_req_d)
-			ls_stall_ctr_d <= ls_stall_ctr_d + 1;
-    else
-			ls_stall_ctr_d <= 0;
-	end
+  //-----------------------------------------------------------------------
+  //-                             COMMON PART                             -
+  //-----------------------------------------------------------------------
   
   assign switch_channels_d = ctrl_i.invert_prio;
 
@@ -126,12 +124,6 @@ module hci_arbiter
     end // req_mapping
   endgenerate
 
-  // Side select
-  generate
-    for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
-      assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
-    end // side_select
-  endgenerate
 
   // tcdm ports binding
   generate
@@ -181,6 +173,121 @@ module hci_arbiter
         in_low [ii].r_valid = '0;
       end
     end // tcdm_binding
+  endgenerate
+
+  generate
+  //------------------------------------------------------------------
+  //-                             MODE 0                             -
+  //------------------------------------------------------------------
+
+    if(MODE == 0) begin
+      // priority_req is the OR of all requests coming out of the log interconnect.
+      // it should be simplified to simply an OR of all requests coming *into* the
+      // log interconnect directly within the synthesis tool.
+      always_comb
+      begin
+        hs_req_d = |hs_req_in;
+        ls_req_d = |ls_req_in;
+        if (ctrl_i.low_prio_max_stall > 0) //Set to 0 to disable this functionality
+        begin
+          if (ls_stall_ctr_d >= ctrl_i.low_prio_max_stall)
+            hs_req_d = 0; //Let low side through for once
+        end
+      end
+      
+      //Low side stall counter
+      always_ff @(posedge clk_i or negedge rst_ni)
+      begin
+        if (~rst_ni)
+          ls_stall_ctr_d <= 0;
+        else if (hs_req_d & ls_req_d)
+          ls_stall_ctr_d <= ls_stall_ctr_d + 1;
+        else
+          ls_stall_ctr_d <= 0;
+      end
+      // Side select
+
+      for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
+        assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
+      end // side_select
+
+    end
+
+ //------------------------------------------------------------------
+ //-                             MODE 1                             -
+ //------------------------------------------------------------------
+
+    if (MODE == 1) begin
+
+      //Check conflicts
+      assign conflict = |(hs_req_in & ls_req_in);
+
+      always_comb
+      begin
+        hs_req_d = |hs_req_in;
+        ls_req_d = |ls_req_in;
+        if (ctrl_i.low_prio_max_stall > 0) //Set to 0 to disable this functionality
+        begin
+          if (ls_stall_ctr_d >= ctrl_i.low_prio_max_stall)
+            hs_req_d = 0; //Let low side through for once
+        end
+      end
+      
+      //Low side stall counter
+      always_ff @(posedge clk_i or negedge rst_ni)
+      begin
+        if (~rst_ni)
+          ls_stall_ctr_d <= 0;
+        else if (conflict & hs_req_d)
+          ls_stall_ctr_d <= ls_stall_ctr_d + 1;
+        else
+          ls_stall_ctr_d <= 0;
+      end
+
+      // Side select
+
+      for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
+        assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
+      end // side_select
+
+    end
+
+  //------------------------------------------------------------------
+  //-                             MODE 2                             -
+  //------------------------------------------------------------------
+
+    if (MODE == 2) begin
+
+      assign conflict = |(hs_req_in & ls_req_in);
+
+      always_comb
+      begin
+        invert_prio_one_cycle = 1'b0;
+        if (ctrl_i.low_prio_max_stall > 0) //Set to 0 to disable this functionality
+        begin
+          if (ls_stall_ctr_d >= ctrl_i.low_prio_max_stall)
+            invert_prio_one_cycle = 1'b1; //Let low side through for once
+        end
+      end
+      
+      //Low side stall counter
+      always_ff @(posedge clk_i or negedge rst_ni)
+      begin
+        if (~rst_ni)
+          ls_stall_ctr_d <= 0;
+        else if (conflict & !invert_prio_one_cycle)
+          ls_stall_ctr_d <= ls_stall_ctr_d + 1;
+        else
+          ls_stall_ctr_d <= 0;
+      end
+
+      // Side select
+
+      for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
+        assign hs_pass_d[ii] = (!invert_prio_one_cycle & hs_req_in[ii]) ^ switch_channels_d;
+      end // side_select
+
+    end
   endgenerate
 
 endmodule // hci_arbiter
