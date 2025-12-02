@@ -26,9 +26,7 @@ module hci_core_r_id_filter
   import hwpe_stream_package::*;
   import hci_package::*;
 #(
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
-  parameter int unsigned N_OUTSTANDING = 2,
-  parameter bit MULTICYCLE_SUPPORT = 1'b0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
 )
 (
   input  logic clk_i,
@@ -41,6 +39,8 @@ module hci_core_r_id_filter
 
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm_target);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
+  localparam int unsigned FD  = `HCI_SIZE_GET_FD(tcdm_target);
+  localparam bit MULTICYCLE_SUPPORT = (FD > 1);
 
   logic [IW-1:0] target_r_id;
 
@@ -69,7 +69,7 @@ module hci_core_r_id_filter
    fifo_v3 #(
     .FALL_THROUGH(1'b0),
     .DATA_WIDTH(IW),
-    .DEPTH(N_OUTSTANDING)
+    .DEPTH(FD)
     ) i_r_id_fifo (
       .clk_i,
       .rst_ni,
@@ -129,6 +129,8 @@ module hci_core_r_id_filter
 `ifndef SYNTHESIS
 `ifndef VERILATOR
 `ifndef VCS
+// Only check single-cycle timing when FD = 1 (no multicycle support)
+if (!MULTICYCLE_SUPPORT) begin : single_cycle_asserts
   // gnt=1 & wen=1 => the following cycle r_valid=1
   property p_gnt_wen_high_then_r_valid_high_next_cycle;
     @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
@@ -144,6 +146,7 @@ module hci_core_r_id_filter
 
   assert_gnt_low_then_r_valid_low_next_cycle: assert property (p_gnt_low_then_r_valid_low_next_cycle)
     else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
+end : single_cycle_asserts
 `endif
 `endif
 `endif
