@@ -61,9 +61,9 @@ module application_driver #(
 
     wait (rst_ni);
     if (IS_HWPE) begin
-      file_path = $sformatf("./verif/simvectors/stimuli_processed/master_hwpe_%0d.txt", MASTER_NUMBER);
+      file_path = $sformatf("../simvectors/stimuli_processed/master_hwpe_%0d.txt", MASTER_NUMBER);
     end else begin
-      file_path = $sformatf("./verif/simvectors/stimuli_processed/master_log_%0d.txt", MASTER_NUMBER);
+      file_path = $sformatf("../simvectors/stimuli_processed/master_log_%0d.txt", MASTER_NUMBER);
     end
     stim = $fopen(file_path, "r");
     if (stim == 0) begin

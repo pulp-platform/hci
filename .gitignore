@@ -4,4 +4,7 @@
 # Target: verif
 target/verif/config/*.mk
 target/verif/simvectors
-target/verif/vsim
+target/verif/vsim/work
+target/verif/vsim/compile.tcl
+target/verif/vsim/modelsim.ini
+target/verif/vsim/transcript
