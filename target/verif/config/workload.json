@@ -1,0 +1,133 @@
+{
+  "description": "Workload configuration for stimuli generation",
+  "simulation_parameters": {
+    "EXACT_OR_MAX_OFFSET": 0,
+    "CYCLE_OFFSET_LOG": 1,
+    "CYCLE_OFFSET_HWPE": 1
+  },
+  "log_masters": [
+    {
+      "id": 0,
+      "description": "Core 0",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 1,
+      "description": "Core 1",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 2,
+      "description": "Core 2",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 3,
+      "description": "Core 3",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 4,
+      "description": "Core 4",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 5,
+      "description": "Core 5",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 6,
+      "description": "Core 6",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 7,
+      "description": "Core 7",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 8,
+      "description": "DMA 0",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    },
+    {
+      "id": 9,
+      "description": "External 0",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    }
+  ],
+  "hwpe_masters": [
+    {
+      "id": 0,
+      "description": "HWPE 0",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
+    }
+  ]
+}

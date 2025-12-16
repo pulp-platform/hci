@@ -1,0 +1,17 @@
+# Copyright 2025 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE.solderpad for details.
+# SPDX-License-Identifier: SHL-0.51
+#
+# This file is auto-generated from testbench.json - DO NOT EDIT MANUALLY
+
+# Testbench parameters (from testbench.json)
+N_TRANSACTION_LOG?=${N_TRANSACTION_LOG}
+TRANSACTION_RATIO?=${TRANSACTION_RATIO}
+CLK_PERIOD?=${CLK_PERIOD}
+RST_CLK_CYCLES?=${RST_CLK_CYCLES}
+MAX_CYCLES_BETWEEN_GNT_RVALID?=${MAX_CYCLES_BETWEEN_GNT_RVALID}
+RANDOM_GNT?=${RANDOM_GNT}
+PRIORITY_CHECK_MODE_ONE?=${PRIORITY_CHECK_MODE_ONE}
+PRIORITY_CHECK_MODE_ZERO?=${PRIORITY_CHECK_MODE_ZERO}
+INVERT_PRIO?=${INVERT_PRIO}
+LOW_PRIO_MAX_STALL?=${LOW_PRIO_MAX_STALL}

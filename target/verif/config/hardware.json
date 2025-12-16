@@ -1,0 +1,16 @@
+{
+  "description": "Hardware configuration parameters for HCI interconnect",
+  "parameters": {
+    "N_HWPE": 1,
+    "HWPE_WIDTH": 4,
+    "N_CORE": 8,
+    "N_DMA": 1,
+    "N_EXT": 1,
+    "TS_BIT": 21,
+    "EXPFIFO": 0,
+    "SEL_LIC": 0,
+    "DATA_WIDTH": 32,
+    "TOT_MEM_SIZE": 32,
+    "N_BANKS": 64
+  }
+}
