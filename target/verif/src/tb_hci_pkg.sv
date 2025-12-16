@@ -41,11 +41,9 @@ package tb_hci_pkg;
   localparam int unsigned RANDOM_GNT                    = `ifdef RANDOM_GNT `RANDOM_GNT `else 0 `endif;
 
   // Arbiter configuration
-  localparam int unsigned ARBITER_MODE             = (`ifdef PRIORITY_CHECK_MODE_ONE `PRIORITY_CHECK_MODE_ONE `else 0 `endif == 1) ? 1 : 0;  // Chosen mode for the arbiter
+  localparam int unsigned ARBITER_MODE             = 0;
   localparam int unsigned INVERT_PRIO              = `ifdef INVERT_PRIO `INVERT_PRIO `else 0 `endif;
   localparam int unsigned LOW_PRIO_MAX_STALL       = `ifdef LOW_PRIO_MAX_STALL `LOW_PRIO_MAX_STALL `else 3 `endif;
-  localparam int unsigned PRIORITY_CHECK_MODE_ONE  = `ifdef PRIORITY_CHECK_MODE_ONE `PRIORITY_CHECK_MODE_ONE `else 0 `endif;
-  localparam int unsigned PRIORITY_CHECK_MODE_ZERO = `ifdef PRIORITY_CHECK_MODE_ZERO `PRIORITY_CHECK_MODE_ZERO `else 0 `endif;
 
   /////////////////////////
   // Hardware parameters //

@@ -120,7 +120,6 @@ module tb_hci
       .IW(IW),                              // ID Width
       .EXPFIFO(EXPFIFO),                    // FIFO Depth for HWPE Interconnect
       .SEL_LIC(SEL_LIC),                    // Log interconnect type selector
-      .ARBITER_MODE(ARBITER_MODE),          // Chosen mode for the arbiter
       .HCI_SIZE_cores(HCI_SIZE_cores),
       .HCI_SIZE_mems(HCI_SIZE_mems),
       .HCI_SIZE_hwpe(HCI_SIZE_hwpe),
@@ -162,8 +161,8 @@ module tb_hci
   // Application drivers //
   /////////////////////////
 
-  logic [0:N_MASTER-1] END_STIMULI = '0;
-  logic [0:N_MASTER-1] END_LATENCY = '0;
+  logic [0:N_MASTER-1] END_STIMULI;
+  logic [0:N_MASTER-1] END_LATENCY;
 
   /* Driver interfaces */
     hci_core_intf #(
@@ -517,8 +516,9 @@ module tb_hci
   /////////
 
   /* ARBITER CHECKER (WIDE vs NARROW branch) */
-  generate
-    if (PRIORITY_CHECK_MODE_ONE || PRIORITY_CHECK_MODE_ZERO) begin
+
+  // generate
+  //   if (PRIORITY_CHECK_MODE_ONE || PRIORITY_CHECK_MODE_ZERO) begin
       arbiter_checker #(
         .ARBITER_MODE(ARBITER_MODE),
         .N_MASTER(N_MASTER),
@@ -534,13 +534,14 @@ module tb_hci
         .clk(clk),
         .rst_n(rst_n)
       );
-    end else begin
-      assign HIDE_HWPE = '0;
-      assign HIDE_LOG = '0;
-    end
-  endgenerate
+  //   end else begin
+  //     assign HIDE_HWPE = '0;
+  //     assign HIDE_LOG = '0;
+  //   end
+  // endgenerate
 
   /* REAL THROUGHPUT AND SIMULATION TIME */
+
   real latency_per_master[N_MASTER];
   real throughput_real;
   real tot_latency;
