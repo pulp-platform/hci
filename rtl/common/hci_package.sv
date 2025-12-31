@@ -66,7 +66,7 @@ package hci_package;
   } hci_streamer_flags_t;
 
   typedef enum {
-    STREAMER_IDLE, STREAMER_WORKING, STREAMER_DONE, STOP
+    STREAMER_IDLE, STREAMER_WORKING, STREAMER_DONE
   } hci_streamer_state_t;
 
   typedef enum {

@@ -235,7 +235,7 @@ module hci_outstanding_source
 
   // HANDSHAKES Request
 
-  assign tcdm.req_valid  = (cs != STREAMER_IDLE && ns != STOP) ? addr_pop.valid : '0;
+  assign tcdm.req_valid  = (cs != STREAMER_IDLE && ~mask_y_i) ? addr_pop.valid : '0;
   assign tcdm.req_add    = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0} : '0;
   assign tcdm.req_wen    = 1'b1;
   assign tcdm.req_be     = 4'h0;
@@ -313,8 +313,6 @@ module hci_outstanding_source
         address_gen_en = 1'b1;
         if(flags_o.addressgen_flags.done) begin
           ns = STREAMER_DONE;
-        end else if (mask_y_i) begin
-          ns = STOP;
         end 
       end
       STREAMER_DONE : begin
@@ -327,12 +325,6 @@ module hci_outstanding_source
           address_gen_clr = 1'b1;
           stream_cnt_clr = 1'b1;
         end
-      end
-      STOP : begin 
-        address_gen_en = 1'b1;
-        if (~mask_y_i) begin
-          ns = STREAMER_WORKING;
-        end   
       end
     endcase
   end
