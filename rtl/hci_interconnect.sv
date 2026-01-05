@@ -75,11 +75,11 @@ module hci_interconnect
   input logic                   rst_ni              ,
   input logic                   clear_i             ,
   input hci_interconnect_ctrl_t ctrl_i              ,
-  hci_core_intf.target           cores   [0:N_CORE-1],
-  hci_core_intf.target           dma     [0:N_DMA-1] ,
-  hci_core_intf.target           ext     [0:N_EXT-1] ,
-  hci_core_intf.initiator        mems    [0:N_MEM-1] ,
-  hci_core_intf.target           hwpe    [0:N_HWPE-1]
+  hci_core_intf.target           cores [0:hci_package::iomsb(N_CORE)],
+  hci_core_intf.target           dma   [0:hci_package::iomsb(N_DMA)] ,
+  hci_core_intf.target           ext   [0:hci_package::iomsb(N_EXT)] ,
+  hci_core_intf.initiator        mems  [0:hci_package::iomsb(N_MEM)] ,
+  hci_core_intf.target           hwpe  [0:hci_package::iomsb(N_HWPE)]
 );
 
   localparam int unsigned AWC = `HCI_SIZE_GET_AW(cores);
