@@ -124,6 +124,7 @@ module hci_core_source
 
   localparam int unsigned DATA_WIDTH = `HCI_SIZE_GET_DW(tcdm);
   localparam int unsigned EHW        = `HCI_SIZE_GET_EHW(tcdm);
+  localparam int unsigned STREAM_MISALIGNED_DW = DATA_WIDTH - BANK_DATA_WIDTH;
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -200,14 +201,14 @@ module hci_core_source
   // hwpe stream is a factor of 8 hardcoded. Until this is fixed have to use this
   localparam int unsigned ADDR_OFFSET_BYTE = 8*((ADDR_OFFSET + 8 - 1) / 8);
 
-  if (MISALIGNED_ACCESSES==1 ) begin : missaligned_access_gen
-    always_comb
-    begin
+  if (MISALIGNED_ACCESSES==1) begin : misaligned_access_gen
+    always_comb begin
       stream_data_aligned = '0;
-      if(addr_misaligned_q == 0)
+      if (addr_misaligned_q == 0)
         stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
-      else
-        stream_data_aligned[0+:BANK_DATA_WIDTH] = stream_data_misaligned[addr_misaligned_q*ELEMENT_WIDTH+:BANK_DATA_WIDTH];
+      else begin
+        stream_data_aligned[STREAM_MISALIGNED_DW-1:0] = stream_data_misaligned[addr_misaligned_q*ELEMENT_WIDTH +: STREAM_MISALIGNED_DW];
+      end
     end
 
     hwpe_stream_intf_stream #(
