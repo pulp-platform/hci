@@ -252,23 +252,24 @@
 `define HCI_INTF_ARRAY(__name, __clk, __range) `HCI_INTF_EXPLICIT_PARAM(__name[__range], __clk, `HCI_SIZE_PARAM(__name))
 
 `define HCI_TYPEDEF_REQ_T(req_t, addr_t, data_t, strb_t, user_t, id_t, ecc_t, ereq_t)\
-  typedef struct packed {                                                \
-    logic   req;                                                         \
-    addr_t  add;                                                         \
-    logic   wen;                                                         \
-    data_t  data;                                                        \
-    strb_t  be;                                                          \
-    user_t  user;                                                        \
-    id_t    id;                                                          \
-    ecc_t   ecc;                                                         \
-    ereq_t  ereq;                                                        \
+  typedef struct packed {                       \
+    logic   req;                                \
+    addr_t  add;                                \
+    logic   wen;                                \
+    data_t  data;                               \
+    strb_t  be;                                 \
+    user_t  user;                               \
+    id_t    id;                                 \
+    ecc_t   ecc;                                \
+    ereq_t  ereq;                               \
+    logic   r_ready;                            \
+    ereq_t  r_eready;                           \
   } req_t;
 
 `define HCI_TYPEDEF_RSP_T(rsp_t, data_t, user_t, id_t, ecc_t, ehw_t)\
   typedef struct packed {                       \
     logic  gnt;                                 \
     logic  r_valid;                             \
-    logic  r_ready;                             \
     data_t r_data;                              \
     user_t r_user;                              \
     id_t   r_id;                                \
@@ -276,7 +277,6 @@
     ecc_t  r_ecc;                               \
     ehw_t  egnt;                                \
     ehw_t  r_evalid;                            \
-    ehw_t  r_eready;                            \
   } rsp_t;
 
 `define HCI_ASSIGN_TO_INTF(intf, reqst, rspns)\
@@ -289,17 +289,17 @@
     assign intf.id       = reqst.id;          \
     assign intf.ecc      = reqst.ecc;         \
     assign intf.ereq     = reqst.ereq;        \
+    assign intf.r_ready  = reqst.r_ready;     \
+    assign intf.r_eready = reqst.r_eready;    \
     assign rspns.gnt     = intf.gnt;          \
     assign rspns.r_valid = intf.r_valid;      \
-    assign rspns.r_ready = intf.r_ready;      \
     assign rspns.r_data  = intf.r_data;       \
     assign rspns.r_user  = intf.r_user;       \
     assign rspns.r_id    = intf.r_id;         \
     assign rspns.r_opc   = intf.r_opc;        \
     assign rspns.r_ecc   = intf.r_ecc;        \
     assign rspns.egnt    = intf.egnt;         \
-    assign rspns.r_evalid = intf.r_evalid;    \
-    assign rspns.r_eready = intf.r_eready;
+    assign rspns.r_evalid = intf.r_evalid;
 
   `define HCI_ASSIGN_FROM_INTF(intf, reqst, rspns)\
     assign reqst.req     = intf.req;              \
@@ -311,17 +311,17 @@
     assign reqst.id      = intf.id;               \
     assign reqst.ecc     = intf.ecc;              \
     assign reqst.ereq    = intf.ereq;             \
+    assign reqst.r_ready  = intf.r_ready;         \
+    assign reqst.r_eready = intf.r_eready;        \
     assign intf.gnt      = rspns.gnt;             \
     assign intf.r_valid  = rspns.r_valid;         \
-    assign intf.r_ready  = rspns.r_ready;         \
     assign intf.r_data   = rspns.r_data;          \
     assign intf.r_user   = rspns.r_user;          \
     assign intf.r_id     = rspns.r_id;            \
     assign intf.r_opc    = rspns.r_opc;           \
     assign intf.r_ecc    = rspns.r_ecc;           \
     assign intf.egnt     = rspns.egnt;            \
-    assign intf.r_evalid = rspns.r_evalid;        \
-    assign intf.r_eready = rspns.r_eready;
+    assign intf.r_evalid = rspns.r_evalid;
 
 `ifndef SYNTHESIS
   `define HCI_SIZE_GET_DW_CHECK(__x)  (__x.DW)
