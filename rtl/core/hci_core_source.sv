@@ -202,10 +202,12 @@ module hci_core_source
   localparam int unsigned ADDR_OFFSET_BYTE = 8*((ADDR_OFFSET + 8 - 1) / 8);
 
   if (MISALIGNED_ACCESSES==1) begin : misaligned_access_gen
-    always_comb begin
+    always_comb
+    begin
       stream_data_aligned = '0;
-      if (addr_misaligned_q == 0)
+      if (addr_misaligned_q == 0) begin
         stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
+      end
       else begin
         stream_data_aligned[STREAM_MISALIGNED_DW-1:0] = stream_data_misaligned[addr_misaligned_q*ELEMENT_WIDTH +: STREAM_MISALIGNED_DW];
       end
