@@ -2,6 +2,7 @@
  * hci_helpers.svh
  * Francesco Conti <f.conti@unibo.it>
  * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
+ * Victor Isachi <victor.isachi@unibo.it>
  *
  * Copyright (C) 2024 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
@@ -176,6 +177,33 @@
  *
  * Again, the main advantage is simpler and more readable code, but the two syntaxes are equally
  * valid.
+ *
+ * Struct typedefs
+ * ###############
+ *
+ * These are req-resp style struct typedefs. Their usage is discouraged but possible for 
+ * integration with other modules or support of legacy code. In particular, care should
+ * be taken in the definition of the various subtypes (e.g., `addr_t`) that should be
+ * consistent with the requirements of interfaces. Naturally, by defining these manually
+ * one loses the "automatic" protection and checking of asserts, but if you really want
+ * to shoot yourself in the foot, you should be able to do it.
+ * Request-side struct:
+ *   `HCI_TYPEDEF_REQ_T(req_t, addr_t, data_t, strb_t, user_t, id_t, ecc_t, ereq_t)
+ *
+ * Response-side struct:
+ *   `HCI_TYPEDEF_RSP_T(rsp_t, data_t, user_t, id_t, ecc_t, ehw_t)
+ *
+ * Assignments to interfaces
+ * #########################
+ *
+ * These are simply macros to assign between structs and interfaces.
+ * Struct-based initiatior, interface-based target:
+ *
+ *   `HCI_ASSIGN_TO_INTF(interface, request_struct, response_struct)
+ *
+ * Interface-based initiator, struct-based target:
+ *
+ *   `HCI_ASSIGN_FROM_INTF(interface, request_struct, response_struct)
  */
 
 `ifndef __HCI_HELPERS__
@@ -222,6 +250,78 @@
   )
 `define HCI_INTF(__name, __clk)                `HCI_INTF_EXPLICIT_PARAM(__name, __clk,          `HCI_SIZE_PARAM(__name))
 `define HCI_INTF_ARRAY(__name, __clk, __range) `HCI_INTF_EXPLICIT_PARAM(__name[__range], __clk, `HCI_SIZE_PARAM(__name))
+
+`define HCI_TYPEDEF_REQ_T(req_t, addr_t, data_t, strb_t, user_t, id_t, ecc_t, ereq_t)\
+  typedef struct packed {                                                \
+    logic   req;                                                         \
+    addr_t  add;                                                         \
+    logic   wen;                                                         \
+    data_t  data;                                                        \
+    strb_t  be;                                                          \
+    user_t  user;                                                        \
+    id_t    id;                                                          \
+    ecc_t   ecc;                                                         \
+    ereq_t  ereq;                                                        \
+  } req_t;
+
+`define HCI_TYPEDEF_RSP_T(rsp_t, data_t, user_t, id_t, ecc_t, ehw_t)\
+  typedef struct packed {                       \
+    logic  gnt;                                 \
+    logic  r_valid;                             \
+    logic  r_ready;                             \
+    data_t r_data;                              \
+    user_t r_user;                              \
+    id_t   r_id;                                \
+    logic  r_opc;                               \
+    ecc_t  r_ecc;                               \
+    ehw_t  egnt;                                \
+    ehw_t  r_evalid;                            \
+    ehw_t  r_eready;                            \
+  } rsp_t;
+
+`define HCI_ASSIGN_TO_INTF(intf, reqst, rspns)\
+    assign intf.req      = reqst.req;         \
+    assign intf.add      = reqst.add;         \
+    assign intf.wen      = reqst.wen;         \
+    assign intf.data     = reqst.data;        \
+    assign intf.be       = reqst.be;          \
+    assign intf.user     = reqst.user;        \
+    assign intf.id       = reqst.id;          \
+    assign intf.ecc      = reqst.ecc;         \
+    assign intf.ereq     = reqst.ereq;        \
+    assign rspns.gnt     = intf.gnt;          \
+    assign rspns.r_valid = intf.r_valid;      \
+    assign rspns.r_ready = intf.r_ready;      \
+    assign rspns.r_data  = intf.r_data;       \
+    assign rspns.r_user  = intf.r_user;       \
+    assign rspns.r_id    = intf.r_id;         \
+    assign rspns.r_opc   = intf.r_opc;        \
+    assign rspns.r_ecc   = intf.r_ecc;        \
+    assign rspns.egnt    = intf.egnt;         \
+    assign rspns.r_evalid = intf.r_evalid;    \
+    assign rspns.r_eready = intf.r_eready;
+
+  `define HCI_ASSIGN_FROM_INTF(intf, reqst, rspns)\
+    assign reqst.req     = intf.req;              \
+    assign reqst.add     = intf.add;              \
+    assign reqst.wen     = intf.wen;              \
+    assign reqst.data    = intf.data;             \
+    assign reqst.be      = intf.be;               \
+    assign reqst.user    = intf.user;             \
+    assign reqst.id      = intf.id;               \
+    assign reqst.ecc     = intf.ecc;              \
+    assign reqst.ereq    = intf.ereq;             \
+    assign intf.gnt      = rspns.gnt;             \
+    assign intf.r_valid  = rspns.r_valid;         \
+    assign intf.r_ready  = rspns.r_ready;         \
+    assign intf.r_data   = rspns.r_data;          \
+    assign intf.r_user   = rspns.r_user;          \
+    assign intf.r_id     = rspns.r_id;            \
+    assign intf.r_opc    = rspns.r_opc;           \
+    assign intf.r_ecc    = rspns.r_ecc;           \
+    assign intf.egnt     = rspns.egnt;            \
+    assign intf.r_evalid = rspns.r_evalid;        \
+    assign intf.r_eready = rspns.r_eready;
 
 `ifndef SYNTHESIS
   `define HCI_SIZE_GET_DW_CHECK(__x)  (__x.DW)
