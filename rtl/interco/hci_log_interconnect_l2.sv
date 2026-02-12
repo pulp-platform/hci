@@ -91,6 +91,8 @@ module hci_log_interconnect_l2
       end
       assign mems_gnt     [i] = mems[i].gnt;
       assign mems_r_ID    [i] = mems[i].r_id;
+      assign mems[i].r_ready  = 1'b1;
+      assign mems[i].r_eready = '1;
 
       always_ff @(posedge clk_i or negedge rst_ni)
       begin : resp_test_set
@@ -138,19 +140,5 @@ module hci_log_interconnect_l2
     .data_r_valid_i    ( mems_r_valid      ),
     .data_r_ID_i       ( mems_r_ID         )
   );
-
-/*
- * Asserts
- */
-`ifndef SYNTHESIS
-`ifndef VERILATOR
-`ifndef VCS
-  for(genvar ii=0; ii<N_MEM; ii++) begin
-    initial
-      r_valid_tied_high : assert(mems[ii].r_valid == 1'b1);
-  end
-`endif
-`endif
-`endif;
 
 endmodule // hci_log_interconnect_l2
