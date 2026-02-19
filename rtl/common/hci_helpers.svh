@@ -197,7 +197,7 @@
  * #########################
  *
  * These are simply macros to assign between structs and interfaces.
- * Struct-based initiatior, interface-based target:
+ * Struct-based initiator, interface-based target:
  *
  *   `HCI_ASSIGN_TO_INTF(interface, request_struct, response_struct)
  *
