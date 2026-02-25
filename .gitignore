@@ -2,8 +2,8 @@
 **/__pycache__
 
 # Target: verif
-target/verif/config/*.mk
-target/verif/simvectors
+target/verif/config/generated/*.mk
+target/verif/simvectors/generated
 target/verif/vsim/work
 target/verif/vsim/compile.tcl
 target/verif/vsim/modelsim.ini

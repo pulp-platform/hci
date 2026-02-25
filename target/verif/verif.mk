@@ -5,10 +5,12 @@
 # Sergio Mazzola <smazzola@iis.ee.ethz.ch>
 
 HCI_VERIF_DIR = $(HCI_ROOT)/target/verif
+HCI_VERIF_CFG_DIR = $(HCI_VERIF_DIR)/config
+HCI_VERIF_CFG_GEN_DIR = $(HCI_VERIF_CFG_DIR)/generated
 
 # Include generated Makefiles
-include $(HCI_VERIF_DIR)/config/hardware.mk
-include $(HCI_VERIF_DIR)/config/testbench.mk
+include $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk
+include $(HCI_VERIF_CFG_GEN_DIR)/testbench.mk
 
 # Bender targets and defines
 include $(HCI_VERIF_DIR)/bender.mk
@@ -26,42 +28,49 @@ PYTHON ?= python3
 # Config gen #
 ##############
 
-VERIF_CFG_JSON := $(HCI_VERIF_DIR)/config/hardware.json \
-	$(HCI_VERIF_DIR)/config/testbench.json \
-	$(HCI_VERIF_DIR)/config/workload.json
+# Source-of-truth JSON configs
+VERIF_CFG_JSON := $(HCI_VERIF_CFG_DIR)/hardware.json \
+	$(HCI_VERIF_CFG_DIR)/testbench.json \
+	$(HCI_VERIF_CFG_DIR)/workload.json
 
-VERIF_CFG_MK := $(HCI_VERIF_DIR)/config/hardware.mk \
-	$(HCI_VERIF_DIR)/config/testbench.mk
+# Makefiles to generate from JSON configs
+VERIF_CFG_MK := $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk \
+	$(HCI_VERIF_CFG_GEN_DIR)/testbench.mk
 
 .PHONY: config-verif
 config-verif: $(VERIF_CFG_MK)
 # Generate Makefiles from JSON configs
-$(HCI_VERIF_DIR)/config/%.mk: $(HCI_VERIF_DIR)/config/%.json $(HCI_VERIF_DIR)/config/%.mk.tpl $(HCI_VERIF_DIR)/config/json_to_mk.py
-	python3 $(HCI_VERIF_DIR)/config/json_to_mk.py $* > $@
+$(HCI_VERIF_CFG_GEN_DIR)/%.mk: $(HCI_VERIF_CFG_DIR)/%.json $(HCI_VERIF_CFG_GEN_DIR)/%.mk.tpl $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py | $(HCI_VERIF_CFG_GEN_DIR)
+	$(PYTHON) $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py $* $(HCI_VERIF_CFG_DIR) $(HCI_VERIF_CFG_GEN_DIR) > $@
+
+$(HCI_VERIF_CFG_GEN_DIR):
+	mkdir -p $@
 
 .PHONY: clean-config-verif
 clean-config-verif:
-	rm -rf $(VERIF_CFG_MK)
+	rm -f $(VERIF_CFG_MK)
 
 ##################
 # Simvectors gen #
 ##################
 
-GEN_STIM_SCRIPT := $(HCI_VERIF_DIR)/stimuli_gen/main.py
-STIM_SRC_FILES := $(shell find {$(HCI_VERIF_DIR)/config,$(HCI_VERIF_DIR)/stimuli_gen} -type f)
+GEN_STIM_SCRIPT := $(HCI_VERIF_DIR)/simvectors/main.py
+STIM_SRC_FILES := $(shell find {$(HCI_VERIF_DIR)/config,$(HCI_VERIF_DIR)/simvectors} -type f)
+SIMVECTORS_GEN_DIR := $(HCI_VERIF_DIR)/simvectors/generated
 
 .PHONY: stim-verif
-stim-verif: $(HCI_VERIF_DIR)/simvectors/.stim_stamp
-$(HCI_VERIF_DIR)/simvectors/.stim_stamp: $(VERIF_CFG_JSON) $(STIM_SRC_FILES)
+stim-verif: $(SIMVECTORS_GEN_DIR)/.stim_stamp
+$(SIMVECTORS_GEN_DIR)/.stim_stamp: $(VERIF_CFG_JSON) $(STIM_SRC_FILES)
+	mkdir -p $(SIMVECTORS_GEN_DIR)
 	$(PYTHON) $(GEN_STIM_SCRIPT) \
-		--workload_config $(HCI_VERIF_DIR)/config/workload.json \
-		--testbench_config $(HCI_VERIF_DIR)/config/testbench.json \
-		--hardware_config $(HCI_VERIF_DIR)/config/hardware.json
+		--workload_config $(HCI_VERIF_CFG_DIR)/workload.json \
+		--testbench_config $(HCI_VERIF_CFG_DIR)/testbench.json \
+		--hardware_config $(HCI_VERIF_CFG_DIR)/hardware.json
 	date > $@
 
 .PHONY: clean-stim-verif
 clean-stim-verif:
-	rm -rf $(HCI_VERIF_DIR)/simvectors
+	rm -rf $(SIMVECTORS_GEN_DIR)
 
 ##############
 # Simulation #
@@ -99,7 +108,7 @@ compile-verif: $(sim_vsim_lib)/.hw_compiled
 $(sim_vsim_lib)/.hw_compiled: $(HCI_VERIF_DIR)/vsim/compile.tcl $(HCI_ROOT)/.bender/.checkout_stamp $(SIM_SRC_FILES)
 	cd $(HCI_VERIF_DIR)/vsim && \
 	$(SIM_VLIB) $(sim_vsim_lib) && \
-	$(SIM_VSIM) -c -do 'quit -code [source $<]' && \
+	$(SIM_VSIM) -c -do 'if {[catch {source $<} msg]} {puts stderr $${msg}; quit -code 1} else {quit -code 0}' && \
 	date > $@
 
 .PHONY: opt-verif
@@ -110,7 +119,7 @@ $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled: $(sim_vsim_lib)/.hw
 	date > $@
 
 .PHONY: run-verif
-run-verif: $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled $(HCI_VERIF_DIR)/simvectors/.stim_stamp
+run-verif: $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled $(SIMVECTORS_GEN_DIR)/.stim_stamp
 	cd $(HCI_VERIF_DIR)/vsim && \
 	$(SIM_VSIM) $(SIM_HCI_VSIM_ARGS) \
 	$(sim_top_level)_optimized \
@@ -118,7 +127,11 @@ run-verif: $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled $(HCI_VER
 
 .PHONY: clean-verif
 clean-sim-verif:
-	rm -rf $(HCI_VERIF_DIR)/vsim
+	rm -rf $(sim_vsim_lib)
+	rm -f $(HCI_VERIF_DIR)/vsim/compile.tcl
+	rm -f $(HCI_VERIF_DIR)/vsim/modelsim.ini
+	rm -f $(HCI_VERIF_DIR)/vsim/transcript
+	rm -f $(HCI_VERIF_DIR)/vsim/vsim.wlf
 
 ###########
 # Helpers #

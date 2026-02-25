@@ -7,7 +7,7 @@ Python package for generating test stimuli for the HCI verification environment.
 ### Generate Stimuli
 
 ```bash
-python verif/stimuli_gen/main.py --sim_and_hardware_params <params> --master_log <params> --master_hwpe <params>
+python target/verif/simvectors/main.py --workload_config <path> --testbench_config <path> --hardware_config <path>
 ```
 
 Or use the Makefile:
@@ -18,6 +18,6 @@ make stimuli
 ## Configuration
 
 Configuration files are located in `target/verif/config/`:
-- `hardware.json` - HCI hardware parameters (auto-generates `hardware.mk`)
-- `testbench.json` - Testbench parameters (auto-generates `testbench.mk`)
+- `hardware.json` - HCI hardware parameters (auto-generates `generated/hardware.mk`)
+- `testbench.json` - Testbench parameters (auto-generates `generated/testbench.mk`)
 - `workload.json` - Workload configuration with simulation parameters and master-specific settings

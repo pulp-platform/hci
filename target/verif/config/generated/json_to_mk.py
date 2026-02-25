@@ -7,6 +7,7 @@ Templates are automatically discovered based on the config type argument.
 """
 
 import json
+import argparse
 import sys
 from pathlib import Path
 from string import Template
@@ -44,19 +45,37 @@ def flatten_dict(d, prefix=''):
             items.append((new_key, v))
     return dict(items)
 
-def main():
-    if len(sys.argv) != 2:
-        print("Usage: python json_to_mk.py <config_type>", file=sys.stderr)
-        print("Where <config_type> corresponds to <config_type>.json and <config_type>.mk.tpl", file=sys.stderr)
-        print("Supported config types: hardware, testbench", file=sys.stderr)
-        sys.exit(1)
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Convert JSON configuration to Makefile fragment using templates."
+    )
+    parser.add_argument(
+        "config_type",
+        choices=["hardware", "testbench"],
+        help="Configuration type to generate.",
+    )
+    parser.add_argument(
+        "config_dir",
+        type=Path,
+        help="Directory containing source-of-truth JSON files.",
+    )
+    parser.add_argument(
+        "generated_dir",
+        type=Path,
+        help="Directory containing mk templates and generated outputs.",
+    )
+    return parser.parse_args(argv)
 
-    config_type = sys.argv[1]
-    config_dir = Path(__file__).parent
+
+def main():
+    args = parse_args()
+    config_type = args.config_type
+    config_dir = args.config_dir.resolve()
+    generated_dir = args.generated_dir.resolve()
 
     # Construct file paths based on config_type argument
     json_file = config_dir / f"{config_type}.json"
-    template_file = config_dir / f"{config_type}.mk.tpl"
+    template_file = generated_dir / f"{config_type}.mk.tpl"
 
     # Load JSON config
     config = load_json_config(json_file)
@@ -64,12 +83,6 @@ def main():
     # Load template
     template_content = load_template(template_file)
 
-    # Process data - only hardware and testbench generate Makefiles
-    # Workload config is only used by Python scripts, not Makefiles
-    if config_type not in ['hardware', 'testbench']:
-        print(f"ERROR: Config type '{config_type}' does not generate a Makefile. Use: hardware or testbench", file=sys.stderr)
-        sys.exit(1)
-    
     # Flatten the parameters dict for template substitution
     template_data = flatten_dict(config['parameters'])
 

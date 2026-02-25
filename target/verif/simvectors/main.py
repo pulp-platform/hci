@@ -2,7 +2,7 @@
 
 This script is invoked by the top-level Makefile and expects three
 JSON config files: workload, testbench and hardware. It produces raw
-and processed stimuli in `verif/simvectors`.
+and processed stimuli in `verif/simvectors/generated`.
 """
 
 ### LIBRARIES AND DEPENDENCIES ###
@@ -16,7 +16,7 @@ code_directory = Path(__file__).resolve().parent
 
 
 # Try to import the local package `hci_stimuli`. If the running
-# environment doesn't include the `stimuli_gen` directory on `sys.path`
+# environment doesn't include the `simvectors` directory on `sys.path`
 # (for example when invoked from a different working directory), add
 # `code_directory` to `sys.path` as a minimal fallback.
 try:
@@ -31,6 +31,14 @@ def parse_args(argv=None):
     parser.add_argument('--workload_config', required=True, help="Path to JSON workload configuration file")
     parser.add_argument('--testbench_config', required=True, help="Path to JSON testbench configuration file")
     parser.add_argument('--hardware_config', required=True, help="Path to JSON hardware configuration file")
+    parser.add_argument(
+        '--golden',
+        action='store_true',
+        help=(
+            "Also emit golden read-data vectors under verif/simvectors/generated/golden. "
+            "This assumes a per-master sequential memory model (initial = all 1s, updated by that master's writes)."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -113,10 +121,11 @@ def main(argv=None):
         sys.exit(1)
 
     # Prepare output dirs
-    simvectors_dir = (code_directory.parent / 'simvectors').resolve()
-    raw_dir = (simvectors_dir / 'stimuli_raw').resolve()
-    processed_dir = (simvectors_dir / 'stimuli_processed').resolve()
-    simvectors_dir.mkdir(parents=True, exist_ok=True)
+    simvectors_dir = code_directory.resolve()
+    generated_dir = (simvectors_dir / 'generated').resolve()
+    raw_dir = (generated_dir / 'stimuli_raw').resolve()
+    processed_dir = (generated_dir / 'stimuli_processed').resolve()
+    generated_dir.mkdir(parents=True, exist_ok=True)
     raw_dir.mkdir(parents=True, exist_ok=True)
     processed_dir.mkdir(parents=True, exist_ok=True)
 
@@ -247,7 +256,44 @@ def main(argv=None):
     pad_txt_files(simvector_processed_path, IW, DATA_WIDTH, ADD_WIDTH, HWPE_WIDTH)
     print("STEP 2 COMPLETED: pad txt files")
 
+    if args.golden:
+        golden_dir = (generated_dir / 'golden').resolve()
+        golden_dir.mkdir(parents=True, exist_ok=True)
+
+        for stim_path in sorted(processed_dir.glob('master_*.txt')):
+            try:
+                text = stim_path.read_text(encoding='ascii')
+            except OSError:
+                continue
+
+            if text.strip() == 'zero':
+                continue
+
+            mem = {}
+            out_lines = []
+            for raw_line in text.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+
+                parts = line.split()
+                if len(parts) != 5:
+                    continue
+
+                req_s, id_s, wen_s, data_s, add_s = parts
+                if req_s != '1':
+                    continue
+
+                if wen_s == '0':
+                    mem[add_s] = data_s
+                    continue
+
+                exp_s = mem.get(add_s, '1' * len(data_s))
+                out_lines.append(f"{id_s} {add_s} {exp_s}")
+
+            (golden_dir / f"golden_{stim_path.name}").write_text("\n".join(out_lines) + ("\n" if out_lines else ""), encoding='ascii')
+        print("STEP 3 COMPLETED: golden vectors")
+
 
 if __name__ == '__main__':
     main()
-
