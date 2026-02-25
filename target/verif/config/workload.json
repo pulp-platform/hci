@@ -128,6 +128,17 @@
       "stride1": 0,
       "len_d1": 0,
       "stride2": 0
+    },
+    {
+      "id": 1,
+      "description": "HWPE 1",
+      "mem_access_type": 0,
+      "start_address": 0,
+      "stride0": 0,
+      "len_d0": 0,
+      "stride1": 0,
+      "len_d1": 0,
+      "stride2": 0
     }
   ]
 }

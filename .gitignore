@@ -8,3 +8,4 @@ target/verif/vsim/work
 target/verif/vsim/compile.tcl
 target/verif/vsim/modelsim.ini
 target/verif/vsim/transcript
+target/verif/vsim/vsim.wlf

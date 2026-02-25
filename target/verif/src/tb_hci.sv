@@ -17,8 +17,6 @@
  */
 
 `include "hci_helpers.svh"
-`include "write_checker_tasks.svh"
-`include "read_checker_tasks.svh"
 
 timeunit 1ns;
 timeprecision 10ps;
@@ -28,17 +26,26 @@ module tb_hci
   import tb_hci_pkg::*;
 ();
 
+  logic                   clk, rst_n;
+  logic                   s_clear;
+  hci_interconnect_ctrl_t s_hci_ctrl;
+
+  logic [0:N_MASTER-1] s_end_stimuli;
+  logic [0:N_MASTER-1] s_end_latency;
+  int unsigned s_issued_transactions[0:N_MASTER-1];
+  int unsigned s_issued_read_transactions[0:N_MASTER-1];
+
+  clk_rst_gen #(
+    .ClkPeriod(CLK_PERIOD),
+    .RstClkCycles(RST_CLK_CYCLES)
+  ) i_clk_rst_gen (
+    .clk_o(clk),
+    .rst_no(rst_n)
+  );
+
   /////////
   // HCI //
   /////////
-
-  logic                   clk, rst_n;
-  logic                   clear_i;
-  hci_interconnect_ctrl_t ctrl_i;
-
-  assign clear_i = 0;
-  assign ctrl_i.invert_prio = INVERT_PRIO;
-  assign ctrl_i.low_prio_max_stall = LOW_PRIO_MAX_STALL;
 
   /* HCI interfaces */
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '{    // CORE + DMA + EXT parameters
@@ -70,73 +77,78 @@ module tb_hci
   };
 
   hci_core_intf #(
-      .DW(HCI_SIZE_hwpe.DW),
-      .AW(HCI_SIZE_hwpe.AW),
-      .BW(HCI_SIZE_hwpe.BW),
-      .UW(HCI_SIZE_hwpe.UW),
-      .IW(HCI_SIZE_hwpe.IW),
-      .EW(HCI_SIZE_hwpe.EW),
-      .EHW(HCI_SIZE_hwpe.EHW)
-    ) hwpe_intc [0:N_HWPE-1] (
-      .clk(clk)
-    );
+    .DW(HCI_SIZE_hwpe.DW),
+    .AW(HCI_SIZE_hwpe.AW),
+    .BW(HCI_SIZE_hwpe.BW),
+    .UW(HCI_SIZE_hwpe.UW),
+    .IW(HCI_SIZE_hwpe.IW),
+    .EW(HCI_SIZE_hwpe.EW),
+    .EHW(HCI_SIZE_hwpe.EHW)
+  ) hci_hwpe_if [0:N_HWPE-1] (
+    .clk(clk)
+  );
 
   hci_core_intf #(
-      .DW(HCI_SIZE_cores.DW),
-      .AW(HCI_SIZE_cores.AW),
-      .BW(HCI_SIZE_cores.BW),
-      .UW(HCI_SIZE_cores.UW),
-      .IW(HCI_SIZE_cores.IW),
-      .EW(HCI_SIZE_cores.EW),
-      .EHW(HCI_SIZE_cores.EHW)
-    ) all_except_hwpe [0:N_MASTER-N_HWPE-1] (
-      .clk(clk)
-    );
+    .DW(HCI_SIZE_cores.DW),
+    .AW(HCI_SIZE_cores.AW),
+    .BW(HCI_SIZE_cores.BW),
+    .UW(HCI_SIZE_cores.UW),
+    .IW(HCI_SIZE_cores.IW),
+    .EW(HCI_SIZE_cores.EW),
+    .EHW(HCI_SIZE_cores.EHW)
+  ) hci_log_if [0:N_MASTER-N_HWPE-1] (
+    .clk(clk)
+  );
 
   hci_core_intf #(
-      .DW(HCI_SIZE_mems.DW),
-      .AW(HCI_SIZE_mems.AW),
-      .BW(HCI_SIZE_mems.BW),
-      .UW(HCI_SIZE_mems.UW),
-      .IW(HCI_SIZE_mems.IW),
-      .EW(HCI_SIZE_mems.EW),
-      .EHW(HCI_SIZE_mems.EHW),
-      .WAIVE_RQ3_ASSERT(1'b1),
-      .WAIVE_RQ4_ASSERT(1'b1),
-      .WAIVE_RSP3_ASSERT(1'b1),
-      .WAIVE_RSP5_ASSERT(1'b1)
-    ) intc_mem_wiring [0:N_BANKS-1] (
-      .clk(clk)
-    );
+    .DW(HCI_SIZE_mems.DW),
+    .AW(HCI_SIZE_mems.AW),
+    .BW(HCI_SIZE_mems.BW),
+    .UW(HCI_SIZE_mems.UW),
+    .IW(HCI_SIZE_mems.IW),
+    .EW(HCI_SIZE_mems.EW),
+    .EHW(HCI_SIZE_mems.EHW),
+    .WAIVE_RQ3_ASSERT(1'b1),
+    .WAIVE_RQ4_ASSERT(1'b1),
+    .WAIVE_RSP3_ASSERT(1'b1),
+    .WAIVE_RSP5_ASSERT(1'b1)
+  ) hci_mem_if [0:N_BANKS-1] (
+    .clk(clk)
+  );
 
   /* HCI instance */
+
+  assign s_clear = 0;
+  assign s_hci_ctrl.invert_prio = INVERT_PRIO;
+  assign s_hci_ctrl.low_prio_max_stall = LOW_PRIO_MAX_STALL;
+
   hci_interconnect #(
-      .N_HWPE(N_HWPE),                      // Number of HWPEs attached to the port
-      .N_CORE(N_CORE),                      // Number of Core ports
-      .N_DMA(N_DMA),                        // Number of DMA ports
-      .N_EXT(N_EXT),                        // Number of External ports
-      .N_MEM(N_BANKS),                      // Number of Memory banks
-      .TS_BIT(TS_BIT),                      // TEST_SET_BIT (for Log Interconnect)
-      .IW(IW),                              // ID Width
-      .EXPFIFO(EXPFIFO),                    // FIFO Depth for HWPE Interconnect
-      .SEL_LIC(SEL_LIC),                    // Log interconnect type selector
-      .HCI_SIZE_cores(HCI_SIZE_cores),
-      .HCI_SIZE_mems(HCI_SIZE_mems),
-      .HCI_SIZE_hwpe(HCI_SIZE_hwpe),
-      .WAIVE_RQ3_ASSERT(1'b1),
-      .WAIVE_RQ4_ASSERT(1'b1),
-      .WAIVE_RSP3_ASSERT(1'b1),
-      .WAIVE_RSP5_ASSERT(1'b1)
+    .N_HWPE(N_HWPE),   // Number of HWPEs attached to the port
+    .N_CORE(N_CORE),   // Number of Core ports
+    .N_DMA(N_DMA),     // Number of DMA ports
+    .N_EXT(N_EXT),     // Number of External ports
+    .N_MEM(N_BANKS),   // Number of Memory banks
+    .TS_BIT(TS_BIT),   // TEST_SET_BIT (for Log Interconnect)
+    .IW(IW),           // ID Width
+    .EXPFIFO(EXPFIFO), // FIFO Depth for HWPE Interconnect
+    .SEL_LIC(SEL_LIC), // Log interconnect type selector
+    .HCI_SIZE_cores(HCI_SIZE_cores),
+    .HCI_SIZE_mems(HCI_SIZE_mems),
+    .HCI_SIZE_hwpe(HCI_SIZE_hwpe),
+    .WAIVE_RQ3_ASSERT(1'b1),
+    .WAIVE_RQ4_ASSERT(1'b1),
+    .WAIVE_RSP3_ASSERT(1'b1),
+    .WAIVE_RSP5_ASSERT(1'b1)
   ) i_hci_interconnect (
-      .clk_i(clk),
-      .rst_ni(rst_n),
-      .clear_i(clear_i),
-      .ctrl_i(ctrl_i),
-      .cores(all_except_hwpe[0:N_CORE-1]),
-      .dma(all_except_hwpe[N_CORE:N_CORE+N_DMA-1]),
-      .ext(all_except_hwpe[N_CORE+N_DMA:N_CORE+N_DMA+N_EXT-1]),
-      .mems(intc_mem_wiring),
-      .hwpe(hwpe_intc)
+    .clk_i(clk),
+    .rst_ni(rst_n),
+    .clear_i(s_clear),
+    .ctrl_i(s_hci_ctrl),
+    .cores(hci_log_if[0:N_CORE-1]),
+    .dma(hci_log_if[N_CORE:N_CORE+N_DMA-1]),
+    .ext(hci_log_if[N_CORE+N_DMA:N_CORE+N_DMA+N_EXT-1]),
+    .mems(hci_mem_if),
+    .hwpe(hci_hwpe_if)
   );
 
   //////////
@@ -150,62 +162,38 @@ module tb_hci
     .AddrWidth(ADD_WIDTH),
     .BeWidth(DATA_WIDTH/8),
     .IdWidth(IW)
-  ) memory (
+  ) i_tb_mem (
     .clk_i(clk),
     .rst_ni(rst_n),
-    .test_mode_i(/*unconnected*/),
-    .tcdm_slave(intc_mem_wiring)
+    .test_mode_i(1'b0),
+    .tcdm_slave(hci_mem_if)
   );
 
   /////////////////////////
   // Application drivers //
   /////////////////////////
 
-  logic [0:N_MASTER-1] END_STIMULI;
-  logic [0:N_MASTER-1] END_LATENCY;
-
-  /* Driver interfaces */
-    hci_core_intf #(
-      .DW(HCI_SIZE_hwpe.DW),
-      .AW(HCI_SIZE_hwpe.AW),
-      .BW(HCI_SIZE_hwpe.BW),
-      .UW(HCI_SIZE_hwpe.UW),
-      .IW(HCI_SIZE_hwpe.IW),
-      .EW(HCI_SIZE_hwpe.EW),
-      .EHW(HCI_SIZE_hwpe.EHW)
-    ) drivers_hwpe [0:N_HWPE-1] (
-      .clk(clk)
-    );
-
-  hci_core_intf #(
-      .DW(HCI_SIZE_cores.DW),
-      .AW(HCI_SIZE_cores.AW),
-      .BW(HCI_SIZE_cores.BW),
-      .UW(HCI_SIZE_cores.UW),
-      .IW(HCI_SIZE_cores.IW),
-      .EW(HCI_SIZE_cores.EW),
-      .EHW(HCI_SIZE_cores.EHW)
-  ) drivers_log [0:N_MASTER-N_HWPE-1] (
-      .clk(clk)
-    );
-
   /* CORE + DMA + EXT */
   generate
     for (genvar ii = 0; ii < N_MASTER - N_HWPE; ii++) begin : gen_app_driver_log
-      application_driver#(
+      localparam string STIM_FILE_LOG =
+          $sformatf("../simvectors/generated/stimuli_processed/master_log_%0d.txt", ii);
+      application_driver #(
         .MASTER_NUMBER(ii),
         .IS_HWPE(0),
         .DATA_WIDTH(DATA_WIDTH),
         .ADD_WIDTH(ADD_WIDTH),
-        .APPL_DELAY(APPL_DELAY), //delay on the input signals
-        .IW(IW)
-      ) app_driver (
-        .master(drivers_log[ii]),
+        .APPL_DELAY(APPL_DELAY),  // Delay on the input signals
+        .IW(IW),
+        .STIM_FILE(STIM_FILE_LOG)
+      ) i_app_driver_log (
+        .hci_if(hci_log_if[ii]),
         .rst_ni(rst_n),
-        .clear_i(clear_i),
-        .clk(clk),
-        .end_stimuli(END_STIMULI[ii]),
-        .end_latency(END_LATENCY[ii])
+        .clk_i(clk),
+        .end_stimuli_o(s_end_stimuli[ii]),
+        .end_latency_o(s_end_latency[ii]),
+        .n_issued_transactions_o(s_issued_transactions[ii]),
+        .n_issued_read_transactions_o(s_issued_read_transactions[ii])
       );
     end
   endgenerate
@@ -213,301 +201,25 @@ module tb_hci
   /* HWPE */
   generate
     for (genvar ii = 0; ii < N_HWPE; ii++) begin : gen_app_driver_hwpe
-      application_driver#(
+      localparam string STIM_FILE_HWPE =
+          $sformatf("../simvectors/generated/stimuli_processed/master_hwpe_%0d.txt", ii);
+      application_driver #(
         .MASTER_NUMBER(ii),
         .IS_HWPE(1),
-        .DATA_WIDTH(HWPE_WIDTH*DATA_WIDTH),
+        .DATA_WIDTH(HWPE_WIDTH * DATA_WIDTH),
         .ADD_WIDTH(ADD_WIDTH),
-        .APPL_DELAY(APPL_DELAY), //delay on the input signals
-        .IW(IW)
-      ) app_driver_hwpe (
-          .master(drivers_hwpe[ii]),
-          .rst_ni(rst_n),
-          .clear_i(clear_i),
-          .clk(clk),
-          .end_stimuli(END_STIMULI[N_MASTER-N_HWPE+ii]),
-          .end_latency(END_LATENCY[N_MASTER-N_HWPE+ii])
+        .APPL_DELAY(APPL_DELAY),  // Delay on the input signals
+        .IW(IW),
+        .STIM_FILE(STIM_FILE_HWPE)
+      ) i_app_driver_hwpe (
+        .hci_if(hci_hwpe_if[ii]),
+        .rst_ni(rst_n),
+        .clk_i(clk),
+        .end_stimuli_o(s_end_stimuli[N_MASTER-N_HWPE+ii]),
+        .end_latency_o(s_end_latency[N_MASTER-N_HWPE+ii]),
+        .n_issued_transactions_o(s_issued_transactions[N_MASTER-N_HWPE+ii]),
+        .n_issued_read_transactions_o(s_issued_read_transactions[N_MASTER-N_HWPE+ii])
       );
-    end
-  endgenerate
-
-  /* Bindings drivers -> HCI interface */
-
-  generate
-    for (genvar ii = 0; ii < N_MASTER - N_HWPE; ii++) begin : gen_binding_log_hci
-      assign_drivers #(
-          .DRIVER_ID(ii),
-          .IS_HWPE(0)
-      ) i_assign_drivers_log (
-          .driver_target(drivers_log[ii]),
-          .hci_initiator(all_except_hwpe[ii])
-      );
-    end
-  endgenerate
-
-  generate
-    for (genvar ii = 0; ii < N_HWPE; ii++) begin : gen_binding_hwpe_hci
-      assign_drivers #(
-          .DRIVER_ID(ii+N_MASTER-N_HWPE),
-          .IS_HWPE(1),
-          .HWPE_WIDTH(HWPE_WIDTH),
-          .DATA_WIDTH_CORE(DATA_WIDTH)
-      ) i_assign_drivers_hwpe (
-          .driver_target(drivers_hwpe[ii]),
-          .hci_initiator(hwpe_intc[ii])
-      );
-    end
-  endgenerate
-
-  ////////////
-  // Queues //
-  ////////////
-
-  static int unsigned n_checks = 0;
-  static int unsigned n_correct = 0;
-  logic [N_BANKS-1:0] HIDE_HWPE;
-  logic [N_BANKS-1:0] HIDE_LOG;
-
-  real SUM_LATENCY_PER_TRANSACTION_LOG[N_MASTER-N_HWPE];
-  real SUM_LATENCY_PER_TRANSACTION_HWPE[N_HWPE];
-
-  /* STIMULI QUEUES */
-  queues_stimuli #(
-      .N_MASTER(N_MASTER),
-      .N_HWPE(N_HWPE),
-      .HWPE_WIDTH(HWPE_WIDTH),
-      .DATA_WIDTH(DATA_WIDTH),
-      .ADD_WIDTH(ADD_WIDTH)
-  ) i_queues_stimuli (
-      .all_except_hwpe(all_except_hwpe),
-      .hwpe_intc(hwpe_intc),
-      .rst_n(rst_n),
-      .clk(clk)
-  );
-
-  logic EMPTY_queue_out_read [0:N_BANKS-1];
-  always_comb begin
-    for (int ii = 0; ii < N_BANKS; ii++) begin
-      EMPTY_queue_out_read[ii] = (i_queues_out.queue_out_read[ii].size() == 0);
-    end
-  end
-
-  /* R_DATA QUEUES */
-  queues_rdata #(
-      .N_MASTER(N_MASTER),
-      .N_HWPE(N_HWPE),
-      .N_BANKS(N_BANKS),
-      .HWPE_WIDTH(HWPE_WIDTH),
-      .DATA_WIDTH(DATA_WIDTH),
-      .ADD_WIDTH(ADD_WIDTH)
-  ) i_queues_rdata (
-      .all_except_hwpe(all_except_hwpe),
-      .hwpe_intc(hwpe_intc),
-      .intc_mem_wiring(intc_mem_wiring),
-      .EMPTY_queue_out_read(EMPTY_queue_out_read),
-      .rst_n(rst_n),
-      .clk(clk)
-  );
-
-  /* TCDM QUEUES */
-  queues_out #(
-      .N_MASTER(N_MASTER),
-      .N_HWPE(N_HWPE),
-      .N_BANKS(N_BANKS),
-      .DATA_WIDTH(DATA_WIDTH),
-      .AddrMemWidth(AddrMemWidth)
-  ) i_queues_out (
-      .all_except_hwpe(all_except_hwpe),
-      .hwpe_intc(hwpe_intc),
-      .intc_mem_wiring(intc_mem_wiring),
-      .rst_n(rst_n),
-      .clk(clk)
-  );
-
-  /////////////
-  // Checker //
-  /////////////
-
-  // Checker state and statistics
-  logic                  WARNING = 1'b0;
-  static logic           hwpe_write_checked[N_HWPE] = '{default: 0};
-  static logic           hwpe_read_checked[N_HWPE] = '{default: 0};
-  static int unsigned    hwpe_write_port_count[N_HWPE] = '{default: 0};
-  static int unsigned    hwpe_read_addr_count[N_HWPE] = '{default: 0};
-  static int unsigned    hwpe_read_data_count[N_HWPE] = '{default: 0};
-
-  /* CHECK WRITE TRANSACTIONS */
-  generate
-    for (genvar bank_id = 0; bank_id < N_BANKS; bank_id++) begin : checker_block_write
-      initial begin
-        stimuli_t recreated_trans;
-        logic found_log, found_hwpe;
-        logic hwpe_incomplete;
-        int master_id, hwpe_id, port_id;
-
-        wait (rst_n);
-        while (1) begin
-          // Wait for write transaction
-          wait (i_queues_out.queue_out_write[bank_id].size() != 0);
-
-          // Recreate address with bank index
-          recreate_address(
-            i_queues_out.queue_out_write[bank_id][0].add,
-            bank_id,
-            recreated_trans.add
-          );
-          recreated_trans.data = i_queues_out.queue_out_write[bank_id][0].data;
-          recreated_trans.wen = WRITE_EN;
-
-          // Check in log branch first
-          check_write_in_log_branch(
-            bank_id,
-            recreated_trans,
-            i_queues_stimuli.queue_all_except_hwpe,
-            HIDE_LOG,
-            found_log,
-            master_id
-          );
-
-          // If not found, check in HWPE branch
-          if (!found_log) begin
-            check_write_in_hwpe_branch(
-              bank_id,
-              recreated_trans,
-              i_queues_stimuli.queue_hwpe,
-              i_queues_out.queue_out_write,
-              HIDE_HWPE,
-              hwpe_write_checked,
-              hwpe_write_port_count,
-              WARNING,
-              found_hwpe,
-              hwpe_id,
-              port_id,
-              hwpe_incomplete
-            );
-
-            // Clear HWPE queue if all ports checked
-            if (found_hwpe && hwpe_id >= 0) begin
-              clear_hwpe_write_queue(
-                hwpe_id,
-                i_queues_stimuli.queue_hwpe,
-                hwpe_write_checked,
-                hwpe_write_port_count
-              );
-            end
-          end
-
-          // Report error if no match found
-          if (!found_log && !found_hwpe) begin
-            report_transaction_mismatch(
-              bank_id,
-              "write",
-              i_queues_out.queue_out_write[bank_id][0].data,
-              recreated_trans.add
-            );
-          end
-
-          // Update statistics
-          if (found_log || (found_hwpe && !hwpe_incomplete)) begin
-            n_correct++;
-            n_checks++;
-          end
-
-          // Remove processed transaction
-          i_queues_out.queue_out_write[bank_id].delete(0);
-        end
-      end
-    end
-  endgenerate
-
-
-  /* CHECK READ TRANSACTIONS */
-  generate
-    for (genvar bank_id = 0; bank_id < N_BANKS; bank_id++) begin : checker_block_read
-      initial begin
-        stimuli_t recreated_trans;
-        logic found_log, found_hwpe;
-        logic data_match_log, data_match_hwpe;
-        logic skip_hwpe_check;
-        int master_id, hwpe_id, port_id;
-
-        wait (rst_n);
-        while (1) begin
-          // Wait for read transaction
-          wait (i_queues_out.queue_out_read[bank_id].size() != 0);
-
-          // Recreate address with bank index
-          recreate_address(
-            i_queues_out.queue_out_read[bank_id][0].add,
-            bank_id,
-            recreated_trans.add
-          );
-          recreated_trans.data = i_queues_out.queue_out_read[bank_id][0].data;
-          recreated_trans.wen = READ_EN;
-
-          // Check in log branch first
-          check_read_in_log_branch(
-            bank_id,
-            recreated_trans,
-            i_queues_stimuli.queue_all_except_hwpe,
-            i_queues_out.queue_out_read,
-            i_queues_rdata.log_rdata,
-            i_queues_rdata.mems_rdata,
-            HIDE_LOG,
-            found_log,
-            data_match_log,
-            master_id
-          );
-
-          // If not found, check in HWPE branch
-          if (!found_log) begin
-            check_read_in_hwpe_branch(
-              bank_id,
-              recreated_trans,
-              i_queues_stimuli.queue_hwpe,
-              i_queues_out.queue_out_read,
-              i_queues_rdata.hwpe_rdata,
-              i_queues_rdata.mems_rdata,
-              HIDE_HWPE,
-              hwpe_read_checked,
-              hwpe_read_addr_count,
-              hwpe_read_data_count,
-              WARNING,
-              found_hwpe,
-              data_match_hwpe,
-              skip_hwpe_check,
-              hwpe_id,
-              port_id
-            );
-          end
-
-          // Report error if no match found
-          if (!found_log && !found_hwpe) begin
-            report_transaction_mismatch(
-              bank_id,
-              "read",
-              recreated_trans.data,
-              recreated_trans.add
-            );
-          end
-
-          // Report error if data mismatch
-          if (found_log && !data_match_log) begin
-            report_test_failure("r_data is not propagated correctly through the interconnect (LOG branch)");
-          end
-          if (found_hwpe && !skip_hwpe_check && !data_match_hwpe) begin
-            report_test_failure("r_data is not propagated correctly through the interconnect (HWPE branch)");
-          end
-
-          // Update statistics
-          if (!skip_hwpe_check) begin
-            logic check_ok;
-            check_ok = (found_log && data_match_log) || (found_hwpe && data_match_hwpe);
-            n_correct = n_correct + check_ok;
-            n_checks++;
-          end
-        end
-      end
     end
   endgenerate
 
@@ -515,67 +227,64 @@ module tb_hci
   // QoS //
   /////////
 
-  /* ARBITER CHECKER (WIDE vs NARROW branch) */
-
-  // generate
-  //   if (PRIORITY_CHECK_MODE_ONE || PRIORITY_CHECK_MODE_ZERO) begin
-      arbiter_checker #(
-        .ARBITER_MODE(ARBITER_MODE),
-        .N_MASTER(N_MASTER),
-        .N_HWPE(N_HWPE),
-        .N_BANKS(N_BANKS),
-        .HWPE_WIDTH(HWPE_WIDTH),
-        .BIT_BANK_INDEX(BIT_BANK_INDEX),
-        .CLK_PERIOD(CLK_PERIOD)
-      ) i_arbiter_checker (
-        .HIDE_HWPE(HIDE_HWPE),
-        .HIDE_LOG(HIDE_LOG),
-        .ctrl_i(ctrl_i),
-        .clk(clk),
-        .rst_n(rst_n)
-      );
-  //   end else begin
-  //     assign HIDE_HWPE = '0;
-  //     assign HIDE_LOG = '0;
-  //   end
-  // endgenerate
+  real SUM_REQ_TO_GNT_LATENCY_LOG[N_MASTER-N_HWPE];
+  real SUM_REQ_TO_GNT_LATENCY_HWPE[N_HWPE];
+  int unsigned N_GNT_TRANSACTIONS_LOG[N_MASTER-N_HWPE];
+  int unsigned N_GNT_TRANSACTIONS_HWPE[N_HWPE];
+  int unsigned N_READ_GRANTED_TRANSACTIONS_LOG[N_MASTER-N_HWPE];
+  int unsigned N_READ_GRANTED_TRANSACTIONS_HWPE[N_HWPE];
+  int unsigned N_WRITE_GRANTED_TRANSACTIONS_LOG[N_MASTER-N_HWPE];
+  int unsigned N_WRITE_GRANTED_TRANSACTIONS_HWPE[N_HWPE];
+  int unsigned N_READ_COMPLETE_TRANSACTIONS_LOG[N_MASTER-N_HWPE];
+  int unsigned N_READ_COMPLETE_TRANSACTIONS_HWPE[N_HWPE];
 
   /* REAL THROUGHPUT AND SIMULATION TIME */
 
   real latency_per_master[N_MASTER];
-  real throughput_real;
+  real throughput_completed;
+  real stim_latency;
   real tot_latency;
 
   throughput_monitor #(
     .N_MASTER(N_MASTER),
-    .N_TRANSACTION_LOG(N_TRANSACTION_LOG),
+    .N_HWPE(N_HWPE),
     .CLK_PERIOD(CLK_PERIOD),
     .DATA_WIDTH(DATA_WIDTH),
-    .N_MASTER_REAL(N_MASTER_REAL),
-    .N_HWPE_REAL(N_HWPE_REAL),
-    .N_TRANSACTION_HWPE(N_TRANSACTION_HWPE),
     .HWPE_WIDTH(HWPE_WIDTH)
   ) i_throughput_monitor (
-    .END_STIMULI(END_STIMULI),
-    .END_LATENCY(END_LATENCY),
-    .rst_n(rst_n),
-    .clk(clk),
-    .throughput_real(throughput_real),
-    .tot_latency(tot_latency),
-    .latency_per_master(latency_per_master)
+    .clk_i(clk),
+    .rst_ni(rst_n),
+    .end_stimuli_i(s_end_stimuli),
+    .end_latency_i(s_end_latency),
+    .n_read_complete_log_i(N_READ_COMPLETE_TRANSACTIONS_LOG),
+    .n_read_complete_hwpe_i(N_READ_COMPLETE_TRANSACTIONS_HWPE),
+    .n_write_granted_log_i(N_WRITE_GRANTED_TRANSACTIONS_LOG),
+    .n_write_granted_hwpe_i(N_WRITE_GRANTED_TRANSACTIONS_HWPE),
+    .throughput_complete_o(throughput_completed),
+    .stim_latency_o(stim_latency),
+    .tot_latency_o(tot_latency),
+    .latency_per_master_o(latency_per_master)
   );
 
   /* LATENCY MONITOR */
   latency_monitor #(
-      .N_MASTER(N_MASTER),
-      .N_HWPE(N_HWPE)
+    .N_MASTER(N_MASTER),
+    .N_HWPE(N_HWPE)
   ) i_latency_monitor (
-      .all_except_hwpe(all_except_hwpe),
-      .hwpe_intc(hwpe_intc),
-      .clk(clk),
-      .rst_n(rst_n),
-      .SUM_LATENCY_PER_TRANSACTION_HWPE(SUM_LATENCY_PER_TRANSACTION_HWPE),
-      .SUM_LATENCY_PER_TRANSACTION_LOG(SUM_LATENCY_PER_TRANSACTION_LOG)
+    .clk_i(clk),
+    .rst_ni(rst_n),
+    .hci_log_if(hci_log_if),
+    .hci_hwpe_if(hci_hwpe_if),
+    .sum_req_to_gnt_latency_log_o(SUM_REQ_TO_GNT_LATENCY_LOG),
+    .sum_req_to_gnt_latency_hwpe_o(SUM_REQ_TO_GNT_LATENCY_HWPE),
+    .n_gnt_transactions_log_o(N_GNT_TRANSACTIONS_LOG),
+    .n_gnt_transactions_hwpe_o(N_GNT_TRANSACTIONS_HWPE),
+    .n_read_granted_log_o(N_READ_GRANTED_TRANSACTIONS_LOG),
+    .n_read_granted_hwpe_o(N_READ_GRANTED_TRANSACTIONS_HWPE),
+    .n_write_granted_log_o(N_WRITE_GRANTED_TRANSACTIONS_LOG),
+    .n_write_granted_hwpe_o(N_WRITE_GRANTED_TRANSACTIONS_HWPE),
+    .n_read_complete_log_o(N_READ_COMPLETE_TRANSACTIONS_LOG),
+    .n_read_complete_hwpe_o(N_READ_COMPLETE_TRANSACTIONS_HWPE)
   );
 
   ///////////
@@ -583,46 +292,45 @@ module tb_hci
   ///////////
 
   /* SIMULATION REPORT */
-  sim_report #(
-    .TOT_CHECK(TOT_CHECK),
-    .N_CORE(N_CORE),
-    .N_CORE_REAL(N_CORE_REAL),
-    .N_DMA(N_DMA),
-    .N_DMA_REAL(N_DMA_REAL),
-    .N_EXT_REAL(N_EXT_REAL),
-    .N_MASTER(N_MASTER),
-    .N_MASTER_REAL(N_MASTER_REAL),
-    .N_HWPE(N_HWPE),
-    .N_HWPE_REAL(N_HWPE_REAL),
-    .HWPE_WIDTH(HWPE_WIDTH)
-  ) i_sim_report (
-    .n_checks(n_checks),
-    .n_correct(n_correct),
-    .WARNING(WARNING),
-    .throughput_real(throughput_real),
-    .tot_latency(tot_latency),
-    .latency_per_master(latency_per_master),
-    .SUM_LATENCY_PER_TRANSACTION_LOG(SUM_LATENCY_PER_TRANSACTION_LOG),
-    .SUM_LATENCY_PER_TRANSACTION_HWPE(SUM_LATENCY_PER_TRANSACTION_HWPE)
-  );
-
-  /* CLOCK AND RESET */
-  clk_rst_gen #(
-      .ClkPeriod   (CLK_PERIOD),
-      .RstClkCycles(RST_CLK_CYCLES)
-  ) i_clk_rst_gen (
-      .clk_o (clk),
-      .rst_no(rst_n)
+  simulation_report i_simulation_report (
+    .end_stimuli_i(s_end_stimuli),
+    .end_latency_i(s_end_latency),
+    .throughput_complete_i(throughput_completed),
+    .stim_latency_i(stim_latency),
+    .tot_latency_i(tot_latency),
+    .latency_per_master_i(latency_per_master),
+    .sum_req_to_gnt_latency_log_i(SUM_REQ_TO_GNT_LATENCY_LOG),
+    .sum_req_to_gnt_latency_hwpe_i(SUM_REQ_TO_GNT_LATENCY_HWPE),
+    .n_gnt_transactions_log_i(N_GNT_TRANSACTIONS_LOG),
+    .n_gnt_transactions_hwpe_i(N_GNT_TRANSACTIONS_HWPE),
+    .n_read_granted_transactions_log_i(N_READ_GRANTED_TRANSACTIONS_LOG),
+    .n_read_granted_transactions_hwpe_i(N_READ_GRANTED_TRANSACTIONS_HWPE),
+    .n_write_granted_transactions_log_i(N_WRITE_GRANTED_TRANSACTIONS_LOG),
+    .n_write_granted_transactions_hwpe_i(N_WRITE_GRANTED_TRANSACTIONS_HWPE),
+    .n_read_complete_transactions_log_i(N_READ_COMPLETE_TRANSACTIONS_LOG),
+    .n_read_complete_transactions_hwpe_i(N_READ_COMPLETE_TRANSACTIONS_HWPE)
   );
 
   /* ASSERTIONS */
+  localparam int unsigned MAX_BANK_LOCAL_ADDR =
+      TOT_MEM_SIZE * 1024 / N_BANKS - WIDTH_OF_MEMORY_BYTE;
+
   generate
     for (genvar ii = 0; ii < N_HWPE; ii++) begin : gen_assert_hwpe_address
-      input_hwpe_add: assert property (@(posedge clk) (manipulate_add(hwpe_intc[ii].add) <= TOT_MEM_SIZE * 1024 / N_BANKS - WIDTH_OF_MEMORY_BYTE))
-      else begin
-        $display("-----------------------------------------");
-        $display("Time %0t:    Test ***STOPPED*** \n",$time);
-        $error("UNPREDICTABLE RESULT. One HWPE generated an out of boundary address.\nIf this message is shown, the test is not valid. Try a new workload");
+      a_hwpe_addr_in_bounds: assert property (
+        @(posedge clk)
+          get_bank_local_address(hci_hwpe_if[ii].add) <= MAX_BANK_LOCAL_ADDR
+      ) else begin
+        $display("--------------------------------------------");
+        $display("Time %0t: Test stopped", $time);
+        $error(
+          "HWPE%0d generated an out-of-bounds address (raw=0x%0h, bank_local=0x%0h, max=0x%0h).",
+          ii,
+          hci_hwpe_if[ii].add,
+          get_bank_local_address(hci_hwpe_if[ii].add),
+          MAX_BANK_LOCAL_ADDR
+        );
+        $display("This workload is invalid; rerun with a different workload configuration.");
         $finish();
       end
     end

@@ -64,21 +64,15 @@ sources:
       - rtl/hci_interconnect.sv
 
       - target: hci_verif
-        include_dirs:
-          - target/verif/src/include
         files:
           # Level 0
           - target/verif/src/tb_hci_pkg.sv
           # Level 1
-          - target/verif/src/drivers/application_driver.sv
-          - target/verif/src/memory/tcdm_banks_wrap.sv
-          - target/verif/src/monitors/arbiter_checker.sv
-          - target/verif/src/monitors/queues_stimuli.sv
-          - target/verif/src/monitors/queues_rdata.sv
-          - target/verif/src/monitors/queues_out.sv
-          - target/verif/src/metrics/latency_monitor.sv
-          - target/verif/src/metrics/throughput_monitor.sv
-          - target/verif/src/utils/assign_drivers.sv
-          - target/verif/src/utils/sim_report.sv
+          - target/verif/src/application_driver.sv
+          - target/verif/src/tcdm_banks_wrap.sv
+          - target/verif/src/latency_monitor.sv
+          - target/verif/src/throughput_monitor.sv
           # Level 2
+          - target/verif/src/simulation_report.sv
+          # Level 3
           - target/verif/src/tb_hci.sv

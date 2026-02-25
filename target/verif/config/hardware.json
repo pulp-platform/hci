@@ -1,7 +1,7 @@
 {
   "description": "Hardware configuration parameters for HCI interconnect",
   "parameters": {
-    "N_HWPE": 1,
+    "N_HWPE": 2,
     "HWPE_WIDTH": 8,
     "N_CORE": 8,
     "N_DMA": 1,

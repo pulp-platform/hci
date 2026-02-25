@@ -2,3 +2,4 @@
 if {$GUI == 1} {
     echo "GUI mode enabled"
 }
+run -a
