@@ -127,11 +127,12 @@ $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled: $(sim_vsim_lib)/.hw
 	date > $@
 
 .PHONY: run-verif
-run-verif: $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled $(SIMVECTORS_GEN_DIR)/.stim_stamp
+run-verif: $(HCI_VERIF_DIR)/vsim/$(sim_top_level).tcl $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled $(SIMVECTORS_GEN_DIR)/.stim_stamp
 	cd $(HCI_VERIF_DIR)/vsim && \
 	$(SIM_VSIM) $(SIM_HCI_VSIM_ARGS) \
 	$(sim_top_level)_optimized \
-	-do 'set GUI $(GUI); source $(HCI_VERIF_DIR)/vsim/$(sim_top_level).tcl'
+	-do 'set GUI $(GUI); source $<'
+
 
 .PHONY: clean-verif
 clean-sim-verif:

@@ -2,10 +2,11 @@
   "description": "Hardware configuration parameters for HCI interconnect",
   "parameters": {
     "N_HWPE": 2,
-    "HWPE_WIDTH": 8,
+    "HWPE_WIDTH_FACT": 8,
     "N_CORE": 8,
     "N_DMA": 1,
     "N_EXT": 1,
+    "INTERCO_TYPE": "LOG",
     "TS_BIT": 21,
     "EXPFIFO": 0,
     "SEL_LIC": 0,

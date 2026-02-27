@@ -45,6 +45,34 @@ def flatten_dict(d, prefix=''):
             items.append((new_key, v))
     return dict(items)
 
+
+def get_parameters(config):
+    """Return flattened parameters from config JSON."""
+    params = config.get("parameters")
+    if not isinstance(params, dict):
+        return {}
+    return flatten_dict(params)
+
+
+def load_all_parameters(config_dir):
+    """Load flattened parameters from all JSON files in config_dir."""
+    merged = {}
+    for json_path in sorted(config_dir.glob("*.json")):
+        cfg = load_json_config(json_path)
+        merged.update(get_parameters(cfg))
+    return merged
+
+
+def template_variables(template_content):
+    """Extract Template variable names used by template content."""
+    pattern = Template.pattern
+    vars_found = set()
+    for match in pattern.finditer(template_content):
+        name = match.group("named") or match.group("braced")
+        if name is not None:
+            vars_found.add(name)
+    return vars_found
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Convert JSON configuration to Makefile fragment using templates."
@@ -83,16 +111,22 @@ def main():
     # Load template
     template_content = load_template(template_file)
 
-    # Flatten the parameters dict for template substitution
-    template_data = flatten_dict(config['parameters'])
+    # Build substitution dictionary:
+    # 1. all parameters from all configs (fallback)
+    # 2. parameters from selected config (override)
+    template_data = load_all_parameters(config_dir)
+    template_data.update(get_parameters(config))
 
     # Apply template substitution
     template = Template(template_content)
-    try:
-        result = template.substitute(template_data)
-    except KeyError as e:
-        print(f"ERROR: Missing template variable: {e}", file=sys.stderr)
+    missing = sorted(v for v in template_variables(template_content) if v not in template_data)
+    if missing:
+        print(
+            f"ERROR: Missing template variable(s): {', '.join(missing)}",
+            file=sys.stderr,
+        )
         sys.exit(1)
+    result = template.substitute(template_data)
 
     # Output to stdout
     print(result)
