@@ -24,8 +24,8 @@ module latency_monitor #(
   input logic                clk_i,
   input logic                rst_ni,
   // Monitored interfaces
-  hci_core_intf.monitor      hci_log_if [0:N_MASTER-N_HWPE-1],
-  hci_core_intf.monitor      hci_hwpe_if [0:N_HWPE-1],
+  hci_core_intf.monitor      hci_driver_log_if [0:N_MASTER-N_HWPE-1],
+  hci_core_intf.monitor      hci_driver_hwpe_if [0:N_HWPE-1],
   // Accumulated request-to-grant latency.
   output real                sum_req_to_gnt_latency_log_o[N_MASTER-N_HWPE],
   output real                sum_req_to_gnt_latency_hwpe_o[N_HWPE],
@@ -74,32 +74,32 @@ module latency_monitor #(
           req_start_cycle_log <= '0;
           req_prev_log <= 1'b0;
         end else begin
-          if (hci_log_if[gi].req && !req_prev_log && !hci_log_if[gi].gnt) begin
+          if (hci_driver_log_if[gi].req && !req_prev_log && !hci_driver_log_if[gi].gnt) begin
             req_start_cycle_log <= cycle_q;
-          end else if (hci_log_if[gi].gnt) begin
+          end else if (hci_driver_log_if[gi].gnt) begin
             req_start_cycle_log <= cycle_q + 1;
           end
 
-          if (hci_log_if[gi].req && hci_log_if[gi].gnt) begin
+          if (hci_driver_log_if[gi].req && hci_driver_log_if[gi].gnt) begin
             if (req_prev_log) begin
               sum_req_to_gnt_latency_log_o[gi] <=
                   sum_req_to_gnt_latency_log_o[gi] +
                   real'(cycle_q - req_start_cycle_log);
             end
             n_gnt_transactions_log_o[gi] <= n_gnt_transactions_log_o[gi] + 1;
-            pending_rsp_is_read_log.push_back(hci_log_if[gi].wen);
+            pending_rsp_is_read_log.push_back(hci_driver_log_if[gi].wen);
           end
-          req_prev_log <= hci_log_if[gi].req;
+          req_prev_log <= hci_driver_log_if[gi].req;
 
-          if (hci_log_if[gi].req && hci_log_if[gi].gnt && hci_log_if[gi].wen) begin
+          if (hci_driver_log_if[gi].req && hci_driver_log_if[gi].gnt && hci_driver_log_if[gi].wen) begin
             n_read_granted_log_o[gi] <=
                 n_read_granted_log_o[gi] + 1;
           end
-          if (hci_log_if[gi].req && hci_log_if[gi].gnt && !hci_log_if[gi].wen) begin
+          if (hci_driver_log_if[gi].req && hci_driver_log_if[gi].gnt && !hci_driver_log_if[gi].wen) begin
             n_write_granted_log_o[gi] <=
                 n_write_granted_log_o[gi] + 1;
           end
-          if (hci_log_if[gi].r_valid && hci_log_if[gi].r_ready) begin
+          if (hci_driver_log_if[gi].r_valid && hci_driver_log_if[gi].r_ready) begin
             if (pending_rsp_is_read_log.size() != 0) begin
               retired_is_read_log = pending_rsp_is_read_log.pop_front();
               if (retired_is_read_log) begin
@@ -132,32 +132,32 @@ module latency_monitor #(
           req_start_cycle_hwpe <= '0;
           req_prev_hwpe <= 1'b0;
         end else begin
-          if (hci_hwpe_if[gi].req && !req_prev_hwpe && !hci_hwpe_if[gi].gnt) begin
+          if (hci_driver_hwpe_if[gi].req && !req_prev_hwpe && !hci_driver_hwpe_if[gi].gnt) begin
             req_start_cycle_hwpe <= cycle_q;
-          end else if (hci_hwpe_if[gi].gnt) begin
+          end else if (hci_driver_hwpe_if[gi].gnt) begin
             req_start_cycle_hwpe <= cycle_q + 1;
           end
 
-          if (hci_hwpe_if[gi].req && hci_hwpe_if[gi].gnt) begin
+          if (hci_driver_hwpe_if[gi].req && hci_driver_hwpe_if[gi].gnt) begin
             if (req_prev_hwpe) begin
               sum_req_to_gnt_latency_hwpe_o[gi] <=
                   sum_req_to_gnt_latency_hwpe_o[gi] +
                   real'(cycle_q - req_start_cycle_hwpe);
             end
             n_gnt_transactions_hwpe_o[gi] <= n_gnt_transactions_hwpe_o[gi] + 1;
-            pending_rsp_is_read_hwpe.push_back(hci_hwpe_if[gi].wen);
+            pending_rsp_is_read_hwpe.push_back(hci_driver_hwpe_if[gi].wen);
           end
-          req_prev_hwpe <= hci_hwpe_if[gi].req;
+          req_prev_hwpe <= hci_driver_hwpe_if[gi].req;
 
-          if (hci_hwpe_if[gi].req && hci_hwpe_if[gi].gnt && hci_hwpe_if[gi].wen) begin
+          if (hci_driver_hwpe_if[gi].req && hci_driver_hwpe_if[gi].gnt && hci_driver_hwpe_if[gi].wen) begin
             n_read_granted_hwpe_o[gi] <=
                 n_read_granted_hwpe_o[gi] + 1;
           end
-          if (hci_hwpe_if[gi].req && hci_hwpe_if[gi].gnt && !hci_hwpe_if[gi].wen) begin
+          if (hci_driver_hwpe_if[gi].req && hci_driver_hwpe_if[gi].gnt && !hci_driver_hwpe_if[gi].wen) begin
             n_write_granted_hwpe_o[gi] <=
                 n_write_granted_hwpe_o[gi] + 1;
           end
-          if (hci_hwpe_if[gi].r_valid && hci_hwpe_if[gi].r_ready) begin
+          if (hci_driver_hwpe_if[gi].r_valid && hci_driver_hwpe_if[gi].r_ready) begin
             if (pending_rsp_is_read_hwpe.size() != 0) begin
               retired_is_read_hwpe = pending_rsp_is_read_hwpe.pop_front();
               if (retired_is_read_hwpe) begin

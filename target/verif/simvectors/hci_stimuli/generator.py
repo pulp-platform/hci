@@ -17,6 +17,9 @@ class StimuliGenerator:
         self.CYCLE_OFFSET = CYCLE_OFFSET
         self.IW = IW
         self.MASTER_NUMBER_IDENTIFICATION = MASTER_NUMBER_IDENTIFICATION
+
+    def _format_id(self, id_value):
+        return bin(id_value % (1 << self.IW))[2:].zfill(self.IW)
     
     def random_data(self):
         data_decimal = random.randint(0, (2**(self.DATA_WIDTH))-1) # generate random data
@@ -58,7 +61,7 @@ class StimuliGenerator:
                             LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
                             LIST_OF_FORBIDDEN_ADDRESSES_READ_NEW.append(add)
                             break
-                file.write(bin(id)[2:].zfill(self.IW) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
+                file.write(self._format_id(id) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
                 id = id  + 1
             LIST_OF_FORBIDDEN_ADDRESSES_READ.extend(LIST_OF_FORBIDDEN_ADDRESSES_READ_NEW)
             LIST_OF_FORBIDDEN_ADDRESSES_WRITE.extend(LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW)
@@ -88,7 +91,7 @@ class StimuliGenerator:
                         LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
                         LIST_OF_FORBIDDEN_ADDRESSES_READ_NEW.append(add)
                         break
-                file.write(bin(id)[2:].zfill(self.IW) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
+                file.write(self._format_id(id) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
                 id = id + 1
 
             LIST_OF_FORBIDDEN_ADDRESSES_READ.extend(LIST_OF_FORBIDDEN_ADDRESSES_READ_NEW)
@@ -116,7 +119,7 @@ class StimuliGenerator:
                     if wen:
                         if add not in LIST_OF_FORBIDDEN_ADDRESSES_READ:
                             LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
-                            file.write(bin(id)[2:].zfill(self.IW) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
+                            file.write(self._format_id(id) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
                             id = id + 1
                             if id - id_start >= self.N_TEST :
                                 STOP = 1
@@ -125,7 +128,7 @@ class StimuliGenerator:
                         if add not in LIST_OF_FORBIDDEN_ADDRESSES_WRITE:
                             LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
                             LIST_OF_FORBIDDEN_ADDRESSES_READ_NEW.append(add)
-                            file.write(bin(id)[2:].zfill(self.IW) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
+                            file.write(self._format_id(id) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
                             id = id + 1
                             if id - id_start >= self.N_TEST :
                                 STOP = 1
@@ -159,7 +162,7 @@ class StimuliGenerator:
                         if wen:
                             if add not in LIST_OF_FORBIDDEN_ADDRESSES_READ:
                                 LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
-                                file.write(bin(id)[2:].zfill(self.IW) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
+                                file.write(self._format_id(id) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
                                 id = id + 1
                                 if id - id_start >= self.N_TEST :
                                     STOP = 1
@@ -168,7 +171,7 @@ class StimuliGenerator:
                             if add not in LIST_OF_FORBIDDEN_ADDRESSES_WRITE:
                                 LIST_OF_FORBIDDEN_ADDRESSES_WRITE_NEW.append(add)
                                 LIST_OF_FORBIDDEN_ADDRESSES_READ_NEW.append(add)
-                                file.write(bin(id)[2:].zfill(self.IW) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
+                                file.write(self._format_id(id) + " " + str(cycle_offset) + " " + str(wen) + " " + data + " " + add + "\n")
                                 id = id + 1
                                 if id - id_start >= self.N_TEST :
                                     STOP = 1

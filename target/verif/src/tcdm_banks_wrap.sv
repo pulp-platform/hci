@@ -92,8 +92,8 @@ module tcdm_banks_wrap #(
           tcdm_slave[i].r_valid <= 1'b1;
         end else begin
           tcdm_slave[i].r_valid <= 1'b0;
+        end
       end
-    end
     end
   end
 

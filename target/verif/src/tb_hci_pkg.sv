@@ -19,9 +19,9 @@
 package tb_hci_pkg;
 
   typedef enum logic [1:0] {
-    LOG  = 2'd0,
+    LOG = 2'd0,
     MUX = 2'd1,
-    HCI  = 2'd2
+    HCI = 2'd2
   } interco_e;
 
   //////////////////////////
@@ -29,72 +29,112 @@ package tb_hci_pkg;
   //////////////////////////
   // from verif/config/testbench.mk
 
-  /* Timing parameters */
-
-  localparam time         CLK_PERIOD     = `ifdef CLK_PERIOD `CLK_PERIOD `else 6 `endif;
-  localparam time         APPL_DELAY     = 0;
-  localparam unsigned     RST_CLK_CYCLES = `ifdef RST_CLK_CYCLES `RST_CLK_CYCLES `else 10 `endif;
-
-  /* Simulation parameters */
+  localparam time     CLK_PERIOD     = `ifdef CLK_PERIOD `CLK_PERIOD `else 6 `endif;
+  localparam time     APPL_DELAY     = 0;
+  localparam unsigned RST_CLK_CYCLES = `ifdef RST_CLK_CYCLES `RST_CLK_CYCLES `else 10 `endif;
 
   // Transaction counts
-  localparam int unsigned N_TRANSACTION_LOG = `ifdef N_TRANSACTION_LOG `N_TRANSACTION_LOG `else 10 `endif;
-  localparam int unsigned TRANSACTION_RATIO = `ifdef TRANSACTION_RATIO `TRANSACTION_RATIO `else 1 `endif;
+  localparam int unsigned N_TRANSACTION_LOG  = `ifdef N_TRANSACTION_LOG `N_TRANSACTION_LOG `else 10 `endif;
+  localparam int unsigned TRANSACTION_RATIO  = `ifdef TRANSACTION_RATIO `TRANSACTION_RATIO `else 1 `endif;
   localparam int unsigned N_TRANSACTION_HWPE = int'(N_TRANSACTION_LOG * TRANSACTION_RATIO);
 
-  // TCDM interface parameters
-  localparam int unsigned RANDOM_GNT = `ifdef RANDOM_GNT `RANDOM_GNT `else 0 `endif;
+  // TCDM and arbitration parameters
+  localparam int unsigned RANDOM_GNT          = `ifdef RANDOM_GNT `RANDOM_GNT `else 0 `endif;
+  localparam int unsigned ARBITER_MODE        = 0;
+  localparam int unsigned INVERT_PRIO         = `ifdef INVERT_PRIO `INVERT_PRIO `else 0 `endif;
+  localparam int unsigned LOW_PRIO_MAX_STALL  = `ifdef LOW_PRIO_MAX_STALL `LOW_PRIO_MAX_STALL `else 3 `endif;
 
-  // Arbiter configuration
-  localparam int unsigned ARBITER_MODE = 0;
-  localparam int unsigned INVERT_PRIO = `ifdef INVERT_PRIO `INVERT_PRIO `else 0 `endif;
-  localparam int unsigned LOW_PRIO_MAX_STALL = `ifdef LOW_PRIO_MAX_STALL `LOW_PRIO_MAX_STALL `else 3 `endif;
-
-  /////////////////////////
-  // Hardware parameters //
-  /////////////////////////
+  /////////////////////////////
+  // Configurable parameters //
+  /////////////////////////////
   // from verif/config/hardware.mk
 
-  /* Config */
-
+  // Interconnect mode
   localparam interco_e INTERCO_TYPE = `ifdef INTERCO_TYPE `INTERCO_TYPE `else HCI `endif;
 
-  // Master port counts
-  localparam int unsigned N_HWPE = `ifdef N_HWPE `N_HWPE `else 1 `endif; // Number of HWPEs attached to the port
-  localparam int unsigned N_CORE = `ifdef N_CORE `N_CORE `else 1 `endif; // Number of Core ports
-  localparam int unsigned N_DMA  = `ifdef N_DMA `N_DMA `else 1 `endif;   // Number of DMA ports
-  localparam int unsigned N_EXT = `ifdef N_EXT `N_EXT `else 1 `endif;    // Number of External ports
+  // Number of initiators
+  localparam int unsigned N_HWPE = `ifdef N_HWPE `N_HWPE `else 1 `endif;
+  localparam int unsigned N_CORE = `ifdef N_CORE `N_CORE `else 1 `endif;
+  localparam int unsigned N_DMA  = `ifdef N_DMA `N_DMA `else 1 `endif;
+  localparam int unsigned N_EXT  = `ifdef N_EXT `N_EXT `else 1 `endif;
 
   // Interconnect configuration
-  localparam int unsigned TS_BIT = `ifdef TS_BIT `TS_BIT `else 0 `endif;    // TEST_SET_BIT (for Log Interconnect)
-  localparam int unsigned EXPFIFO = `ifdef EXPFIFO `EXPFIFO `else 0 `endif; // FIFO Depth for HWPE Interconnect
-  localparam int unsigned SEL_LIC = `ifdef SEL_LIC `SEL_LIC `else 0 `endif; // Log interconnect type selector
+  localparam int unsigned TS_BIT  = `ifdef TS_BIT `TS_BIT `else 0 `endif;
+  localparam int unsigned EXPFIFO = `ifdef EXPFIFO `EXPFIFO `else 0 `endif;
+  localparam int unsigned SEL_LIC = `ifdef SEL_LIC `SEL_LIC `else 0 `endif;
 
-  // Data and memory parameters
-  localparam int unsigned DATA_WIDTH = `ifdef DATA_WIDTH `DATA_WIDTH `else 32 `endif; // Width of DATA in bits
-  localparam int unsigned HWPE_WIDTH_FACT = `ifdef HWPE_WIDTH_FACT `HWPE_WIDTH_FACT `else 4 `endif; // Width factor of an HWPE wide-word
-  localparam int unsigned TOT_MEM_SIZE = `ifdef TOT_MEM_SIZE `TOT_MEM_SIZE `else 32 `endif; // Memory size (kB)
+  // Memory system configuration
+  localparam int unsigned N_BANKS          = `ifdef N_BANKS `N_BANKS `else 16 `endif;
+  localparam int unsigned TOT_MEM_SIZE     = `ifdef TOT_MEM_SIZE `TOT_MEM_SIZE `else 32 `endif;
+  localparam int unsigned DATA_WIDTH       = `ifdef DATA_WIDTH `DATA_WIDTH `else 32 `endif;
+  localparam int unsigned HWPE_WIDTH_FACT  = `ifdef HWPE_WIDTH_FACT `HWPE_WIDTH_FACT `else 4 `endif;
 
-  /* Derived parameters */
+  //////////////////////////
+  // Hardcoded parameters //
+  //////////////////////////
 
-  localparam int unsigned N_DRIVERS = N_HWPE + N_CORE + N_DMA + N_EXT; // Total number of masters
-  localparam int unsigned N_BANKS = `ifdef N_BANKS `N_BANKS `else 16 `endif; // Number of memory banks
+  localparam int unsigned WORD_SIZE = DATA_WIDTH / 8;
+
+  //////////////////////////
+  // Dependent parameters //
+  //////////////////////////
 
   localparam int unsigned N_LOG_MASTERS = N_CORE + N_DMA + N_EXT;
-  localparam int unsigned N_HWPE_LOG_MASTERS = (INTERCO_TYPE == LOG) ? (N_HWPE * HWPE_WIDTH_FACT) : 0;
-  localparam int unsigned N_HWPE_MASTERS = (INTERCO_TYPE == HCI) ? N_HWPE : ((INTERCO_TYPE == MUX) ? 1 : 0);
+  localparam int unsigned N_DRIVERS     = N_LOG_MASTERS + N_HWPE;
 
-  localparam int unsigned ADDR_WIDTH = $clog2(TOT_MEM_SIZE * 1024);    // Width of ADDRESS in bits
-  localparam int unsigned WIDTH_OF_MEMORY = DATA_WIDTH;               // Width of a memory bank (bits)
-  localparam int unsigned WIDTH_OF_MEMORY_BYTE = WIDTH_OF_MEMORY / 8; // Width of a memory bank (bytes)
-  localparam int unsigned BIT_BANK_INDEX       = $clog2(N_BANKS);     // Bits of the Bank index
-  localparam int unsigned ADDR_WIDTH_BANK = ADDR_WIDTH - BIT_BANK_INDEX;  // Number of address bits per TCDM bank
-  localparam int unsigned N_WORDS = (TOT_MEM_SIZE * 1024 / N_BANKS) / WIDTH_OF_MEMORY_BYTE; // Number of words in a bank
-  localparam int unsigned FILTER_WRITE_R_VALID[0:N_HWPE_MASTERS-1] = '{default: 0}; // Enable filtering of only r_valid respons
+  // If fully log interconnect is used, instantiate HWPE_WIDTH_FACT narrow ports for each HWPE.
+  localparam int unsigned N_NARROW_HCI =
+      N_CORE + (N_HWPE * HWPE_WIDTH_FACT) * (INTERCO_TYPE == LOG);
 
-  // Keep ID width consistent with stimuli generator.
-  localparam int unsigned IW = $clog2(N_TRANSACTION_LOG * N_LOG_MASTERS + N_TRANSACTION_HWPE * N_HWPE);
-  localparam int unsigned TOT_CHECK = N_TRANSACTION_LOG * (N_CORE + N_DMA + N_EXT) + N_HWPE * N_TRANSACTION_HWPE * HWPE_WIDTH_FACT;
+  // If full HCI is used, instantiate one wide port per HWPE.
+  // If static MUX is used, instantiate a single shared wide port.
+  localparam int unsigned N_WIDE_HCI =
+      (INTERCO_TYPE == HCI) ? N_HWPE : ((INTERCO_TYPE == MUX) ? 1 : 0);
+
+  // One-hot response ID width used by the interconnect.
+  localparam int unsigned IW = N_NARROW_HCI + N_WIDE_HCI + N_DMA + N_EXT;
+
+  localparam int unsigned FILTER_WRITE_R_VALID[0:N_WIDE_HCI-1] = '{default: 0};
+
+  localparam int unsigned ADDR_WIDTH           = $clog2(TOT_MEM_SIZE * 1024);
+  localparam int unsigned WIDTH_OF_MEMORY      = DATA_WIDTH;
+  localparam int unsigned WIDTH_OF_MEMORY_BYTE = WIDTH_OF_MEMORY / 8;
+  localparam int unsigned BIT_BANK_INDEX       = $clog2(N_BANKS);
+  localparam int unsigned ADDR_WIDTH_BANK      = ADDR_WIDTH - BIT_BANK_INDEX;
+  localparam int unsigned N_WORDS              =
+      (TOT_MEM_SIZE * 1024 / N_BANKS) / WIDTH_OF_MEMORY_BYTE;
+
+  localparam int unsigned TOT_CHECK =
+      N_TRANSACTION_LOG * N_LOG_MASTERS +
+      N_HWPE * N_TRANSACTION_HWPE * HWPE_WIDTH_FACT;
+
+  ///////////////
+  // Bitwidths //
+  ///////////////
+
+  localparam int unsigned DW_cores  = DATA_WIDTH;
+  localparam int unsigned AW_cores  = 32;
+  localparam int unsigned BW_cores  = 8;
+  localparam int unsigned UW_cores  = 1;
+  localparam int unsigned IW_cores  = 8;
+  localparam int unsigned EW_cores  = 1;
+  localparam int unsigned EHW_cores = 1;
+
+  localparam int unsigned DW_hwpe  = DW_cores * HWPE_WIDTH_FACT;
+  localparam int unsigned AW_hwpe  = AW_cores;
+  localparam int unsigned BW_hwpe  = BW_cores;
+  localparam int unsigned UW_hwpe  = UW_cores;
+  localparam int unsigned IW_hwpe  = IW_cores;
+  localparam int unsigned EW_hwpe  = EW_cores;
+  localparam int unsigned EHW_hwpe = EHW_cores;
+
+  localparam int unsigned DW_mems  = DW_cores;
+  localparam int unsigned AW_mems  = ADDR_WIDTH_BANK;
+  localparam int unsigned BW_mems  = BW_cores;
+  localparam int unsigned UW_mems  = UW_cores;
+  localparam int unsigned IW_mems  = IW;
+  localparam int unsigned EW_mems  = EW_cores;
+  localparam int unsigned EHW_mems = EHW_cores;
 
   ///////////
   // Types //
@@ -107,35 +147,32 @@ package tb_hci_pkg;
   } stimuli_t;
 
   typedef struct packed {
-    logic [DATA_WIDTH-1:0] data;
+    logic [DATA_WIDTH-1:0]      data;
     logic [ADDR_WIDTH_BANK-1:0] add;
   } out_intc_to_mem_t;
 
-  // Helper return type for HWPE address/data creation
   typedef struct {
     logic [ADDR_WIDTH-1:0] address;
     logic [DATA_WIDTH-1:0] data;
-    logic rolls_over;
+    logic                  rolls_over;
   } hwpe_addr_data_t;
 
   /////////////
   // Helpers //
   /////////////
 
-  // Zero-time pure function returning address/data for an HWPE lane
   function automatic hwpe_addr_data_t create_address_and_data_hwpe(
-    input logic [ADDR_WIDTH-1:0] address_before,
+    input logic [ADDR_WIDTH-1:0]                  address_before,
     input logic [HWPE_WIDTH_FACT * DATA_WIDTH-1:0] data_before,
-    input int index,
-    input logic rolls_over_check_before
+    input int                                     index,
+    input logic                                   rolls_over_check_before
   );
     hwpe_addr_data_t ret;
     logic [BIT_BANK_INDEX-1:0] bank_index_before, bank_index_after;
     begin
-      bank_index_before = address_before[BIT_BANK_INDEX-1 + 2 : 2];
-      // Legacy behavior: add full-width index and let truncation wrap
-      bank_index_after = index + bank_index_before;
-      ret.rolls_over = rolls_over_check_before;
+      bank_index_before = address_before[BIT_BANK_INDEX-1 + 2:2];
+      bank_index_after  = index + bank_index_before;
+      ret.rolls_over    = rolls_over_check_before;
       if (bank_index_before > bank_index_after) begin
         ret.rolls_over = 1'b1;
       end
@@ -157,8 +194,6 @@ package tb_hci_pkg;
     index = address[BIT_BANK_INDEX-1 + 2:2];
   endtask
 
-  /* Metrics helpers */
-
   task calculate_theoretical_throughput(output real throughput_theo);
     real tot_data, band_memory_limit, tot_time;
     if (TRANSACTION_RATIO >= 1) begin
@@ -166,20 +201,15 @@ package tb_hci_pkg;
     end else begin
       tot_time = N_TRANSACTION_LOG;
     end
-    tot_data = (N_TRANSACTION_LOG * DATA_WIDTH) * (N_DRIVERS - N_HWPE) +
-               (N_TRANSACTION_HWPE * HWPE_WIDTH_FACT * DATA_WIDTH) * N_HWPE;  // bit
-    throughput_theo = tot_data / tot_time;  // bit per cycle
+    tot_data = (N_TRANSACTION_LOG * DATA_WIDTH) * N_LOG_MASTERS +
+               (N_TRANSACTION_HWPE * HWPE_WIDTH_FACT * DATA_WIDTH) * N_HWPE;
+    throughput_theo = tot_data / tot_time;
     band_memory_limit = real'(N_BANKS * DATA_WIDTH);
     if (throughput_theo >= band_memory_limit) begin
       throughput_theo = band_memory_limit;
     end
   endtask
 
-  ///////////////
-  // Functions //
-  ///////////////
-
-  // Convert a full system address to per-bank local word address.
   function int unsigned get_bank_local_address(input logic [ADDR_WIDTH-1:0] addr_i);
     logic [ADDR_WIDTH-1:0] mapped_addr;
     logic [ADDR_WIDTH-BIT_BANK_INDEX-1:0] bank_local_addr;
