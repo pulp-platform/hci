@@ -20,21 +20,21 @@
 module simulation_report
   import tb_hci_pkg::*;
 (
-  input logic [0:N_MASTER-1] end_stimuli_i,
-  input logic [0:N_MASTER-1] end_latency_i,
+  input logic [0:N_DRIVERS-1] end_stimuli_i,
+  input logic [0:N_DRIVERS-1] end_latency_i,
   input real                 throughput_complete_i,
   input real                 stim_latency_i,
   input real                 tot_latency_i,
-  input real                 latency_per_master_i[N_MASTER],
-  input real                 sum_req_to_gnt_latency_log_i[N_MASTER-N_HWPE],
+  input real                 latency_per_master_i[N_DRIVERS],
+  input real                 sum_req_to_gnt_latency_log_i[N_DRIVERS-N_HWPE],
   input real                 sum_req_to_gnt_latency_hwpe_i[N_HWPE],
-  input int unsigned         n_gnt_transactions_log_i[N_MASTER-N_HWPE],
+  input int unsigned         n_gnt_transactions_log_i[N_DRIVERS-N_HWPE],
   input int unsigned         n_gnt_transactions_hwpe_i[N_HWPE],
-  input int unsigned         n_read_granted_transactions_log_i[N_MASTER-N_HWPE],
+  input int unsigned         n_read_granted_transactions_log_i[N_DRIVERS-N_HWPE],
   input int unsigned         n_read_granted_transactions_hwpe_i[N_HWPE],
-  input int unsigned         n_write_granted_transactions_log_i[N_MASTER-N_HWPE],
+  input int unsigned         n_write_granted_transactions_log_i[N_DRIVERS-N_HWPE],
   input int unsigned         n_write_granted_transactions_hwpe_i[N_HWPE],
-  input int unsigned         n_read_complete_transactions_log_i[N_MASTER-N_HWPE],
+  input int unsigned         n_read_complete_transactions_log_i[N_DRIVERS-N_HWPE],
   input int unsigned         n_read_complete_transactions_hwpe_i[N_HWPE]
 );
 
@@ -86,7 +86,7 @@ module simulation_report
     wait (&end_latency_i);
     wait (throughput_complete_i >= 0);
     wait (tot_latency_i >= 0);
-    for (int i = 0; i < N_CORE_REAL; i++) begin
+    for (int i = 0; i < N_CORE; i++) begin
       total_read_granted_transactions += n_read_granted_transactions_log_i[i];
       total_write_granted_transactions += n_write_granted_transactions_log_i[i];
       total_read_complete_transactions += n_read_complete_transactions_log_i[i];
@@ -104,7 +104,7 @@ module simulation_report
         log_masters_with_grants++;
       end
     end
-    for (int i = N_CORE; i < N_CORE + N_DMA_REAL; i++) begin
+    for (int i = N_CORE; i < N_CORE + N_DMA; i++) begin
       total_read_granted_transactions += n_read_granted_transactions_log_i[i];
       total_write_granted_transactions += n_write_granted_transactions_log_i[i];
       total_read_complete_transactions += n_read_complete_transactions_log_i[i];
@@ -122,7 +122,7 @@ module simulation_report
         log_masters_with_grants++;
       end
     end
-    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT_REAL; i++) begin
+    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT; i++) begin
       total_read_granted_transactions += n_read_granted_transactions_log_i[i];
       total_write_granted_transactions += n_write_granted_transactions_log_i[i];
       total_read_complete_transactions += n_read_complete_transactions_log_i[i];
@@ -140,7 +140,7 @@ module simulation_report
         log_masters_with_grants++;
       end
     end
-    for (int i = 0; i < N_HWPE_REAL; i++) begin
+    for (int i = 0; i < N_HWPE; i++) begin
       total_read_granted_transactions += n_read_granted_transactions_hwpe_i[i];
       total_write_granted_transactions += n_write_granted_transactions_hwpe_i[i];
       total_read_complete_transactions += n_read_complete_transactions_hwpe_i[i];
@@ -188,19 +188,19 @@ module simulation_report
     $display("\\\\HW CONFIG\\\\");
     $display(
       "Masters: CORE=%0d DMA=%0d EXT=%0d HWPE=%0d (total=%0d)",
-      N_CORE_REAL, N_DMA_REAL, N_EXT_REAL, N_HWPE_REAL, N_MASTER_REAL
+      N_CORE, N_DMA, N_EXT, N_HWPE, N_DRIVERS
     );
     $display(
       "Memory: banks=%0d total_size=%0d kB data_width=%0d bits hwpe_width=%0d lanes",
-      N_BANKS, TOT_MEM_SIZE, DATA_WIDTH, HWPE_WIDTH
+      N_BANKS, TOT_MEM_SIZE, DATA_WIDTH, HWPE_WIDTH_FACT
     );
     $display(
       "Interconnect: SEL_LIC=%0d TS_BIT=%0d EXPFIFO=%0d",
       SEL_LIC, TS_BIT, EXPFIFO
     );
     $display(
-      "ID/address: IW=%0d ADD_WIDTH=%0d AddrMemWidth=%0d",
-      IW, ADD_WIDTH, AddrMemWidth
+      "ID/address: IW=%0d ADDR_WIDTH=%0d ADDR_WIDTH_BANK=%0d",
+      IW, ADDR_WIDTH, ADDR_WIDTH_BANK
     );
 
     $display("\n\\\\BANDWIDTH\\\\");
@@ -223,35 +223,35 @@ module simulation_report
 
     $display("\n\\\\SIMULATION TIME\\\\");
     $display("Total simulation time: %0.2f cycles", tot_latency_i);
-    for (int i = 0; i < N_CORE_REAL; i++) begin
+    for (int i = 0; i < N_CORE; i++) begin
       $display(
         "Core%0d (master_log_%0d): %0.2f cycles",
         i, i, latency_per_master_i[i]
       );
     end
-    for (int i = N_CORE; i < N_CORE + N_DMA_REAL; i++) begin
+    for (int i = N_CORE; i < N_CORE + N_DMA; i++) begin
       $display(
         "DMA%0d (master_log_%0d): %0.2f cycles",
         i - N_CORE, i, latency_per_master_i[i]
       );
     end
-    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT_REAL; i++) begin
+    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT; i++) begin
       $display(
         "EXT%0d (master_log_%0d): %0.2f cycles",
         i - (N_CORE + N_DMA), i, latency_per_master_i[i]
       );
     end
-    for (int i = N_MASTER - N_HWPE; i < N_MASTER - N_HWPE + N_HWPE_REAL; i++) begin
+    for (int i = N_DRIVERS - N_HWPE; i < N_DRIVERS - N_HWPE + N_HWPE; i++) begin
       $display(
         "HWPE%0d (master_hwpe_%0d): %0.2f cycles",
-        i - (N_MASTER - N_HWPE),
-        i - (N_MASTER - N_HWPE),
+        i - (N_DRIVERS - N_HWPE),
+        i - (N_DRIVERS - N_HWPE),
         latency_per_master_i[i]
       );
     end
 
     $display("\n\\\\READ RESPONSE COVERAGE\\\\");
-    for (int i = 0; i < N_CORE_REAL; i++) begin
+    for (int i = 0; i < N_CORE; i++) begin
       expected_reads = n_read_granted_transactions_log_i[i];
       observed_reads = n_read_complete_transactions_log_i[i];
       $display(
@@ -262,7 +262,7 @@ module simulation_report
         missing_reads = 1'b1;
       end
     end
-    for (int i = N_CORE; i < N_CORE + N_DMA_REAL; i++) begin
+    for (int i = N_CORE; i < N_CORE + N_DMA; i++) begin
       expected_reads = n_read_granted_transactions_log_i[i];
       observed_reads = n_read_complete_transactions_log_i[i];
       $display(
@@ -273,7 +273,7 @@ module simulation_report
         missing_reads = 1'b1;
       end
     end
-    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT_REAL; i++) begin
+    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT; i++) begin
       expected_reads = n_read_granted_transactions_log_i[i];
       observed_reads = n_read_complete_transactions_log_i[i];
       $display(
@@ -284,7 +284,7 @@ module simulation_report
         missing_reads = 1'b1;
       end
     end
-    for (int i = 0; i < N_HWPE_REAL; i++) begin
+    for (int i = 0; i < N_HWPE; i++) begin
       expected_reads = n_read_granted_transactions_hwpe_i[i];
       observed_reads = n_read_complete_transactions_hwpe_i[i];
       $display(
@@ -300,7 +300,7 @@ module simulation_report
     end
 
     $display("\n\\\\TRANSACTION COUNTS\\\\");
-    for (int i = 0; i < N_CORE_REAL; i++) begin
+    for (int i = 0; i < N_CORE; i++) begin
       $display(
         "master_log_%0d: granted reads=%0d writes=%0d, read-complete=%0d",
         i,
@@ -309,7 +309,7 @@ module simulation_report
         n_read_complete_transactions_log_i[i]
       );
     end
-    for (int i = N_CORE; i < N_CORE + N_DMA_REAL; i++) begin
+    for (int i = N_CORE; i < N_CORE + N_DMA; i++) begin
       $display(
         "master_log_%0d: granted reads=%0d writes=%0d, read-complete=%0d",
         i,
@@ -318,7 +318,7 @@ module simulation_report
         n_read_complete_transactions_log_i[i]
       );
     end
-    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT_REAL; i++) begin
+    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT; i++) begin
       $display(
         "master_log_%0d: granted reads=%0d writes=%0d, read-complete=%0d",
         i,
@@ -327,7 +327,7 @@ module simulation_report
         n_read_complete_transactions_log_i[i]
       );
     end
-    for (int i = 0; i < N_HWPE_REAL; i++) begin
+    for (int i = 0; i < N_HWPE; i++) begin
       $display(
         "master_hwpe_%0d: granted reads=%0d writes=%0d, read-complete=%0d",
         i,
@@ -338,7 +338,7 @@ module simulation_report
     end
 
     $display("\n\\\\REQUEST-TO-GRANT LATENCY\\\\");
-    for (int i = 0; i < N_CORE_REAL; i++) begin
+    for (int i = 0; i < N_CORE; i++) begin
       $display(
         "master_log_%0d: avg req->gnt stall latency %0.2f cycles over %0d grants",
         i,
@@ -348,7 +348,7 @@ module simulation_report
         n_gnt_transactions_log_i[i]
       );
     end
-    for (int i = N_CORE; i < N_CORE + N_DMA_REAL; i++) begin
+    for (int i = N_CORE; i < N_CORE + N_DMA; i++) begin
       $display(
         "master_log_%0d: avg req->gnt stall latency %0.2f cycles over %0d grants",
         i,
@@ -358,7 +358,7 @@ module simulation_report
         n_gnt_transactions_log_i[i]
       );
     end
-    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT_REAL; i++) begin
+    for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT; i++) begin
       $display(
         "master_log_%0d: avg req->gnt stall latency %0.2f cycles over %0d grants",
         i,
@@ -368,7 +368,7 @@ module simulation_report
         n_gnt_transactions_log_i[i]
       );
     end
-    for (int i = 0; i < N_HWPE_REAL; i++) begin
+    for (int i = 0; i < N_HWPE; i++) begin
       $display(
         "master_hwpe_%0d: avg req->gnt stall latency %0.2f cycles over %0d grants",
         i,

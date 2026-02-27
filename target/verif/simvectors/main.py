@@ -73,7 +73,7 @@ def main(argv=None):
     N_DMA = hw_params['N_DMA']
     N_EXT = hw_params['N_EXT']
     N_HWPE = hw_params['N_HWPE']
-    HWPE_WIDTH = hw_params['HWPE_WIDTH']
+    HWPE_WIDTH_FACT = hw_params['HWPE_WIDTH_FACT']
 
     # Extract testbench parameters
     tb_params = testbench_config['parameters']
@@ -167,7 +167,7 @@ def main(argv=None):
         - master_global_idx: global master id used by the generator
         """
         nonlocal next_start_id
-        data_width = HWPE_WIDTH * DATA_WIDTH if is_hwpe else DATA_WIDTH
+        data_width = HWPE_WIDTH_FACT * DATA_WIDTH if is_hwpe else DATA_WIDTH
         n_test = N_TEST_HWPE if is_hwpe else N_TEST_LOG
         cycle_offset = CYCLE_OFFSET_HWPE if is_hwpe else CYCLE_OFFSET_LOG
 
@@ -196,7 +196,7 @@ def main(argv=None):
     def _gen_hwpe_master(master_idx, master_config, global_idx):
         nonlocal next_start_id
         filepath = raw_dir / f"master_hwpe_{master_idx}.txt"
-        master = StimuliGenerator(IW, WIDTH_OF_MEMORY, N_BANKS, TOT_MEM_SIZE, HWPE_WIDTH * DATA_WIDTH, ADD_WIDTH,
+        master = StimuliGenerator(IW, WIDTH_OF_MEMORY, N_BANKS, TOT_MEM_SIZE, HWPE_WIDTH_FACT * DATA_WIDTH, ADD_WIDTH,
                                    str(filepath), N_TEST_HWPE, EXACT_OR_MAX_OFFSET, CYCLE_OFFSET_HWPE, global_idx)
         config = str(master_config.get('mem_access_type', '0'))
         start_address = str(master_config.get('start_address', '0'))
@@ -250,10 +250,10 @@ def main(argv=None):
     # Process raw files
     simvector_raw_path = str(raw_dir)
     simvector_processed_path = str((raw_dir.parent / 'stimuli_processed').resolve())
-    unfold_raw_txt(simvector_raw_path, simvector_processed_path, IW, DATA_WIDTH, ADD_WIDTH, HWPE_WIDTH)
+    unfold_raw_txt(simvector_raw_path, simvector_processed_path, IW, DATA_WIDTH, ADD_WIDTH, HWPE_WIDTH_FACT)
     print("STEP 1 COMPLETED: unfold txt files")
 
-    pad_txt_files(simvector_processed_path, IW, DATA_WIDTH, ADD_WIDTH, HWPE_WIDTH)
+    pad_txt_files(simvector_processed_path, IW, DATA_WIDTH, ADD_WIDTH, HWPE_WIDTH_FACT)
     print("STEP 2 COMPLETED: pad txt files")
 
     if args.golden:

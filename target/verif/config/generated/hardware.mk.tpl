@@ -6,10 +6,11 @@
 
 # Hardware configuration parameters (from hardware.json)
 N_HWPE?=${N_HWPE}
-HWPE_WIDTH?=${HWPE_WIDTH}
+HWPE_WIDTH_FACT?=${HWPE_WIDTH_FACT}
 N_CORE?=${N_CORE}
 N_DMA?=${N_DMA}
 N_EXT?=${N_EXT}
+INTERCO_TYPE?=${INTERCO_TYPE}
 TS_BIT?=${TS_BIT}
 EXPFIFO?=${EXPFIFO}
 SEL_LIC?=${SEL_LIC}

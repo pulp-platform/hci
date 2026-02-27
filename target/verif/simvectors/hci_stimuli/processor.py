@@ -6,7 +6,7 @@ import os
 # 1) ++UNFOLD++ the transactions in the .txt files into a cycle-level list.
 # -folder_path_raw          --> String that specifies the path of the folder containing the raw txt files (where the cycle offset is still indicated)
 # -folder_path_processed    --> String that specifies the path of the folder containing the new txt files created by this function
-def unfold_raw_txt(folder_path_raw,folder_path_processed,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH):
+def unfold_raw_txt(folder_path_raw,folder_path_processed,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH_FACT):
     file_names = [file for file in os.listdir(folder_path_raw) if file.endswith(".txt")]
     for file in file_names:
         filepath_read = os.path.join(folder_path_raw,file)
@@ -27,18 +27,18 @@ def unfold_raw_txt(folder_path_raw,folder_path_processed,IW,DATA_WIDTH,ADD_WIDTH
                                 file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
                         else:
                             for _ in range(int(cycle_offset)-1):
-                                file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(HWPE_WIDTH*DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
+                                file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(HWPE_WIDTH_FACT*DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
                         file_write.write('1 ' + id + " " + wen + " " + data + " " + add + "\n")
                     else:
                         if "log" in file:
                             file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
                         else:
-                            file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(HWPE_WIDTH*DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
+                            file_write.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(HWPE_WIDTH_FACT*DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n")
 
 
 # 2) ++PAD++ txt files to have the same number of lines
 # -Folder_path  --> path of the folder containing the txt files to be padded
-def pad_txt_files(folder_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH):
+def pad_txt_files(folder_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH_FACT):
     file_names = [file for file in os.listdir(folder_path) if file.endswith(".txt")] # List of the txt file names in the folder
     max_lines = 0
     line_count = {} # Dictionary to store the number of lines in each txt file
@@ -59,4 +59,4 @@ def pad_txt_files(folder_path,IW,DATA_WIDTH,ADD_WIDTH,HWPE_WIDTH):
                         f.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n") 
                 else:
                     for _ in range(padding_needed):
-                        f.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(HWPE_WIDTH*DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n") 
+                        f.write("0 " + '0'*IW + " " + '0' + " " + '0'*int(HWPE_WIDTH_FACT*DATA_WIDTH) + " " + '0'*ADD_WIDTH + "\n") 

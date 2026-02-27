@@ -21,14 +21,14 @@ module application_driver #(
   parameter int unsigned MASTER_NUMBER = 1,
   parameter int unsigned IS_HWPE = 1,
   parameter int unsigned DATA_WIDTH = 1,
-  parameter int unsigned ADD_WIDTH = 1,
+  parameter int unsigned ADDR_WIDTH = 1,
   parameter int unsigned APPL_DELAY = 2,  // Delay on the input signals
   parameter int unsigned IW = 1,
   parameter string STIM_FILE = ""
 ) (
-  hci_core_intf.initiator hci_if,
-  input logic             rst_ni,
   input logic             clk_i,
+  input logic             rst_ni,
+  hci_core_intf.initiator hci_if,
   output logic            end_stimuli_o,
   output logic            end_latency_o,
   output int unsigned     n_issued_transactions_o,
@@ -42,7 +42,7 @@ module application_driver #(
   logic wen;
   logic req;
   logic [DATA_WIDTH-1:0] data;
-  logic [ADD_WIDTH-1:0]  add;
+  logic [ADDR_WIDTH-1:0]  add;
   int unsigned n_completed_read_transactions;
   logic pending_rsp_is_read[$];
 

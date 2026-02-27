@@ -22,7 +22,7 @@ module throughput_monitor #(
   parameter int unsigned N_HWPE,
   parameter int unsigned CLK_PERIOD,
   parameter int unsigned DATA_WIDTH,
-  parameter int unsigned HWPE_WIDTH
+  parameter int unsigned HWPE_WIDTH_FACT
 ) (
   input logic                clk_i,
   input logic                rst_ni,
@@ -82,7 +82,7 @@ module throughput_monitor #(
     for (int i = 0; i < N_HWPE; i++) begin
       tot_data += real'(
         n_write_granted_hwpe_i[i] + n_read_complete_hwpe_i[i]
-      ) * real'(HWPE_WIDTH * DATA_WIDTH);
+      ) * real'(HWPE_WIDTH_FACT * DATA_WIDTH);
     end
     if (completion_time_cycles > 0.0) begin
       throughput_complete_o = tot_data / completion_time_cycles;  // bits per cycle
