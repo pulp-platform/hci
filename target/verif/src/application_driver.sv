@@ -24,6 +24,8 @@ module application_driver #(
   parameter int unsigned ADDR_WIDTH = 1,
   parameter int unsigned APPL_DELAY = 2,  // Delay on the input signals
   parameter int unsigned IW = 1,
+  parameter bit USE_STREAMER_FIFO = 1'b1,
+  parameter int unsigned STREAMER_FIFO_DEPTH = 2,
   parameter string STIM_FILE = ""
 ) (
   input logic             clk_i,
@@ -45,6 +47,48 @@ module application_driver #(
   logic [ADDR_WIDTH-1:0]  add;
   int unsigned n_completed_read_transactions;
   logic pending_rsp_is_read[$];
+  localparam hci_package::hci_size_parameter_t HCI_SIZE_driver = '{
+    DW:  DATA_WIDTH,
+    AW:  ADDR_WIDTH,
+    BW:  hci_package::DEFAULT_BW,
+    UW:  hci_package::DEFAULT_UW,
+    IW:  IW,
+    EW:  hci_package::DEFAULT_EW,
+    EHW: hci_package::DEFAULT_EHW
+  };
+
+  hci_core_intf #(
+    .DW(HCI_SIZE_driver.DW),
+    .AW(HCI_SIZE_driver.AW),
+    .BW(HCI_SIZE_driver.BW),
+    .UW(HCI_SIZE_driver.UW),
+    .IW(HCI_SIZE_driver.IW),
+    .EW(HCI_SIZE_driver.EW),
+    .EHW(HCI_SIZE_driver.EHW)
+  ) hci_drv_if (
+    .clk(clk_i)
+  );
+
+  generate
+    if (USE_STREAMER_FIFO) begin : gen_driver_streamer_fifo
+      hci_core_fifo #(
+        .FIFO_DEPTH(STREAMER_FIFO_DEPTH),
+        .HCI_SIZE_tcdm_initiator(HCI_SIZE_driver)
+      ) i_driver_streamer_fifo (
+        .clk_i(clk_i),
+        .rst_ni(rst_ni),
+        .clear_i(1'b0),
+        .flags_o(),
+        .tcdm_target(hci_drv_if),
+        .tcdm_initiator(hci_if)
+      );
+    end else begin : gen_driver_direct
+      hci_core_assign i_driver_direct_assign (
+        .tcdm_target(hci_drv_if),
+        .tcdm_initiator(hci_if)
+      );
+    end
+  endgenerate
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : proc_read_response_counter
     logic retired_is_read;
@@ -52,10 +96,10 @@ module application_driver #(
       n_completed_read_transactions <= '0;
       pending_rsp_is_read.delete();
     end else begin
-      if (hci_if.req && hci_if.gnt) begin
-        pending_rsp_is_read.push_back(hci_if.wen);
+      if (hci_drv_if.req && hci_drv_if.gnt) begin
+        pending_rsp_is_read.push_back(hci_drv_if.wen);
       end
-      if (hci_if.r_valid && hci_if.r_ready) begin
+      if (hci_drv_if.r_valid && hci_drv_if.r_ready) begin
         if (pending_rsp_is_read.size() != 0) begin
           retired_is_read = pending_rsp_is_read.pop_front();
           if (retired_is_read) begin
@@ -67,17 +111,17 @@ module application_driver #(
   end
 
   initial begin : proc_application_driver
-    hci_if.id = '0;
-    hci_if.add = '0;
-    hci_if.data = '0;
-    hci_if.req = 1'b0;
-    hci_if.wen = 1'b0;
-    hci_if.ecc = '0;
-    hci_if.ereq = '0;
-    hci_if.r_eready = '0;
-    hci_if.be = '1;
-    hci_if.r_ready = 1'b1;
-    hci_if.user = '0;
+    hci_drv_if.id = '0;
+    hci_drv_if.add = '0;
+    hci_drv_if.data = '0;
+    hci_drv_if.req = 1'b0;
+    hci_drv_if.wen = 1'b0;
+    hci_drv_if.ecc = '0;
+    hci_drv_if.ereq = '0;
+    hci_drv_if.r_eready = '0;
+    hci_drv_if.be = '1;
+    hci_drv_if.r_ready = 1'b1;
+    hci_drv_if.user = '0;
     end_stimuli_o = 1'b0;
     end_latency_o = 1'b0;
     n_issued_transactions_o = '0;
@@ -113,25 +157,25 @@ module application_driver #(
         break;
       end
       #(APPL_DELAY);
-      hci_if.id = id;
-      hci_if.data = data;
-      hci_if.add = add;
-      hci_if.wen = wen;
-      hci_if.req = req;
+      hci_drv_if.id = id;
+      hci_drv_if.data = data;
+      hci_drv_if.add = add;
+      hci_drv_if.wen = wen;
+      hci_drv_if.req = req;
 
       if (req) begin
-        @(posedge clk_i iff hci_if.gnt);
+        @(posedge clk_i iff hci_drv_if.gnt);
         n_issued_transactions_o++;
         if (wen) begin
           n_issued_read_transactions_o++;
         end
         // Deassert in NBA region so monitors sampling this edge see the handshake.
-        hci_if.id <= '0;
-        hci_if.data <= '0;
-        hci_if.add <= '0;
-        hci_if.wen <= 1'b0;
-        hci_if.req <= 1'b0;
-        wait (hci_if.req == 1'b0);
+        hci_drv_if.id <= '0;
+        hci_drv_if.data <= '0;
+        hci_drv_if.add <= '0;
+        hci_drv_if.wen <= 1'b0;
+        hci_drv_if.req <= 1'b0;
+        wait (hci_drv_if.req == 1'b0);
       end else begin
         @(posedge clk_i);
       end

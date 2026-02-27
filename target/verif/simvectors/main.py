@@ -98,7 +98,13 @@ def main(argv=None):
     N_TEST_HWPE = int(N_TEST_LOG * TEST_RATIO)
     N_LOG = N_CORE + N_DMA + N_EXT
     N_MASTER = N_LOG + N_HWPE
-    IW = int(np.ceil(np.log2(N_TEST_LOG * N_LOG + N_TEST_HWPE * N_HWPE)))
+    # Match tb_hci_pkg interface ID widths (hci_system-style model).
+    IW_CORES = 8
+    IW_HWPE = IW_CORES
+    if IW_CORES != IW_HWPE:
+        print("ERROR: stimuli generator currently requires equal log/HWPE interface ID widths")
+        sys.exit(1)
+    IW = IW_CORES
     CORE_ZERO_FLAG = False
     EXT_ZERO_FLAG = False
     DMA_ZERO_FLAG = False
