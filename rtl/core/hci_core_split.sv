@@ -224,7 +224,11 @@ module hci_core_split
     end
 
     // r_ready masking
-    assign tcdm_initiator_lrdy_masked_d = cs_rvalid==NO_RVALID ? tcdm_initiator_lrdy_masked_q | tcdm_initiator_r_valid | ~tcdm_initiator_req : tcdm_initiator_r_valid | ~tcdm_initiator_req;
+    // Track lanes that have produced a response for the current split transaction.
+    // Using "~req" here can mark a lane as completed before r_valid is observed.
+    assign tcdm_initiator_lrdy_masked_d =
+        cs_rvalid==NO_RVALID ? tcdm_initiator_lrdy_masked_q | tcdm_initiator_r_valid
+                             : tcdm_initiator_r_valid;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
       if(~rst_ni) begin
