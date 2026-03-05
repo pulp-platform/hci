@@ -204,40 +204,20 @@ module tb_hci
       );
     end else if (INTERCO_TYPE == LOG) begin : gen_hwpe_split
       for (genvar ii = 0; ii < N_HWPE; ii++) begin : gen_hwpe_split_per_master
-        for (genvar f = 0; f < HWPE_WIDTH_FACT; f++) begin : gen_hwpe_split_lane
-          localparam int IDX = N_CORE + ii * HWPE_WIDTH_FACT + f;
-
-          assign hci_initiator_narrow[IDX].req     = hci_driver_hwpe_if[ii].req;
-          assign hci_initiator_narrow[IDX].add     = hci_driver_hwpe_if[ii].add + f * WORD_SIZE;
-          assign hci_initiator_narrow[IDX].wen     = hci_driver_hwpe_if[ii].wen;
-          assign hci_initiator_narrow[IDX].data    = hci_driver_hwpe_if[ii].data[(f + 1) * WORD_SIZE * 8 - 1 : f * WORD_SIZE * 8];
-          assign hci_initiator_narrow[IDX].be      = hci_driver_hwpe_if[ii].be[(f + 1) * WORD_SIZE - 1 : f * WORD_SIZE];
-          assign hci_initiator_narrow[IDX].r_ready = hci_driver_hwpe_if[ii].r_ready;
-          assign hci_initiator_narrow[IDX].user    = hci_driver_hwpe_if[ii].user;
-          assign hci_initiator_narrow[IDX].id      = hci_driver_hwpe_if[ii].id;
-          assign hci_driver_hwpe_if[ii].r_data[(f + 1) * WORD_SIZE * 8 - 1 : f * WORD_SIZE * 8] = hci_initiator_narrow[IDX].r_data;
-          assign hci_initiator_narrow[IDX].ecc     = hci_driver_hwpe_if[ii].ecc;
-          assign hci_initiator_narrow[IDX].ereq    = hci_driver_hwpe_if[ii].ereq;
-          assign hci_initiator_narrow[IDX].r_eready = hci_driver_hwpe_if[ii].r_eready;
-        end
-
-        assign hci_driver_hwpe_if[ii].r_user = hci_initiator_narrow[N_CORE + ii * HWPE_WIDTH_FACT].r_user;
-        assign hci_driver_hwpe_if[ii].r_id   = hci_initiator_narrow[N_CORE + ii * HWPE_WIDTH_FACT].r_id;
-        assign hci_driver_hwpe_if[ii].r_opc  = hci_initiator_narrow[N_CORE + ii * HWPE_WIDTH_FACT].r_opc;
-        assign hci_driver_hwpe_if[ii].r_ecc  = hci_initiator_narrow[N_CORE + ii * HWPE_WIDTH_FACT].r_ecc;
-
-        logic [HWPE_WIDTH_FACT-1:0] gnt_vec, rvalid_vec, egnt_vec, revalid_vec;
-        for (genvar f = 0; f < HWPE_WIDTH_FACT; f++) begin : gen_hwpe_split_red
-          localparam int IDX = N_CORE + ii * HWPE_WIDTH_FACT + f;
-          assign gnt_vec[f]     = hci_initiator_narrow[IDX].gnt;
-          assign rvalid_vec[f]  = hci_initiator_narrow[IDX].r_valid;
-          assign egnt_vec[f]    = hci_initiator_narrow[IDX].egnt;
-          assign revalid_vec[f] = hci_initiator_narrow[IDX].r_evalid;
-        end
-        assign hci_driver_hwpe_if[ii].gnt      = &gnt_vec;
-        assign hci_driver_hwpe_if[ii].r_valid  = &rvalid_vec;
-        assign hci_driver_hwpe_if[ii].egnt     = &egnt_vec;
-        assign hci_driver_hwpe_if[ii].r_evalid = &revalid_vec;
+        hci_core_split #(
+          .DW(HWPE_WIDTH_FACT * DATA_WIDTH),
+          .BW(DATA_WIDTH / 8),
+          .UW(1),
+          .NB_OUT_CHAN(HWPE_WIDTH_FACT),
+          .FIFO_DEPTH(2),
+          .`HCI_SIZE_PARAM(tcdm_target)(HCI_SIZE_hwpe)
+        ) i_hwpe_to_log_split (
+          .clk_i(clk),
+          .rst_ni(rst_n),
+          .clear_i(s_clear),
+          .tcdm_target(hci_driver_hwpe_if[ii]),
+          .tcdm_initiator(hci_initiator_narrow[N_CORE + ii * HWPE_WIDTH_FACT : N_CORE + (ii + 1) * HWPE_WIDTH_FACT - 1])
+        );
       end
     end else begin : gen_unsupported_mode
       initial $error("Unsupported INTERCO_TYPE");

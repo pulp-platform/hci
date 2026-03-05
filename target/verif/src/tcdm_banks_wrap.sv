@@ -84,17 +84,17 @@ module tcdm_banks_wrap #(
     );
 
     //r_valid
-    always_ff @(posedge clk_i or negedge rst_ni) begin : rvalid_gen
-      if(~rst_ni) begin
-        tcdm_slave[i].r_valid <= 1'b0;
-      end else begin
-        if(tcdm_slave[i].req && tcdm_slave[i].gnt && tcdm_slave[i].wen) begin
-          tcdm_slave[i].r_valid <= 1'b1;
-        end else begin
-          tcdm_slave[i].r_valid <= 1'b0;
-        end
-      end
-    end
+    // always_ff @(posedge clk_i or negedge rst_ni) begin : rvalid_gen
+    //   if(~rst_ni) begin
+    //     tcdm_slave[i].r_valid <= 1'b0;
+    //   end else begin
+    //     if(tcdm_slave[i].req && tcdm_slave[i].gnt && tcdm_slave[i].wen) begin
+    //       tcdm_slave[i].r_valid <= 1'b1;
+    //     end else begin
+    //       tcdm_slave[i].r_valid <= 1'b0;
+    //     end
+    //   end
+    // end
   end
 
 endmodule
