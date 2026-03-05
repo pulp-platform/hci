@@ -8,6 +8,39 @@ The `hci` repository contains the definition of the Heterogeneous Cluster Interc
  - https://github.com/pulp-platform/neureka
  - https://github.com/pulp-platform/redmule
 
+# Usage flow
+
+The typical full flow is:
+
+```
+make checkout       # Fetch and check out dependencies via Bender
+make config-verif   # Generate Makefiles from JSON verification configs
+make stim-verif     # Generate simulation stimulus vectors (requires Python 3)
+make compile-verif  # Compile RTL and testbench with QuestaSim
+make opt-verif      # Optimize the compiled design with vopt
+make run-verif      # Run the simulation (batch mode by default)
+```
+
+To open the simulation in the QuestaSim GUI with waveforms, pass `GUI=1`:
+
+```
+make run-verif GUI=1
+```
+
+Cleanup targets:
+
+| Target               | Effect                                             |
+|----------------------|----------------------------------------------------|
+| `clean-config-verif` | Remove generated configuration Makefiles           |
+| `clean-stim-verif`   | Remove generated stimulus vectors                  |
+| `clean-sim-verif`    | Remove QuestaSim build artifacts (work lib, logs)  |
+| `clean-verif`        | Run all three clean targets above                  |
+
+**Notes:**
+- On IIS machines, defaults to QuestaSim (`questa-2022.3`) (can be overriden with `SIM_QUESTA=<version>`). On non-IIS machines, defaults to QuestaSim available in `PATH`.
+- Verification configuration is driven by JSON files under `target/verif/config/`. Edit those before running `config-verif` and `stim-verif`.
+- `run-verif` depends on `opt-verif` and `stim-verif`, so after `checkout` and `config-verif` you can jump straight to it.
+
 # Style guide
 These IPs use a slightly different style than other PULP IPs. Refer to `STYLE.md` for some indications.
 
