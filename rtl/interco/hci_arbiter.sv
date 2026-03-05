@@ -142,38 +142,48 @@ module hci_arbiter
         in_low [ii].gnt = '0;
         if(hs_pass_d[ii]) 
         begin
-          out[ii].req     = in_high[ii].req;
-          out[ii].add     = in_high[ii].add;
-          out[ii].wen     = in_high[ii].wen;
-          out[ii].be      = in_high[ii].be;
-          out[ii].data    = in_high[ii].data;
-          out[ii].id      = in_high[ii].id;
-          out[ii].user    = in_high[ii].user;
-          out[ii].ecc     = in_high[ii].ecc;
-          in_high[ii].gnt = out[ii].gnt;
-        end 
+          out[ii].req      = in_high[ii].req;
+          out[ii].add      = in_high[ii].add;
+          out[ii].wen      = in_high[ii].wen;
+          out[ii].be       = in_high[ii].be;
+          out[ii].data     = in_high[ii].data;
+          out[ii].id       = in_high[ii].id;
+          out[ii].user     = in_high[ii].user;
+          out[ii].r_ready  = in_high[ii].r_ready;
+          out[ii].ecc      = in_high[ii].ecc;
+          out[ii].ereq     = in_high[ii].ereq;
+          out[ii].r_eready = in_high[ii].r_eready;
+          in_high[ii].gnt  = out[ii].gnt;
+        end
         else
         begin
-          out[ii].req    = in_low[ii].req;
-          out[ii].add    = in_low[ii].add;
-          out[ii].wen    = in_low[ii].wen;
-          out[ii].be     = in_low[ii].be;
-          out[ii].data   = in_low[ii].data;
-          out[ii].id     = in_low[ii].id;
-          out[ii].user   = in_low[ii].user;
-          out[ii].ecc    = in_low[ii].ecc;
-          in_low[ii].gnt = out[ii].gnt;
+          out[ii].req      = in_low[ii].req;
+          out[ii].add      = in_low[ii].add;
+          out[ii].wen      = in_low[ii].wen;
+          out[ii].be       = in_low[ii].be;
+          out[ii].data     = in_low[ii].data;
+          out[ii].id       = in_low[ii].id;
+          out[ii].user     = in_low[ii].user;
+          out[ii].r_ready  = in_low[ii].r_ready;
+          out[ii].ecc      = in_low[ii].ecc;
+          out[ii].ereq     = in_low[ii].ereq;
+          out[ii].r_eready = in_low[ii].r_eready;
+          in_low[ii].gnt   = out[ii].gnt;
         end
-        in_high[ii].r_data = out[ii].r_data;
-        in_low [ii].r_data = out[ii].r_data;
-        in_high[ii].r_id   = out[ii].r_id;
-        in_low [ii].r_id   = out[ii].r_id;
-        in_high[ii].r_opc  = out[ii].r_opc;
-        in_low [ii].r_opc  = out[ii].r_opc;
-        in_high[ii].r_user = out[ii].r_user;
-        in_low [ii].r_user = out[ii].r_user;
-        in_high[ii].r_ecc  = out[ii].r_ecc;
-        in_low [ii].r_ecc  = out[ii].r_ecc;
+        in_high[ii].r_data   = out[ii].r_data;
+        in_low [ii].r_data   = out[ii].r_data;
+        in_high[ii].r_id     = out[ii].r_id;
+        in_low [ii].r_id     = out[ii].r_id;
+        in_high[ii].r_opc    = out[ii].r_opc;
+        in_low [ii].r_opc    = out[ii].r_opc;
+        in_high[ii].r_user   = out[ii].r_user;
+        in_low [ii].r_user   = out[ii].r_user;
+        in_high[ii].r_ecc    = out[ii].r_ecc;
+        in_low [ii].r_ecc    = out[ii].r_ecc;
+        in_high[ii].egnt     = out[ii].egnt;
+        in_low [ii].egnt     = out[ii].egnt;
+        in_high[ii].r_evalid = out[ii].r_evalid;
+        in_low [ii].r_evalid = out[ii].r_evalid;
         // r_valid signals are NOT propagated by the arbiter, they are generated at
         // routing stage. In previous HCI versions, we used a r_valid-less version
         // of the protocol here.

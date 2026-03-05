@@ -81,7 +81,11 @@ clean-stim-verif:
 ##############
 
 # Parameters
-GUI ?= 0
+ifdef gui
+  GUI ?= $(gui)
+else
+  GUI ?= 0
+endif
 # Top-level to simulate
 sim_top_level ?= tb_hci
 sim_vsim_lib ?= $(HCI_VERIF_DIR)/vsim/work
