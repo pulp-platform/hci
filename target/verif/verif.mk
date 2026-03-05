@@ -17,7 +17,11 @@ include $(HCI_VERIF_DIR)/bender.mk
 
 # Tooling
 #NOTE: Only QuestaSim is currently supported by verification framework
-SIM_QUESTA ?= questa-2022.3
+ifneq (,$(wildcard /etc/iis.version))
+    SIM_QUESTA ?= questa-2022.3
+else
+    SIM_QUESTA ?=
+endif
 SIM_VLIB ?= $(SIM_QUESTA) vlib
 SIM_VSIM ?= $(SIM_QUESTA) vsim
 SIM_VOPT ?= $(SIM_QUESTA) vopt
