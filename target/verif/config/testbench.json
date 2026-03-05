@@ -1,13 +1,13 @@
 {
   "description": "Testbench configuration parameters",
   "parameters": {
-    "N_TRANSACTION_LOG": 1000,
+    "N_TRANSACTION_LOG": 20,
     "TRANSACTION_RATIO": 1,
     "CLK_PERIOD": 50,
     "RST_CLK_CYCLES": 10,
     "MAX_CYCLES_BETWEEN_GNT_RVALID": 1,
     "RANDOM_GNT": 0,
-    "INVERT_PRIO": 0,
-    "LOW_PRIO_MAX_STALL": 10
+    "INVERT_PRIO": 1,
+    "LOW_PRIO_MAX_STALL": 16
   }
 }

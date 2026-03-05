@@ -205,11 +205,11 @@ module simulation_report
 
     $display("\n\\\\BANDWIDTH\\\\");
     $display(
-      "Completion bandwidth (writes granted + reads completed): %0.1f bit/cycle",
+      "Completion bandwidth (writes granted + reads completed): %0.2f bit/cycle",
       throughput_complete_i
     );
-    $display("Stimulus phase duration: %0.1f cycles", stim_latency_i);
-    $display("Completion phase duration: %0.1f cycles", tot_latency_i);
+    $display("Stimulus phase duration: %0.2f cycles", stim_latency_i);
+    $display("Completion phase duration: %0.2f cycles", tot_latency_i);
     $display(
       "Granted transactions: reads=%0d writes=%0d total=%0d",
       total_read_granted_transactions,
@@ -222,28 +222,28 @@ module simulation_report
     );
 
     $display("\n\\\\SIMULATION TIME\\\\");
-    $display("Total simulation time: %0.1f cycles", tot_latency_i);
+    $display("Total simulation time: %0.2f cycles", tot_latency_i);
     for (int i = 0; i < N_CORE_REAL; i++) begin
       $display(
-        "Core%0d (master_log_%0d): %0.1f cycles",
+        "Core%0d (master_log_%0d): %0.2f cycles",
         i, i, latency_per_master_i[i]
       );
     end
     for (int i = N_CORE; i < N_CORE + N_DMA_REAL; i++) begin
       $display(
-        "DMA%0d (master_log_%0d): %0.1f cycles",
+        "DMA%0d (master_log_%0d): %0.2f cycles",
         i - N_CORE, i, latency_per_master_i[i]
       );
     end
     for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT_REAL; i++) begin
       $display(
-        "EXT%0d (master_log_%0d): %0.1f cycles",
+        "EXT%0d (master_log_%0d): %0.2f cycles",
         i - (N_CORE + N_DMA), i, latency_per_master_i[i]
       );
     end
     for (int i = N_MASTER - N_HWPE; i < N_MASTER - N_HWPE + N_HWPE_REAL; i++) begin
       $display(
-        "HWPE%0d (master_hwpe_%0d): %0.1f cycles",
+        "HWPE%0d (master_hwpe_%0d): %0.2f cycles",
         i - (N_MASTER - N_HWPE),
         i - (N_MASTER - N_HWPE),
         latency_per_master_i[i]
@@ -340,7 +340,7 @@ module simulation_report
     $display("\n\\\\REQUEST-TO-GRANT LATENCY\\\\");
     for (int i = 0; i < N_CORE_REAL; i++) begin
       $display(
-        "master_log_%0d: avg req->gnt latency %0.1f cycles over %0d grants",
+        "master_log_%0d: avg req->gnt stall latency %0.2f cycles over %0d grants",
         i,
         (n_gnt_transactions_log_i[i] != 0) ?
             (sum_req_to_gnt_latency_log_i[i] / real'(n_gnt_transactions_log_i[i])) :
@@ -350,7 +350,7 @@ module simulation_report
     end
     for (int i = N_CORE; i < N_CORE + N_DMA_REAL; i++) begin
       $display(
-        "master_log_%0d: avg req->gnt latency %0.1f cycles over %0d grants",
+        "master_log_%0d: avg req->gnt stall latency %0.2f cycles over %0d grants",
         i,
         (n_gnt_transactions_log_i[i] != 0) ?
             (sum_req_to_gnt_latency_log_i[i] / real'(n_gnt_transactions_log_i[i])) :
@@ -360,7 +360,7 @@ module simulation_report
     end
     for (int i = N_CORE + N_DMA; i < N_CORE + N_DMA + N_EXT_REAL; i++) begin
       $display(
-        "master_log_%0d: avg req->gnt latency %0.1f cycles over %0d grants",
+        "master_log_%0d: avg req->gnt stall latency %0.2f cycles over %0d grants",
         i,
         (n_gnt_transactions_log_i[i] != 0) ?
             (sum_req_to_gnt_latency_log_i[i] / real'(n_gnt_transactions_log_i[i])) :
@@ -370,7 +370,7 @@ module simulation_report
     end
     for (int i = 0; i < N_HWPE_REAL; i++) begin
       $display(
-        "master_hwpe_%0d: avg req->gnt latency %0.1f cycles over %0d grants",
+        "master_hwpe_%0d: avg req->gnt stall latency %0.2f cycles over %0d grants",
         i,
         (n_gnt_transactions_hwpe_i[i] != 0) ?
             (sum_req_to_gnt_latency_hwpe_i[i] / real'(n_gnt_transactions_hwpe_i[i])) :
@@ -380,32 +380,32 @@ module simulation_report
     end
     $display("");
     $display(
-      "Total accumulated req->gnt latency: %0.1f cycles over %0d grants",
+      "Total accumulated req->gnt latency: %0d cycles over %0d grants",
       sum_req_to_gnt_latency_all,
       total_gnt_transactions_all
     );
     $display(
-      "LOG avg req->gnt latency (weighted by grant count): %0.1f cycles",
+      "LOG avg req->gnt stall latency (weighted by grant count): %0.2f cycles",
       average_req_to_gnt_latency_log_weighted
     );
     $display(
-      "LOG avg req->gnt latency (mean of per-master averages): %0.1f cycles",
+      "LOG avg req->gnt stall latency (mean of per-master averages): %0.2f cycles",
       average_req_to_gnt_latency_log_unweighted
     );
     $display(
-      "HWPE avg req->gnt latency (weighted by grant count): %0.1f cycles",
+      "HWPE avg req->gnt stall latency (weighted by grant count): %0.2f cycles",
       average_req_to_gnt_latency_hwpe_weighted
     );
     $display(
-      "HWPE avg req->gnt latency (mean of per-master averages): %0.1f cycles",
+      "HWPE avg req->gnt stall latency (mean of per-master averages): %0.2f cycles",
       average_req_to_gnt_latency_hwpe_unweighted
     );
     $display(
-      "Global avg req->gnt latency (weighted by grant count): %0.1f cycles",
+      "Global avg req->gnt stall latency (weighted by grant count): %0.2f cycles",
       average_req_to_gnt_latency_weighted
     );
     $display(
-      "Global avg req->gnt latency (mean of per-master averages): %0.1f cycles",
+      "Global avg req->gnt stall latency (mean of per-master averages): %0.2f cycles",
       average_req_to_gnt_latency_unweighted
     );
     $display("");

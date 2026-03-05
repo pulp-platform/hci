@@ -74,8 +74,10 @@ module latency_monitor #(
           req_start_cycle_log <= '0;
           req_prev_log <= 1'b0;
         end else begin
-          if (hci_log_if[gi].req && !req_prev_log) begin
+          if (hci_log_if[gi].req && !req_prev_log && !hci_log_if[gi].gnt) begin
             req_start_cycle_log <= cycle_q;
+          end else if (hci_log_if[gi].gnt) begin
+            req_start_cycle_log <= cycle_q + 1;
           end
 
           if (hci_log_if[gi].req && hci_log_if[gi].gnt) begin
@@ -130,8 +132,10 @@ module latency_monitor #(
           req_start_cycle_hwpe <= '0;
           req_prev_hwpe <= 1'b0;
         end else begin
-          if (hci_hwpe_if[gi].req && !req_prev_hwpe) begin
+          if (hci_hwpe_if[gi].req && !req_prev_hwpe && !hci_hwpe_if[gi].gnt) begin
             req_start_cycle_hwpe <= cycle_q;
+          end else if (hci_hwpe_if[gi].gnt) begin
+            req_start_cycle_hwpe <= cycle_q + 1;
           end
 
           if (hci_hwpe_if[gi].req && hci_hwpe_if[gi].gnt) begin
