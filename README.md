@@ -8,8 +8,7 @@ The `hci` repository contains the definition of the Heterogeneous Cluster Interc
  - https://github.com/pulp-platform/neureka
  - https://github.com/pulp-platform/redmule
 
-# Usage flow
-
+# Verification flow
 The typical full flow is:
 
 ```

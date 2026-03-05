@@ -1,5 +1,7 @@
 # If GUI is 1, spawn waveforms
 if {$GUI == 1} {
     echo "GUI mode enabled"
+    add log -r /*
+} else {
+    run -a
 }
-run -a

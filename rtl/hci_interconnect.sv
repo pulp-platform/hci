@@ -142,8 +142,22 @@ module hci_interconnect
     EW:  DEFAULT_EW,
     EHW: DEFAULT_EHW
   };
-  `HCI_INTF_ARRAY(hwpe_mem_muxed, clk_i, 0:N_MEM-1);
-
+  hci_core_intf #(
+    .DW  ( `HCI_SIZE_PARAM(hwpe_mem_muxed).DW  ),
+    .AW  ( `HCI_SIZE_PARAM(hwpe_mem_muxed).AW  ),
+    .BW  ( `HCI_SIZE_PARAM(hwpe_mem_muxed).BW  ),
+    .UW  ( `HCI_SIZE_PARAM(hwpe_mem_muxed).UW  ),
+    .IW  ( `HCI_SIZE_PARAM(hwpe_mem_muxed).IW  ),
+    .EW  ( `HCI_SIZE_PARAM(hwpe_mem_muxed).EW  ),
+    .EHW ( `HCI_SIZE_PARAM(hwpe_mem_muxed).EHW )
+`ifndef SYNTHESIS
+    ,
+    .WAIVE_RQ3_ASSERT ( WAIVE_RQ3_ASSERT ), // hwpe_mem_muxed is an internal muxed signal, not a protocol-compliant port
+    .WAIVE_RQ4_ASSERT ( WAIVE_RQ4_ASSERT )
+`endif
+  ) hwpe_mem_muxed [0:N_MEM-1] (
+    .clk ( clk_i )
+  );
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem) = '{
     DW:  DEFAULT_DW,
@@ -257,6 +271,8 @@ module hci_interconnect
       hci_arbiter_tree #(
         .NB_REQUESTS(N_HWPE),
         .NB_CHAN ( N_MEM ),
+        .WAIVE_RQ3_ASSERT  ( WAIVE_RQ3_ASSERT  ),
+        .WAIVE_RQ4_ASSERT  ( WAIVE_RQ4_ASSERT  ),
         .`HCI_SIZE_PARAM(out)(`HCI_SIZE_PARAM(hwpe_mem_muxed))
       ) i_wide_port_arbiter_tree (
         .clk_i   ( clk_i               ),

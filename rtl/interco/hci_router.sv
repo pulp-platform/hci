@@ -231,14 +231,16 @@ module hci_router
 
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++)
     begin : virt_out_bind
-      assign out[ii].req  = virt_out[ii].req;
-      assign out[ii].wen  = virt_out[ii].wen;
-      assign out[ii].be   = virt_out[ii].be;
-      assign out[ii].data = virt_out[ii].data;
-      assign out[ii].add  = virt_out[ii].add;
-      assign virt_out[ii].gnt     = out[ii].gnt;
-      assign virt_out[ii].r_valid = out_r_valid[ii];
-      assign virt_out[ii].r_data  = out[ii].r_data;
+      assign out[ii].req     = virt_out[ii].req;
+      assign out[ii].wen     = virt_out[ii].wen;
+      assign out[ii].be      = virt_out[ii].be;
+      assign out[ii].data    = virt_out[ii].data;
+      assign out[ii].add     = virt_out[ii].add;
+      assign out[ii].r_ready = virt_out[ii].r_ready;
+      assign virt_out[ii].gnt      = out[ii].gnt;
+      assign virt_out[ii].r_valid  = out_r_valid[ii];
+      assign virt_out[ii].r_data   = out[ii].r_data;
+      assign virt_out[ii].r_opc    = out[ii].r_opc;
 
       // unimplemented user bits = 0
       assign out[ii].user = '0;
@@ -246,12 +248,21 @@ module hci_router
       // unimplemented id bits = 0
       assign out[ii].id = '0;
 
+      // ECC handshake signals
       if(USE_ECC) begin : ecc_assignment
-        assign out[ii].ecc  = virt_out[ii].ecc;
-        assign virt_out[ii].r_ecc  = out[ii].r_ecc;
+        assign out[ii].ereq     = virt_out[ii].ereq;
+        assign out[ii].r_eready = virt_out[ii].r_eready;
+        assign out[ii].ecc      = virt_out[ii].ecc;
+        assign virt_out[ii].egnt     = out[ii].egnt;
+        assign virt_out[ii].r_evalid = out[ii].r_evalid;
+        assign virt_out[ii].r_ecc    = out[ii].r_ecc;
       end else begin
-        assign out[ii].ecc         = '0;
-        assign virt_out[ii].r_ecc  = '0;
+        assign out[ii].ereq     = '0;
+        assign out[ii].r_eready = '1;
+        assign out[ii].ecc      = '0;
+        assign virt_out[ii].egnt     = '0;
+        assign virt_out[ii].r_evalid = '0;
+        assign virt_out[ii].r_ecc    = '0;
       end
 
     end // virt_out_bind

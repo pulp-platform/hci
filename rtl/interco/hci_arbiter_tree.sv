@@ -39,7 +39,9 @@ module hci_arbiter_tree
 #(
   parameter int unsigned NB_REQUESTS = 1,
   parameter int unsigned NB_CHAN = 16,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(out)  = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(out)  = '0,
+  parameter bit WAIVE_RQ3_ASSERT  = 1'b0,
+  parameter bit WAIVE_RQ4_ASSERT  = 1'b0
 )
 (
   input  logic                   clk_i,
@@ -74,7 +76,22 @@ module hci_arbiter_tree
    EHW: `HCI_SIZE_GET_EHW(out)
   };
   
-  `HCI_INTF_ARRAY(arb_out, clk_i, 0:NB_LEVELS*MAX_ARBITERS_PER_LEVEL*NB_CHAN-1);
+  hci_core_intf #(
+    .DW  ( `HCI_SIZE_PARAM(arb_out).DW  ),
+    .AW  ( `HCI_SIZE_PARAM(arb_out).AW  ),
+    .BW  ( `HCI_SIZE_PARAM(arb_out).BW  ),
+    .UW  ( `HCI_SIZE_PARAM(arb_out).UW  ),
+    .IW  ( `HCI_SIZE_PARAM(arb_out).IW  ),
+    .EW  ( `HCI_SIZE_PARAM(arb_out).EW  ),
+    .EHW ( `HCI_SIZE_PARAM(arb_out).EHW )
+`ifndef SYNTHESIS
+    ,
+    .WAIVE_RQ3_ASSERT ( WAIVE_RQ3_ASSERT ), // arb_out is an internal arbitration signal, not a protocol-compliant port
+    .WAIVE_RQ4_ASSERT ( WAIVE_RQ4_ASSERT )
+`endif
+  ) arb_out [0:NB_LEVELS*MAX_ARBITERS_PER_LEVEL*NB_CHAN-1] (
+    .clk ( clk_i )
+  );
   
   generate		
     for(genvar lvl=0; lvl<NB_LEVELS; lvl++) begin : arbiter_tree_levels
