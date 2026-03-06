@@ -26,8 +26,8 @@ module throughput_monitor #(
 ) (
   input logic                clk_i,
   input logic                rst_ni,
-  input logic [0:N_MASTER-1] end_stimuli_i,
-  input logic [0:N_MASTER-1] end_latency_i,
+  input logic [N_MASTER-1:0] end_req_i,
+  input logic [N_MASTER-1:0] end_resp_i,
   // Read transactions number
   input int unsigned         n_read_complete_log_i[N_MASTER-N_HWPE],
   input int unsigned         n_read_complete_hwpe_i[N_HWPE],
@@ -52,7 +52,7 @@ module throughput_monitor #(
     #(CLK_PERIOD/100);
     @(posedge clk_i);
     start_time = $time;
-    wait (&end_stimuli_i);
+    wait (&end_req_i);
     end_time = $time;
     stim_time_cycles = real'(end_time - start_time) / real'(CLK_PERIOD);  // cycles
     stim_latency_o = stim_time_cycles;
@@ -69,7 +69,7 @@ module throughput_monitor #(
     #(CLK_PERIOD/100);
     @(posedge clk_i);
     start_time = $time;
-    wait (&end_latency_i);
+    wait (&end_resp_i);
     end_time = $time;
     completion_time_cycles = real'(end_time - start_time) / real'(CLK_PERIOD);  // cycles
     tot_latency_o = completion_time_cycles;
@@ -101,7 +101,7 @@ module throughput_monitor #(
         #(CLK_PERIOD/100);
         @(posedge clk_i);
         start_time = $time;
-        wait (end_latency_i[ii]);
+        wait (end_resp_i[ii] == 1'b1);
         end_time = $time;
         latency_per_master_o[ii] = real'(end_time - start_time) / real'(CLK_PERIOD);
       end

@@ -20,11 +20,11 @@
 module simulation_report
   import tb_hci_pkg::*;
 (
-  input logic [0:N_DRIVERS-1] end_stimuli_i,
-  input logic [0:N_DRIVERS-1] end_latency_i,
-  input real                 throughput_complete_i,
-  input real                 stim_latency_i,
-  input real                 tot_latency_i,
+  input logic [N_DRIVERS-1:0] end_req_i,
+  input logic [N_DRIVERS-1:0] end_resp_i,
+  input real                  throughput_complete_i,
+  input real                  stim_latency_i,
+  input real                  tot_latency_i,
   input real                 latency_per_master_i[N_DRIVERS],
   input real                 sum_req_to_gnt_latency_log_i[N_DRIVERS-N_HWPE],
   input real                 sum_req_to_gnt_latency_hwpe_i[N_HWPE],
@@ -60,6 +60,13 @@ module simulation_report
     int unsigned log_masters_with_grants;
     int unsigned hwpe_masters_with_grants;
     logic missing_reads;
+    // Ideal bandwidth: maximum data the memory system can serve per cycle.
+    // Memory side: N_BANKS narrow ports, each DATA_WIDTH bits wide.
+    real ideal_bw_mem_side_bpc;    // bits per cycle (memory-side ceiling)
+    // Master side: sum of all master bandwidths at 100% traffic.
+    real ideal_bw_master_side_bpc; // bits per cycle (master-side ceiling)
+    real ideal_bw_bpc;             // min(mem, master) = bottleneck ideal BW
+    real actual_bw_utilization;    // throughput_complete / ideal_bw
 
     sum_req_to_gnt_latency_all = 0.0;
     average_req_to_gnt_latency_weighted = 0.0;
@@ -81,9 +88,9 @@ module simulation_report
     hwpe_masters_with_grants = '0;
     missing_reads = 1'b0;
 
-    wait (&end_stimuli_i);
+    wait (&end_req_i);
     wait (stim_latency_i >= 0);
-    wait (&end_latency_i);
+    wait (&end_resp_i);
     wait (throughput_complete_i >= 0);
     wait (tot_latency_i >= 0);
     for (int i = 0; i < N_CORE; i++) begin
@@ -184,6 +191,19 @@ module simulation_report
           average_req_to_gnt_latency_hwpe_unweighted / real'(hwpe_masters_with_grants);
     end
 
+    // Ideal bandwidth computation.
+    // Memory side: each of the N_BANKS banks can serve one DATA_WIDTH word per cycle.
+    ideal_bw_mem_side_bpc = real'(N_BANKS) * real'(DATA_WIDTH);
+    // Master side: N_LOG_MASTERS narrow ports + N_HWPE wide ports, all at 100% traffic.
+    ideal_bw_master_side_bpc = real'(N_LOG_MASTERS) * real'(DATA_WIDTH)
+                             + real'(N_HWPE)         * real'(HWPE_WIDTH_FACT * DATA_WIDTH);
+    // Bottleneck = minimum of the two sides.
+    ideal_bw_bpc = (ideal_bw_mem_side_bpc < ideal_bw_master_side_bpc)
+                 ? ideal_bw_mem_side_bpc : ideal_bw_master_side_bpc;
+    // Utilization = actual / ideal.
+    actual_bw_utilization = (ideal_bw_bpc > 0.0)
+                          ? (throughput_complete_i / ideal_bw_bpc * 100.0) : 0.0;
+
     $display("------ Simulation Summary ------");
     $display("\\\\HW CONFIG\\\\");
     $display(
@@ -205,10 +225,24 @@ module simulation_report
 
     $display("\n\\\\BANDWIDTH\\\\");
     $display(
-      "Completion bandwidth (writes granted + reads completed): %0.2f bit/cycle",
-      throughput_complete_i
+      "Ideal BW (memory side):  %0.0f bit/cycle  [%0d banks x %0d bits]",
+      ideal_bw_mem_side_bpc, N_BANKS, DATA_WIDTH
     );
-    $display("Stimulus phase duration: %0.2f cycles", stim_latency_i);
+    $display(
+      "Ideal BW (master side):  %0.0f bit/cycle  [%0d log x %0d bits + %0d hwpe x %0d bits]",
+      ideal_bw_master_side_bpc,
+      N_LOG_MASTERS, DATA_WIDTH,
+      N_HWPE, HWPE_WIDTH_FACT * DATA_WIDTH
+    );
+    $display(
+      "Ideal BW (bottleneck):   %0.0f bit/cycle",
+      ideal_bw_bpc
+    );
+    $display(
+      "Actual BW (completion):  %0.2f bit/cycle  [utilization: %0.1f%%]",
+      throughput_complete_i, actual_bw_utilization
+    );
+    $display("Stimulus phase duration:  %0.2f cycles", stim_latency_i);
     $display("Completion phase duration: %0.2f cycles", tot_latency_i);
     $display(
       "Granted transactions: reads=%0d writes=%0d total=%0d",

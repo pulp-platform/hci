@@ -27,7 +27,8 @@ module tb_hci
 ();
 
   logic                   clk, rst_n;
-  logic                   s_clear;
+  logic [N_DRIVERS-1:0]   s_end_req;   // end_req_o from all drivers, [N_DRIVERS-1:0] ordering
+  logic [N_DRIVERS-1:0]   s_clear_drv; // per-driver clear_i (held 1 until dependencies done)
   hci_interconnect_ctrl_t s_hci_ctrl;
 
   clk_rst_gen #(
@@ -194,6 +195,16 @@ module tb_hci
         );
       end
     end else if (INTERCO_TYPE == MUX) begin : gen_hwpe_mux
+      // In MUX mode, sel_i must point at the currently active HWPE (the one not gated by
+      // clear_i). Priority: lowest index wins if multiple are somehow simultaneously active.
+      logic [$clog2(N_HWPE > 1 ? N_HWPE-1 : 1):0] s_mux_sel;
+      always_comb begin
+        s_mux_sel = '0;
+        for (int i = N_HWPE-1; i >= 0; i--) begin
+          if (!s_clear_drv[N_LOG_MASTERS + i])
+            s_mux_sel = ($clog2(N_HWPE > 1 ? N_HWPE-1 : 1) + 1)'(i);
+        end
+      end
       hci_core_mux_static #(
         .NB_CHAN(N_HWPE),
         .`HCI_SIZE_PARAM(in)(HCI_SIZE_hwpe)
@@ -201,7 +212,7 @@ module tb_hci
         .clk_i(clk),
         .rst_ni(rst_n),
         .clear_i(s_clear),
-        .sel_i('0),
+        .sel_i(s_mux_sel),
         .in(hci_driver_hwpe_if),
         .out(hci_initiator_wide[0])
       );
@@ -227,10 +238,33 @@ module tb_hci
     end
   endgenerate
 
+  logic s_clear;
   assign s_clear = 1'b0;
+
   assign s_hci_ctrl.arb_policy = ARBITER_MODE;
   assign s_hci_ctrl.invert_prio = INVERT_PRIO;
   assign s_hci_ctrl.low_prio_max_stall = LOW_PRIO_MAX_STALL;
+
+  // Driver clear logic: driver i is held in reset until all drivers j in its effective wait
+  // mask have asserted end_req_o. If the effective mask is zero, the driver starts immediately.
+  //
+  // In MUX mode the user-defined WAIT_MASKS are ignored for HWPE drivers: instead a strict
+  // sequential chain is enforced (HWPE i waits for HWPE i-1), because hci_core_mux_static
+  // only forwards one HWPE at a time. HWPE ordering follows the index = position in
+  // hwpe_masters[] in workload.json. LOG master masks are always taken from WAIT_MASKS.
+  generate
+    for (genvar ii = 0; ii < N_DRIVERS; ii++) begin : gen_driver_clear
+      logic [N_DRIVERS-1:0] eff_mask;
+      if (INTERCO_TYPE == MUX && ii >= N_LOG_MASTERS) begin : gen_mux_mask
+        // HWPE 0 (ii == N_LOG_MASTERS): no wait; HWPE k waits for HWPE k-1
+        assign eff_mask = (ii == N_LOG_MASTERS) ? '0 : (N_DRIVERS'(1) << (ii - 1));
+      end else begin : gen_default_mask
+        assign eff_mask = WAIT_MASKS[ii];
+      end
+      assign s_clear_drv[ii] = (eff_mask != '0) &&
+                                ((s_end_req & eff_mask) != eff_mask);
+    end
+  endgenerate
 
   hci_interconnect #(
     .N_HWPE(N_WIDE_HCI),
@@ -284,15 +318,14 @@ module tb_hci
   // Application drivers //
   /////////////////////////
 
-  logic [0:N_DRIVERS-1] s_end_stimuli;
-  logic [0:N_DRIVERS-1] s_end_latency;
+  logic [N_DRIVERS-1:0] s_end_resp;
   int unsigned s_issued_transactions[0:N_DRIVERS-1];
   int unsigned s_issued_read_transactions[0:N_DRIVERS-1];
 
   generate
     for (genvar ii = 0; ii < N_LOG_MASTERS; ii++) begin : gen_app_driver_log
       localparam string STIM_FILE_LOG =
-          $sformatf("../simvectors/generated/stimuli_processed/master_log_%0d.txt", ii);
+          $sformatf("../simvectors/generated/stimuli/master_log_%0d.txt", ii);
       application_driver #(
         .MASTER_NUMBER(ii),
         .DATA_WIDTH(DATA_WIDTH),
@@ -302,10 +335,10 @@ module tb_hci
       ) i_app_driver_log (
         .clk_i(clk),
         .rst_ni(rst_n),
-        .clear_i(1'b0),
+        .clear_i(s_clear_drv[ii]),
         .hci_if(hci_driver_log_if[ii]),
-        .end_req_o(s_end_stimuli[ii]),
-        .end_resp_o(s_end_latency[ii]),
+        .end_req_o(s_end_req[ii]),
+        .end_resp_o(s_end_resp[ii]),
         .n_issued_tr_o(s_issued_transactions[ii]),
         .n_issued_rd_tr_o(s_issued_read_transactions[ii]),
         .n_retired_rd_tr_o()
@@ -316,7 +349,7 @@ module tb_hci
   generate
     for (genvar ii = 0; ii < N_HWPE; ii++) begin : gen_app_driver_hwpe
       localparam string STIM_FILE_HWPE =
-          $sformatf("../simvectors/generated/stimuli_processed/master_hwpe_%0d.txt", ii);
+          $sformatf("../simvectors/generated/stimuli/master_hwpe_%0d.txt", ii);
       application_driver #(
         .MASTER_NUMBER(ii),
         .DATA_WIDTH(HWPE_WIDTH_FACT * DATA_WIDTH),
@@ -326,10 +359,10 @@ module tb_hci
       ) i_app_driver_hwpe (
         .clk_i(clk),
         .rst_ni(rst_n),
-        .clear_i(1'b0),
+        .clear_i(s_clear_drv[N_LOG_MASTERS + ii]),
         .hci_if(hci_driver_hwpe_if[ii]),
-        .end_req_o(s_end_stimuli[N_LOG_MASTERS + ii]),
-        .end_resp_o(s_end_latency[N_LOG_MASTERS + ii]),
+        .end_req_o(s_end_req[N_LOG_MASTERS + ii]),
+        .end_resp_o(s_end_resp[N_LOG_MASTERS + ii]),
         .n_issued_tr_o(s_issued_transactions[N_LOG_MASTERS + ii]),
         .n_issued_rd_tr_o(s_issued_read_transactions[N_LOG_MASTERS + ii]),
         .n_retired_rd_tr_o()
@@ -366,8 +399,8 @@ module tb_hci
   ) i_throughput_monitor (
     .clk_i(clk),
     .rst_ni(rst_n),
-    .end_stimuli_i(s_end_stimuli),
-    .end_latency_i(s_end_latency),
+    .end_req_i(s_end_req),
+    .end_resp_i(s_end_resp),
     .n_read_complete_log_i(N_READ_COMPLETE_TRANSACTIONS_LOG),
     .n_read_complete_hwpe_i(N_READ_COMPLETE_TRANSACTIONS_HWPE),
     .n_write_granted_log_i(N_WRITE_GRANTED_TRANSACTIONS_LOG),
@@ -399,8 +432,8 @@ module tb_hci
   );
 
   simulation_report i_simulation_report (
-    .end_stimuli_i(s_end_stimuli),
-    .end_latency_i(s_end_latency),
+    .end_req_i(s_end_req),
+    .end_resp_i(s_end_resp),
     .throughput_complete_i(throughput_completed),
     .stim_latency_i(stim_latency),
     .tot_latency_i(tot_latency),

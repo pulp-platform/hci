@@ -1,8 +1,6 @@
 {
   "description": "Testbench configuration parameters",
   "parameters": {
-    "N_TRANSACTION_LOG": 1000,
-    "TRANSACTION_RATIO": 1,
     "CLK_PERIOD": 50,
     "RST_CLK_CYCLES": 10,
     "RANDOM_GNT": 0,

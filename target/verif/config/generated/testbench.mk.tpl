@@ -5,8 +5,6 @@
 # This file is auto-generated from testbench.json - DO NOT EDIT MANUALLY
 
 # Testbench parameters (from testbench.json)
-N_TRANSACTION_LOG?=${N_TRANSACTION_LOG}
-TRANSACTION_RATIO?=${TRANSACTION_RATIO}
 CLK_PERIOD?=${CLK_PERIOD}
 RST_CLK_CYCLES?=${RST_CLK_CYCLES}
 RANDOM_GNT?=${RANDOM_GNT}
