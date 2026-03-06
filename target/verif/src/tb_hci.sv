@@ -292,20 +292,20 @@ module tb_hci
           $sformatf("../simvectors/generated/stimuli_processed/master_log_%0d.txt", ii);
       application_driver #(
         .MASTER_NUMBER(ii),
-        .IS_HWPE(0),
         .DATA_WIDTH(DATA_WIDTH),
         .ADDR_WIDTH(ADDR_WIDTH),
-        .APPL_DELAY(APPL_DELAY),
         .IW(IW_cores),
         .STIM_FILE(STIM_FILE_LOG)
       ) i_app_driver_log (
         .clk_i(clk),
         .rst_ni(rst_n),
+        .clear_i(1'b0),
         .hci_if(hci_driver_log_if[ii]),
-        .end_stimuli_o(s_end_stimuli[ii]),
-        .end_latency_o(s_end_latency[ii]),
-        .n_issued_transactions_o(s_issued_transactions[ii]),
-        .n_issued_read_transactions_o(s_issued_read_transactions[ii])
+        .end_req_o(s_end_stimuli[ii]),
+        .end_resp_o(s_end_latency[ii]),
+        .n_issued_tr_o(s_issued_transactions[ii]),
+        .n_issued_rd_tr_o(s_issued_read_transactions[ii]),
+        .n_retired_rd_tr_o()
       );
     end
   endgenerate
@@ -316,20 +316,20 @@ module tb_hci
           $sformatf("../simvectors/generated/stimuli_processed/master_hwpe_%0d.txt", ii);
       application_driver #(
         .MASTER_NUMBER(ii),
-        .IS_HWPE(1),
         .DATA_WIDTH(HWPE_WIDTH_FACT * DATA_WIDTH),
         .ADDR_WIDTH(ADDR_WIDTH),
-        .APPL_DELAY(APPL_DELAY),
         .IW(IW_hwpe),
         .STIM_FILE(STIM_FILE_HWPE)
       ) i_app_driver_hwpe (
         .clk_i(clk),
         .rst_ni(rst_n),
+        .clear_i(1'b0),
         .hci_if(hci_driver_hwpe_if[ii]),
-        .end_stimuli_o(s_end_stimuli[N_LOG_MASTERS + ii]),
-        .end_latency_o(s_end_latency[N_LOG_MASTERS + ii]),
-        .n_issued_transactions_o(s_issued_transactions[N_LOG_MASTERS + ii]),
-        .n_issued_read_transactions_o(s_issued_read_transactions[N_LOG_MASTERS + ii])
+        .end_req_o(s_end_stimuli[N_LOG_MASTERS + ii]),
+        .end_resp_o(s_end_latency[N_LOG_MASTERS + ii]),
+        .n_issued_tr_o(s_issued_transactions[N_LOG_MASTERS + ii]),
+        .n_issued_rd_tr_o(s_issued_read_transactions[N_LOG_MASTERS + ii]),
+        .n_retired_rd_tr_o()
       );
     end
   endgenerate

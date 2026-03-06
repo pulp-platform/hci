@@ -19,54 +19,112 @@
 
 module application_driver #(
   parameter int unsigned MASTER_NUMBER = 1,
-  parameter int unsigned IS_HWPE = 1,
   parameter int unsigned DATA_WIDTH = 1,
   parameter int unsigned ADDR_WIDTH = 1,
-  parameter int unsigned APPL_DELAY = 2,  // Delay on the input signals
   parameter int unsigned IW = 1,
   parameter string STIM_FILE = ""
 ) (
   input logic             clk_i,
   input logic             rst_ni,
+  input logic             clear_i, // used to gate the driver or to reset it
   hci_core_intf.initiator hci_if,
-  output logic            end_stimuli_o,
-  output logic            end_latency_o,
-  output int unsigned     n_issued_transactions_o,
-  output int unsigned     n_issued_read_transactions_o
+  output logic            end_req_o,
+  output logic            end_resp_o,
+  output int unsigned     n_issued_tr_o,
+  output int unsigned     n_issued_rd_tr_o,
+  output int unsigned     n_retired_rd_tr_o
 );
 
-  logic [IW-1:0] id;
-  string file_path;
-  int stim;
-  int scan_status;
-  logic wen;
-  logic req;
-  logic [DATA_WIDTH-1:0] data;
-  logic [ADDR_WIDTH-1:0]  add;
-  int unsigned n_completed_read_transactions;
-  logic pending_rsp_is_read[$];
+  int unsigned n_req_issued_q, n_req_issued_d; // total number of issued requests
+  int unsigned n_rd_req_issued_q, n_rd_req_issued_d; // total number of issued read requests
+  int unsigned n_rd_resp_retired_q, n_rd_resp_retired_d; // total number of retired read responses
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : proc_read_response_counter
-    logic retired_is_read;
-    if (!rst_ni) begin
-      n_completed_read_transactions <= '0;
-      pending_rsp_is_read.delete();
+  // Transaction queue from file
+  typedef struct {
+    logic req;
+    logic [IW-1:0] id;
+    logic wen;
+    logic [DATA_WIDTH-1:0] data;
+    logic [ADDR_WIDTH-1:0] add;
+  } transaction_t;
+  transaction_t transactions[$];
+
+  // Fill up the queue by reading the stimuli file until the end
+  initial begin
+    string file_path;
+    int stim;
+    int scan_status;
+
+    if (STIM_FILE != "") begin
+      file_path = STIM_FILE;
     end else begin
-      if (hci_if.req && hci_if.gnt) begin
-        pending_rsp_is_read.push_back(hci_if.wen);
-      end
-      if (hci_if.r_valid && hci_if.r_ready) begin
-        if (pending_rsp_is_read.size() != 0) begin
-          retired_is_read = pending_rsp_is_read.pop_front();
-          if (retired_is_read) begin
-            n_completed_read_transactions <= n_completed_read_transactions + 1;
-          end
+      $fatal("ERROR: Specify STIM_FILE path");
+    end
+    // Open file
+    stim = $fopen(file_path, "r");
+    if (stim == 0) begin
+      $fatal("ERROR: Could not open stimuli file");
+    end
+    // Read every line
+    while (!$feof(stim)) begin
+      transaction_t transaction;
+      scan_status = $fscanf(stim, "%b %b %b %b %b\n", transaction.req, transaction.id, transaction.wen, transaction.data, transaction.add);
+      if (scan_status != 5) begin
+        if (!$feof(stim)) begin
+          $fatal(1, "ERROR: malformed stimuli line in %s", file_path);
         end
+        break;
       end
+      // First-in, first-out queue
+      transactions.push_back(transaction);
+    end
+    $fclose(stim);
+  end
+
+  //////////////////
+  // Requests FSM //
+  //////////////////
+
+  typedef enum logic [1:0] {
+    REQ_IDLE,
+    WAIT_GNT,
+    REQ_DONE,
+    RSP_DONE
+  } req_state_t;
+
+  req_state_t req_state_q, req_state_d;
+  int unsigned tr_idx_q, tr_idx_d; // transaction ID
+  int unsigned last_op_issued_q, last_op_issued_d; // ID of the last issued operation (read or write)
+
+  assign n_issued_tr_o = n_req_issued_q;
+  assign n_issued_rd_tr_o = n_rd_req_issued_q;
+
+  // Sequential logic
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni || clear_i) begin
+      req_state_q <= REQ_IDLE;
+      tr_idx_q <= '0;
+      n_req_issued_q <= '0;
+      n_rd_req_issued_q <= '0;
+      last_op_issued_q <= '0;
+    end else begin
+      req_state_q <= req_state_d;
+      tr_idx_q <= tr_idx_d;
+      n_req_issued_q <= n_req_issued_d;
+      n_rd_req_issued_q <= n_rd_req_issued_d;
+      last_op_issued_q <= last_op_issued_d;
     end
   end
 
-  initial begin : proc_application_driver
+  // Combinational state logic
+  always_comb begin
+    // Defaults (FSM)
+    req_state_d = req_state_q;
+    tr_idx_d = tr_idx_q;
+    n_req_issued_d = n_req_issued_q;
+    n_rd_req_issued_d = n_rd_req_issued_q;
+    last_op_issued_d = last_op_issued_q;
+    // Defaults (HCI outputs)
     hci_if.id = '0;
     hci_if.add = '0;
     hci_if.data = '0;
@@ -78,68 +136,197 @@ module application_driver #(
     hci_if.be = '1;
     hci_if.r_ready = 1'b1;
     hci_if.user = '0;
-    end_stimuli_o = 1'b0;
-    end_latency_o = 1'b0;
-    n_issued_transactions_o = '0;
-    n_issued_read_transactions_o = '0;
+    // Defaults (outputs)
+    end_req_o = 1'b0;
+    end_resp_o = 1'b0;
+    // inputs: gnt, r_data, r_valid, r_user, r_id
 
-    wait (rst_ni);
-    if (STIM_FILE != "") begin
-      file_path = STIM_FILE;
-    end else begin
-      if (IS_HWPE) begin
-        file_path = $sformatf(
-          "../simvectors/generated/stimuli_processed/master_hwpe_%0d.txt",
-          MASTER_NUMBER
-        );
-      end else begin
-        file_path = $sformatf(
-          "../simvectors/generated/stimuli_processed/master_log_%0d.txt",
-          MASTER_NUMBER
-        );
-      end
-    end
-    stim = $fopen(file_path, "r");
-    if (stim == 0) begin
-      $fatal("ERROR: Could not open stimuli file!");
-    end
-    @(posedge clk_i);
-    while (!$feof(stim)) begin
-      scan_status = $fscanf(stim, "%b %b %b %b %b\n", req, id, wen, data, add);
-      if (scan_status != 5) begin
-        if (!$feof(stim)) begin
-          $fatal(1, "ERROR: malformed stimuli line in %s", file_path);
+    case (req_state_q)
+      REQ_IDLE: begin
+        // Check if there are still transactions to issue
+        if (tr_idx_q < transactions.size()) begin
+          // If so, increase transaction index for next iteration
+          tr_idx_d = tr_idx_q + 1;
+          // If this transaction is a request
+          if (transactions[tr_idx_q].req) begin
+            hci_if.req = 1'b1;
+            hci_if.id = transactions[tr_idx_q].id;
+            hci_if.wen = transactions[tr_idx_q].wen;
+            hci_if.data = transactions[tr_idx_q].data;
+            hci_if.add = transactions[tr_idx_q].add;
+            // Update counters
+            n_req_issued_d = n_req_issued_q + 1;
+            if (transactions[tr_idx_q].wen) begin
+              n_rd_req_issued_d = n_rd_req_issued_q + 1;
+            end
+            last_op_issued_d = tr_idx_q;
+            // If granted already, stay in REQ_IDLE, otherwise go to WAIT_GNT
+            if (hci_if.gnt) begin
+              req_state_d = REQ_IDLE;
+            end else begin
+              req_state_d = WAIT_GNT;
+            end
+          end
+        end else begin
+          // If no more transactions to issue
+          if (n_rd_req_issued_q > n_rd_resp_retired_q) begin
+            // If there are still read responses to retire, wait for them before finishing
+            req_state_d = REQ_DONE;
+          end else begin
+            req_state_d = RSP_DONE;
+          end
         end
-        break;
-      end
-      #(APPL_DELAY);
-      hci_if.id = id;
-      hci_if.data = data;
-      hci_if.add = add;
-      hci_if.wen = wen;
-      hci_if.req = req;
-
-      if (req) begin
-        @(posedge clk_i iff hci_if.gnt);
-        n_issued_transactions_o++;
-        if (wen) begin
-          n_issued_read_transactions_o++;
+        // Synchronously clear
+        if (clear_i) begin
+          req_state_d = REQ_IDLE;
         end
-        // Deassert in NBA region so monitors sampling this edge see the handshake.
-        hci_if.id <= '0;
-        hci_if.data <= '0;
-        hci_if.add <= '0;
-        hci_if.wen <= 1'b0;
-        hci_if.req <= 1'b0;
-        wait (hci_if.req == 1'b0);
-      end else begin
-        @(posedge clk_i);
       end
-    end
-
-    $fclose(stim);
-    end_stimuli_o = 1'b1;
-    wait (n_completed_read_transactions >= n_issued_read_transactions_o);
-    end_latency_o = 1'b1;
+      WAIT_GNT: begin
+        hci_if.req = 1'b1;
+        hci_if.id = transactions[last_op_issued_q].id;
+        hci_if.wen = transactions[last_op_issued_q].wen;
+        hci_if.data = transactions[last_op_issued_q].data;
+        hci_if.add = transactions[last_op_issued_q].add;
+        // Check if there are still transactions to issue
+        if (tr_idx_q < transactions.size()) begin
+          // Check whether to stall or not transaction fetching, in case this is a idle transaction that can hide mem latency
+          if (!transactions[tr_idx_q].req) begin
+            tr_idx_d = tr_idx_q + 1;
+          end else begin
+            tr_idx_d = tr_idx_q;
+          end
+          // If grant received, go back to REQ_IDLE and pop another transaction, otherwise stay in WAIT_GNT
+          if (hci_if.gnt) begin
+            req_state_d = REQ_IDLE;
+          end else begin
+            req_state_d = WAIT_GNT;
+          end
+        end else begin
+          // If there are no more transactions, wait for last grant and then finish
+          if (hci_if.gnt) begin
+            if (transactions[last_op_issued_q].req && transactions[last_op_issued_q].wen) begin
+              // If the last transaction was a read, we need to wait for its response before finishing
+              req_state_d = REQ_DONE;
+            end else begin
+              // If the last transaction was a write, we can finish right away
+              req_state_d = RSP_DONE;
+            end
+          end else begin
+            req_state_d = WAIT_GNT;
+          end
+        end
+        // Synchronously clear
+        if (clear_i) begin
+          req_state_d = REQ_IDLE;
+        end
+      end
+      REQ_DONE: begin
+        end_req_o = 1'b1;
+        if (n_rd_resp_retired_q >= n_rd_req_issued_q) begin
+          // All read responses have been retired
+          req_state_d = RSP_DONE;
+        end else begin
+          req_state_d = REQ_DONE;
+        end
+        // Synchronously clear
+        if (clear_i) begin
+          req_state_d = REQ_IDLE;
+        end
+      end
+      RSP_DONE: begin
+        end_req_o = 1'b1;
+        end_resp_o = 1'b1;
+        // Synchronously clear
+        if (clear_i) begin
+          req_state_d = REQ_IDLE;
+        end
+      end
+      default: begin
+        req_state_d = REQ_IDLE;
+      end
+    endcase
   end
+
+  ///////////////////////
+  // Read response FSM //
+  ///////////////////////
+
+  // We only consider read responses as write responses are not mandatory in HCI
+
+  typedef enum logic {
+    RESP_IDLE,
+    RESP_WAIT_RVALID
+  } resp_state_t;
+
+  resp_state_t resp_state_q, resp_state_d;
+  int unsigned n_rd_in_flight_q, n_rd_in_flight_d; // number of reads granted but not yet responded
+
+  assign n_retired_rd_tr_o = n_rd_resp_retired_q;
+
+  // Sequential logic
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni || clear_i) begin
+      resp_state_q <= RESP_IDLE;
+      n_rd_resp_retired_q <= '0;
+      n_rd_in_flight_q <= '0;
+    end else begin
+      resp_state_q <= resp_state_d;
+      n_rd_resp_retired_q <= n_rd_resp_retired_d;
+      n_rd_in_flight_q <= n_rd_in_flight_d;
+    end
+  end
+
+  // Combinational state logic
+  always_comb begin
+    // Defaults (FSM)
+    resp_state_d = resp_state_q;
+    n_rd_resp_retired_d = n_rd_resp_retired_q;
+    n_rd_in_flight_d = n_rd_in_flight_q;
+
+    case (resp_state_q)
+      RESP_IDLE: begin
+        // If a read request is granted, increment in-flight counter and go to RESP_WAIT_RVALID
+        if (hci_if.req && hci_if.wen && hci_if.gnt) begin
+          n_rd_in_flight_d = n_rd_in_flight_q + 1;
+          resp_state_d = RESP_WAIT_RVALID;
+        end
+        // Synchronously clear
+        if (clear_i) begin
+          resp_state_d = RESP_IDLE;
+          n_rd_in_flight_d = '0;
+        end
+      end
+      RESP_WAIT_RVALID: begin
+        // Track newly granted reads while waiting
+        if (hci_if.req && hci_if.wen && hci_if.gnt) begin
+          n_rd_in_flight_d = n_rd_in_flight_q + 1;
+        end
+        // When read response handshake happens, retire one response
+        if (hci_if.r_valid && hci_if.r_ready) begin
+          n_rd_resp_retired_d = n_rd_resp_retired_q + 1;
+          // Adjust in-flight: account for simultaneous grant (already added above)
+          if (hci_if.req && hci_if.wen && hci_if.gnt) begin
+            // net in-flight = in_flight + 1 (new grant) - 1 (retired) = in_flight
+            n_rd_in_flight_d = n_rd_in_flight_q; // undo the +1 above, net unchanged
+          end else begin
+            n_rd_in_flight_d = n_rd_in_flight_q - 1;
+          end
+          // If no more in-flight reads (after this retirement), go back to RESP_IDLE
+          if (n_rd_in_flight_q == 1 && !(hci_if.req && hci_if.wen && hci_if.gnt)) begin
+            resp_state_d = RESP_IDLE;
+          end
+        end
+        // Synchronously clear
+        if (clear_i) begin
+          resp_state_d = RESP_IDLE;
+          n_rd_in_flight_d = '0;
+        end
+      end
+      default: begin
+        resp_state_d = RESP_IDLE;
+        n_rd_in_flight_d = '0;
+      end
+    endcase
+  end
+
 endmodule

@@ -4,14 +4,14 @@
     "N_HWPE": 2,
     "HWPE_WIDTH_FACT": 8,
     "N_CORE": 8,
-    "N_DMA": 1,
+    "N_DMA": 0,
     "N_EXT": 1,
+    "DATA_WIDTH": 32,
+    "TOT_MEM_SIZE": 128,
+    "N_BANKS": 32,
     "INTERCO_TYPE": "LOG",
     "TS_BIT": 21,
     "EXPFIFO": 0,
-    "SEL_LIC": 0,
-    "DATA_WIDTH": 32,
-    "TOT_MEM_SIZE": 32,
-    "N_BANKS": 64
+    "SEL_LIC": 0
   }
 }
