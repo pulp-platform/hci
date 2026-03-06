@@ -32,10 +32,13 @@ PYTHON ?= python3
 # Config gen #
 ##############
 
-# Source-of-truth JSON configs
-VERIF_CFG_JSON := $(HCI_VERIF_CFG_DIR)/hardware.json \
-	$(HCI_VERIF_CFG_DIR)/testbench.json \
-	$(HCI_VERIF_CFG_DIR)/workload.json
+# JSON configs are configurable from env var (default to config/)
+HARDWARE_JSON  ?= $(HCI_VERIF_CFG_DIR)/hardware.json
+TESTBENCH_JSON ?= $(HCI_VERIF_CFG_DIR)/testbench.json
+WORKLOAD_JSON  ?= $(HCI_VERIF_CFG_DIR)/workload.json
+
+# Source-of-truth JSON configs (used as stim-verif dependencies)
+VERIF_CFG_JSON := $(HARDWARE_JSON) $(TESTBENCH_JSON) $(WORKLOAD_JSON)
 
 # Makefiles to generate from JSON configs
 VERIF_CFG_MK := $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk \
@@ -43,9 +46,12 @@ VERIF_CFG_MK := $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk \
 
 .PHONY: config-verif
 config-verif: $(VERIF_CFG_MK)
-# Generate Makefiles from JSON configs
-$(HCI_VERIF_CFG_GEN_DIR)/%.mk: $(HCI_VERIF_CFG_DIR)/%.json $(HCI_VERIF_CFG_GEN_DIR)/%.mk.tpl $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py | $(HCI_VERIF_CFG_GEN_DIR)
-	$(PYTHON) $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py $* $(HCI_VERIF_CFG_DIR) $(HCI_VERIF_CFG_GEN_DIR) > $@
+
+$(HCI_VERIF_CFG_GEN_DIR)/hardware.mk: $(HARDWARE_JSON) $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk.tpl $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py | $(HCI_VERIF_CFG_GEN_DIR)
+	$(PYTHON) $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py hardware $(dir $(HARDWARE_JSON)) $(HCI_VERIF_CFG_GEN_DIR) > $@
+
+$(HCI_VERIF_CFG_GEN_DIR)/testbench.mk: $(TESTBENCH_JSON) $(HCI_VERIF_CFG_GEN_DIR)/testbench.mk.tpl $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py | $(HCI_VERIF_CFG_GEN_DIR)
+	$(PYTHON) $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py testbench $(dir $(TESTBENCH_JSON)) $(HCI_VERIF_CFG_GEN_DIR) > $@
 
 $(HCI_VERIF_CFG_GEN_DIR):
 	mkdir -p $@
@@ -67,9 +73,9 @@ stim-verif: $(SIMVECTORS_GEN_DIR)/.stim_stamp
 $(SIMVECTORS_GEN_DIR)/.stim_stamp: $(VERIF_CFG_JSON) $(STIM_SRC_FILES)
 	mkdir -p $(SIMVECTORS_GEN_DIR)
 	$(PYTHON) $(GEN_STIM_SCRIPT) \
-		--workload_config $(HCI_VERIF_CFG_DIR)/workload.json \
-		--testbench_config $(HCI_VERIF_CFG_DIR)/testbench.json \
-		--hardware_config $(HCI_VERIF_CFG_DIR)/hardware.json
+		--workload_config $(WORKLOAD_JSON) \
+		--testbench_config $(TESTBENCH_JSON) \
+		--hardware_config $(HARDWARE_JSON)
 	date > $@
 
 .PHONY: clean-stim-verif
