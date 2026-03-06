@@ -337,6 +337,28 @@ module tb_hci
     end
   endgenerate
 
+  /////////////////////
+  // Address checker //
+  /////////////////////
+
+  logic run_check, check_done;
+
+  address_checker #(
+    .N_LOG      (N_LOG_MASTERS),
+    .N_HWPE     (N_HWPE),
+    .N_BANKS    (N_BANKS),
+    .ADD_WIDTH  (ADDR_WIDTH),
+    .HWPE_WIDTH (HWPE_WIDTH_FACT * DATA_WIDTH)
+  ) i_address_checker (
+    .clk_i       (clk),
+    .rst_ni      (rst_n),
+    .run_i       (run_check),
+    .done_o      (check_done),
+    .hci_log_if  (hci_driver_log_if),
+    .hci_hwpe_if (hci_driver_hwpe_if),
+    .hci_mem_if  (hci_target_mems)
+  );
+
   /////////
   // QoS //
   /////////
@@ -414,7 +436,9 @@ module tb_hci
     .n_write_granted_transactions_log_i(N_WRITE_GRANTED_TRANSACTIONS_LOG),
     .n_write_granted_transactions_hwpe_i(N_WRITE_GRANTED_TRANSACTIONS_HWPE),
     .n_read_complete_transactions_log_i(N_READ_COMPLETE_TRANSACTIONS_LOG),
-    .n_read_complete_transactions_hwpe_i(N_READ_COMPLETE_TRANSACTIONS_HWPE)
+    .n_read_complete_transactions_hwpe_i(N_READ_COMPLETE_TRANSACTIONS_HWPE),
+    .run_check_o  (run_check),
+    .check_done_i (check_done)
   );
 
   localparam int unsigned MAX_BANK_LOCAL_ADDR =

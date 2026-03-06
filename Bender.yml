@@ -73,6 +73,7 @@ sources:
           - target/verif/src/latency_monitor.sv
           - target/verif/src/throughput_monitor.sv
           # Level 2
+          - target/verif/src/address_checker.sv
           - target/verif/src/simulation_report.sv
           # Level 3
           - target/verif/src/tb_hci.sv

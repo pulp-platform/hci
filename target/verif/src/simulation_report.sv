@@ -35,7 +35,9 @@ module simulation_report
   input int unsigned         n_write_granted_transactions_log_i[N_DRIVERS-N_HWPE],
   input int unsigned         n_write_granted_transactions_hwpe_i[N_HWPE],
   input int unsigned         n_read_complete_transactions_log_i[N_DRIVERS-N_HWPE],
-  input int unsigned         n_read_complete_transactions_hwpe_i[N_HWPE]
+  input int unsigned         n_read_complete_transactions_hwpe_i[N_HWPE],
+  output logic               run_check_o,
+  input  logic               check_done_i
 );
 
   initial begin : proc_simulation_report
@@ -80,6 +82,7 @@ module simulation_report
     log_masters_with_grants = '0;
     hwpe_masters_with_grants = '0;
     missing_reads = 1'b0;
+    run_check_o = 1'b0;
 
     wait (&end_stimuli_i);
     wait (stim_latency_i >= 0);
@@ -410,6 +413,8 @@ module simulation_report
     );
     $display("");
 
+    run_check_o = 1'b1;
+    wait (check_done_i === 1'b1);
     $finish();
   end
 

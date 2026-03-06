@@ -4,7 +4,7 @@
     "N_HWPE": 2,
     "HWPE_WIDTH_FACT": 8,
     "N_CORE": 8,
-    "N_DMA": 0,
+    "N_DMA": 1,
     "N_EXT": 1,
     "DATA_WIDTH": 32,
     "TOT_MEM_SIZE": 128,
