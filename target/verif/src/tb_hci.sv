@@ -243,7 +243,8 @@ module tb_hci
 
   assign s_hci_ctrl.arb_policy = ARBITER_MODE;
   assign s_hci_ctrl.invert_prio = INVERT_PRIO;
-  assign s_hci_ctrl.low_prio_max_stall = LOW_PRIO_MAX_STALL;
+  assign s_hci_ctrl.priority_cnt_numerator = PRIORITY_CNT_NUMERATOR;
+  assign s_hci_ctrl.priority_cnt_denominator = PRIORITY_CNT_DENOMINATOR;
 
   // Driver clear logic: driver i is held in reset until all drivers j in its effective wait
   // mask have asserted end_req_o. If the effective mask is zero, the driver starts immediately.

@@ -44,13 +44,15 @@
  * .. _hci_arbiter_ctrl:
  * .. table:: **hci_arbiter** input control signals.
  *
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | **Name**             | **Type**               | **Description**                                               |
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | *invert_prio*        | `logic`                | When 1, invert priorities between `in_high` and `in_low`.     |
- *   +----------------------+------------------------+---------------------------------------------------------------+
- *   | *low_prio_max_stall* | `logic[7:0]`           | Maximum number of consecutive stalls on low-priority channel. |
- *   +----------------------+------------------------+---------------------------------------------------------------+
+ *   +----------------------------+--------------+-------------------------------------------------------------------------------+
+ *   | **Name**                   | **Type**     | **Description**                                                               |
+ *   +----------------------------+--------------+-------------------------------------------------------------------------------+
+ *   | *invert_prio*              | `logic`      | When 1, invert priorities between `in_high` and `in_low`.                     |
+ *   +----------------------------+--------------+-------------------------------------------------------------------------------+
+ *   | *priority_cnt_numerator*   | `logic[7:0]` | Maximum number of consecutive stalls on low-priority channel.                 |
+ *   +----------------------------+--------------+-------------------------------------------------------------------------------+
+ *   | *priority_cnt_denominator* | `logic[7:0]` | Clear condition of priority counter (max low-prio stalls + high-prio stalls). |
+ *   +----------------------------+--------------+-------------------------------------------------------------------------------+
  *
  */
  
@@ -75,8 +77,9 @@ module hci_arbiter
   logic [NB_CHAN-1:0] hs_pass_d;
   logic hs_req_d;
   logic ls_req_d;
+  logic hs_req_masked_d;
   logic switch_channels_d;
-  logic unsigned [7:0] ls_stall_ctr_d;
+  logic unsigned [7:0] priority_cnt_q;
 
   // priority_req is the OR of all requests coming out of the log interconnect.
   // it should be simplified to simply an OR of all requests coming *into* the
@@ -85,10 +88,11 @@ module hci_arbiter
   begin
     hs_req_d = |hs_req_in;
     ls_req_d = |ls_req_in;
-    if (ctrl_i.low_prio_max_stall > 0) //Set to 0 to disable this functionality
+    hs_req_masked_d = hs_req_d;
+    if (ctrl_i.priority_cnt_numerator > 0) //Set to 0 to disable this functionality
     begin
-      if (ls_stall_ctr_d >= ctrl_i.low_prio_max_stall)
-        hs_req_d = 0; //Let low side through for once
+      if (priority_cnt_q >= ctrl_i.priority_cnt_numerator && priority_cnt_q < ctrl_i.priority_cnt_denominator)
+        hs_req_masked_d = 0; //Let low side through for once
     end
   end
   
@@ -96,11 +100,11 @@ module hci_arbiter
 	always_ff @(posedge clk_i or negedge rst_ni)
 	begin
 		if (~rst_ni)
-			ls_stall_ctr_d <= 0;
+			priority_cnt_q <= 0;
+    else if(priority_cnt_q == ctrl_i.priority_cnt_denominator-1)
+      priority_cnt_q <= 0;
 		else if (hs_req_d & ls_req_d)
-			ls_stall_ctr_d <= ls_stall_ctr_d + 1;
-    else
-			ls_stall_ctr_d <= 0;
+			priority_cnt_q <= priority_cnt_q + 1;
 	end
   
   assign switch_channels_d = ctrl_i.invert_prio;
@@ -129,7 +133,7 @@ module hci_arbiter
   // Side select
   generate
     for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
-      assign hs_pass_d[ii] = (hs_req_d & hs_req_in[ii]) ^ switch_channels_d;
+      assign hs_pass_d[ii] = (hs_req_masked_d & hs_req_in[ii]) ^ switch_channels_d;
     end // side_select
   endgenerate
 
