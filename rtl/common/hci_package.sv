@@ -51,7 +51,8 @@ package hci_package;
   typedef struct packed {
     logic [1:0] arb_policy; // used only in some systems
     logic       invert_prio;
-    logic [7:0] low_prio_max_stall;
+    logic [7:0] priority_cnt_numerator;
+    logic [7:0] priority_cnt_denominator;
   } hci_interconnect_ctrl_t;
 
   typedef struct packed {

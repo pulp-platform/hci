@@ -230,7 +230,8 @@ module tb_hci
   assign s_clear = 1'b0;
   assign s_hci_ctrl.arb_policy = ARBITER_MODE;
   assign s_hci_ctrl.invert_prio = INVERT_PRIO;
-  assign s_hci_ctrl.low_prio_max_stall = LOW_PRIO_MAX_STALL;
+  assign s_hci_ctrl.priority_cnt_numerator = PRIORITY_CNT_NUMERATOR;
+  assign s_hci_ctrl.priority_cnt_denominator = PRIORITY_CNT_DENOMINATOR;
 
   hci_interconnect #(
     .N_HWPE(N_WIDE_HCI),
