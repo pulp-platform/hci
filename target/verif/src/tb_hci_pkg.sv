@@ -37,7 +37,8 @@ package tb_hci_pkg;
   localparam int unsigned RANDOM_GNT          = `ifdef RANDOM_GNT `RANDOM_GNT `else 0 `endif;
   localparam int unsigned ARBITER_MODE        = 0;
   localparam int unsigned INVERT_PRIO         = `ifdef INVERT_PRIO `INVERT_PRIO `else 0 `endif;
-  localparam int unsigned LOW_PRIO_MAX_STALL  = `ifdef LOW_PRIO_MAX_STALL `LOW_PRIO_MAX_STALL `else 3 `endif;
+  localparam int unsigned PRIORITY_CNT_NUMERATOR  = `ifdef PRIORITY_CNT_NUMERATOR `PRIORITY_CNT_NUMERATOR `else 3 `endif;
+  localparam int unsigned PRIORITY_CNT_DENOMINATOR  = `ifdef PRIORITY_CNT_DENOMINATOR `PRIORITY_CNT_DENOMINATOR `else 4 `endif;
 
   /////////////////////////////
   // Configurable parameters //

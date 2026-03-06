@@ -278,7 +278,8 @@ module hci_interconnect
       always_comb
       begin
         ctrl_arbiter_tree = ctrl_i;
-        ctrl_arbiter_tree.low_prio_max_stall = 1;
+        ctrl_arbiter_tree.priority_cnt_numerator = 1;
+        ctrl_arbiter_tree.priority_cnt_denominator = 2;
       end
 
       hci_arbiter_tree #(
