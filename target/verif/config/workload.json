@@ -1,144 +1,58 @@
 {
-  "description": "Workload configuration for stimuli generation",
-  "simulation_parameters": {
-    "EXACT_OR_MAX_OFFSET": 0,
-    "CYCLE_OFFSET_LOG": 1,
-    "CYCLE_OFFSET_HWPE": 1
-  },
+  "description": "8 cores at 50% traffic in dedicated regions + 3 HWPEs: DMA imports tile B, GEMM reads tile B and writes output, Transpose reads GEMM output and writes transposed result. DMA and GEMM run concurrently (wave0), Transpose waits for wave0.",
+
   "log_masters": [
-    {
-      "id": 0,
-      "description": "Core 0",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 1,
-      "description": "Core 1",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 2,
-      "description": "Core 2",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 3,
-      "description": "Core 3",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 4,
-      "description": "Core 4",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 5,
-      "description": "Core 5",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 6,
-      "description": "Core 6",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 7,
-      "description": "Core 7",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 8,
-      "description": "DMA 0",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    },
-    {
-      "id": 9,
-      "description": "External 0",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
-    }
+    { "id": 0, "description": "Core 0", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00000000", "region_base_address": "0x00000000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
+    { "id": 1, "description": "Core 1", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00001000", "region_base_address": "0x00001000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
+    { "id": 2, "description": "Core 2", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00002000", "region_base_address": "0x00002000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
+    { "id": 3, "description": "Core 3", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00003000", "region_base_address": "0x00003000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
+    { "id": 4, "description": "Core 4", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00004000", "region_base_address": "0x00004000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
+    { "id": 5, "description": "Core 5", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00005000", "region_base_address": "0x00005000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
+    { "id": 6, "description": "Core 6", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00006000", "region_base_address": "0x00006000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
+    { "id": 7, "description": "Core 7", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00007000", "region_base_address": "0x00007000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
+    { "id": 8, "description": "External 0 (idle)", "mem_access_type": "idle" }
   ],
+
   "hwpe_masters": [
     {
       "id": 0,
-      "description": "HWPE 0",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
+      "description": "DMA — wide tile import into buffer B (0x08000–0x0FFFF)",
+      "mem_access_type": "random",
+      "n_transactions": 1000,
+      "traffic_pct": 100,
+      "traffic_read_pct": 0,
+      "region_base_address": "0x00008000",
+      "region_size_bytes": 32768,
+      "phase": "hwpe_wave0"
     },
     {
       "id": 1,
-      "description": "HWPE 1",
-      "mem_access_type": 0,
-      "start_address": 0,
-      "stride0": 0,
-      "len_d0": 0,
-      "stride1": 0,
-      "len_d1": 0,
-      "stride2": 0
+      "description": "GEMM — reads tile B from DMA buffer (0x08000–0x0FFFF), writes output to buffer C (0x10000–0x17FFF)",
+      "mem_access_type": "matmul_phased",
+      "n_transactions": 1000,
+      "region_base_address_a": "0x00008000",
+      "region_size_bytes_a": 32768,
+      "matmul_ratio_b": 0,
+      "region_base_address_c": "0x00010000",
+      "region_size_bytes_c": 32768,
+      "matmul_ratio_a": 1,
+      "matmul_ratio_c": 1,
+      "phase": "hwpe_wave0"
+    },
+    {
+      "id": 2,
+      "description": "Transpose engine — reads GEMM output (0x10000–0x17FFF), writes transposed result (0x18000–0x1FFFF)",
+      "mem_access_type": "matmul_phased",
+      "n_transactions": 1000,
+      "region_base_address_a": "0x00010000",
+      "region_size_bytes_a": 32768,
+      "matmul_ratio_b": 0,
+      "region_base_address_c": "0x00018000",
+      "region_size_bytes_c": 32768,
+      "matmul_ratio_a": 1,
+      "matmul_ratio_c": 1,
+      "phase": "hwpe_wave1",
+      "wait_for": ["hwpe_wave0"]
     }
   ]
 }

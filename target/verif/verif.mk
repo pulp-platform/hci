@@ -11,6 +11,9 @@ HCI_VERIF_CFG_GEN_DIR = $(HCI_VERIF_CFG_DIR)/generated
 # Include generated Makefiles
 include $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk
 include $(HCI_VERIF_CFG_GEN_DIR)/testbench.mk
+ifeq (,$(filter clean%,$(MAKECMDGOALS)))
+-include $(HCI_VERIF_CFG_GEN_DIR)/wait_masks.mk
+endif
 
 # Bender targets and defines
 include $(HCI_VERIF_DIR)/bender.mk
@@ -27,6 +30,30 @@ SIM_VSIM ?= $(SIM_QUESTA) vsim
 SIM_VOPT ?= $(SIM_QUESTA) vopt
 
 PYTHON ?= python3
+
+##################
+# Simvectors gen #
+##################
+
+GEN_STIM_SCRIPT := $(HCI_VERIF_DIR)/simvectors/main.py
+STIM_SRC_FILES := $(shell find $(HCI_VERIF_DIR)/config -type f -not -path '$(HCI_VERIF_CFG_GEN_DIR)/*') \
+                  $(shell find $(HCI_VERIF_DIR)/simvectors -type f -not -path '$(HCI_VERIF_DIR)/simvectors/generated/*')
+SIMVECTORS_GEN_DIR := $(HCI_VERIF_DIR)/simvectors/generated
+
+.PHONY: stim-verif
+stim-verif: $(SIMVECTORS_GEN_DIR)/.stim_stamp
+$(SIMVECTORS_GEN_DIR)/.stim_stamp: $(VERIF_CFG_JSON) $(STIM_SRC_FILES) $(GEN_STIM_SCRIPT) | $(HCI_VERIF_CFG_GEN_DIR)
+	mkdir -p $(SIMVECTORS_GEN_DIR)
+	$(PYTHON) $(GEN_STIM_SCRIPT) \
+		--workload_config $(WORKLOAD_JSON) \
+		--testbench_config $(TESTBENCH_JSON) \
+		--hardware_config $(HARDWARE_JSON) \
+		--emit_phases_mk $(HCI_VERIF_CFG_GEN_DIR)/wait_masks.mk
+	date > $@
+
+.PHONY: clean-stim-verif
+clean-stim-verif:
+	rm -rf $(SIMVECTORS_GEN_DIR)
 
 ##############
 # Config gen #
@@ -58,29 +85,7 @@ $(HCI_VERIF_CFG_GEN_DIR):
 
 .PHONY: clean-config-verif
 clean-config-verif:
-	rm -f $(VERIF_CFG_MK)
-
-##################
-# Simvectors gen #
-##################
-
-GEN_STIM_SCRIPT := $(HCI_VERIF_DIR)/simvectors/main.py
-STIM_SRC_FILES := $(shell find {$(HCI_VERIF_DIR)/config,$(HCI_VERIF_DIR)/simvectors} -type f)
-SIMVECTORS_GEN_DIR := $(HCI_VERIF_DIR)/simvectors/generated
-
-.PHONY: stim-verif
-stim-verif: $(SIMVECTORS_GEN_DIR)/.stim_stamp
-$(SIMVECTORS_GEN_DIR)/.stim_stamp: $(VERIF_CFG_JSON) $(STIM_SRC_FILES)
-	mkdir -p $(SIMVECTORS_GEN_DIR)
-	$(PYTHON) $(GEN_STIM_SCRIPT) \
-		--workload_config $(WORKLOAD_JSON) \
-		--testbench_config $(TESTBENCH_JSON) \
-		--hardware_config $(HARDWARE_JSON)
-	date > $@
-
-.PHONY: clean-stim-verif
-clean-stim-verif:
-	rm -rf $(SIMVECTORS_GEN_DIR)
+	rm -f $(VERIF_CFG_MK) $(HCI_VERIF_CFG_GEN_DIR)/wait_masks.mk
 
 ##############
 # Simulation #
@@ -113,9 +118,13 @@ ifeq ($(GUI),0)
 	SIM_HCI_VSIM_ARGS += -c
 endif
 
-$(HCI_VERIF_DIR)/vsim/compile.tcl: $(HCI_ROOT)/Bender.lock $(HCI_ROOT)/Bender.yml $(HCI_ROOT)/bender.mk $(HCI_VERIF_DIR)/bender.mk $(SIM_SRC_FILES) $(VERIF_CFG_MK)
+WAIT_MASKS_MK := $(HCI_VERIF_CFG_GEN_DIR)/wait_masks.mk
+WAIT_MASKS_PARAM = $(shell grep '^WAIT_MASKS_PARAM' $(WAIT_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
+
+$(HCI_VERIF_DIR)/vsim/compile.tcl: $(HCI_ROOT)/Bender.lock $(HCI_ROOT)/Bender.yml $(HCI_ROOT)/bender.mk $(HCI_VERIF_DIR)/bender.mk $(SIM_SRC_FILES) $(VERIF_CFG_MK) $(SIMVECTORS_GEN_DIR)/.stim_stamp
 	mkdir -p $(HCI_VERIF_DIR)/vsim
-	$(BENDER) script vsim $(COMMON_DEFS) $(VERIF_DEFS) $(COMMON_TARGS) $(VERIF_TARGS) --vlog-arg="$(SIM_HCI_VLOG_ARGS)" > $@
+	$(BENDER) script vsim $(COMMON_DEFS) $(VERIF_DEFS) $(COMMON_TARGS) $(VERIF_TARGS) \
+		--vlog-arg="$(SIM_HCI_VLOG_ARGS) \"+define+WAIT_MASKS_PARAM=$(WAIT_MASKS_PARAM)\"" > $@
 
 .PHONY: compile-verif
 compile-verif: $(sim_vsim_lib)/.hw_compiled

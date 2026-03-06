@@ -85,7 +85,8 @@ module application_driver #(
   // Requests FSM //
   //////////////////
 
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
+    REQ_RESET,
     REQ_IDLE,
     WAIT_GNT,
     REQ_DONE,
@@ -102,7 +103,7 @@ module application_driver #(
   // Sequential logic
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni || clear_i) begin
-      req_state_q <= REQ_IDLE;
+      req_state_q <= REQ_RESET;
       tr_idx_q <= '0;
       n_req_issued_q <= '0;
       n_rd_req_issued_q <= '0;
@@ -142,6 +143,11 @@ module application_driver #(
     // inputs: gnt, r_data, r_valid, r_user, r_id
 
     case (req_state_q)
+      REQ_RESET: begin
+        if (!clear_i) begin
+          req_state_d = REQ_IDLE;
+        end
+      end
       REQ_IDLE: begin
         // Check if there are still transactions to issue
         if (tr_idx_q < transactions.size()) begin
@@ -175,10 +181,6 @@ module application_driver #(
           end else begin
             req_state_d = RSP_DONE;
           end
-        end
-        // Synchronously clear
-        if (clear_i) begin
-          req_state_d = REQ_IDLE;
         end
       end
       WAIT_GNT: begin
@@ -215,10 +217,6 @@ module application_driver #(
             req_state_d = WAIT_GNT;
           end
         end
-        // Synchronously clear
-        if (clear_i) begin
-          req_state_d = REQ_IDLE;
-        end
       end
       REQ_DONE: begin
         end_req_o = 1'b1;
@@ -228,21 +226,13 @@ module application_driver #(
         end else begin
           req_state_d = REQ_DONE;
         end
-        // Synchronously clear
-        if (clear_i) begin
-          req_state_d = REQ_IDLE;
-        end
       end
       RSP_DONE: begin
         end_req_o = 1'b1;
         end_resp_o = 1'b1;
-        // Synchronously clear
-        if (clear_i) begin
-          req_state_d = REQ_IDLE;
-        end
       end
       default: begin
-        req_state_d = REQ_IDLE;
+        req_state_d = REQ_RESET;
       end
     endcase
   end
@@ -253,7 +243,8 @@ module application_driver #(
 
   // We only consider read responses as write responses are not mandatory in HCI
 
-  typedef enum logic {
+  typedef enum logic [1:0] {
+    RESP_RESET,
     RESP_IDLE,
     RESP_WAIT_RVALID
   } resp_state_t;
@@ -284,16 +275,16 @@ module application_driver #(
     n_rd_in_flight_d = n_rd_in_flight_q;
 
     case (resp_state_q)
+      RESP_RESET: begin
+        if (!clear_i) begin
+          resp_state_d = RESP_IDLE;
+        end
+      end
       RESP_IDLE: begin
         // If a read request is granted, increment in-flight counter and go to RESP_WAIT_RVALID
         if (hci_if.req && hci_if.wen && hci_if.gnt) begin
           n_rd_in_flight_d = n_rd_in_flight_q + 1;
           resp_state_d = RESP_WAIT_RVALID;
-        end
-        // Synchronously clear
-        if (clear_i) begin
-          resp_state_d = RESP_IDLE;
-          n_rd_in_flight_d = '0;
         end
       end
       RESP_WAIT_RVALID: begin
@@ -316,15 +307,9 @@ module application_driver #(
             resp_state_d = RESP_IDLE;
           end
         end
-        // Synchronously clear
-        if (clear_i) begin
-          resp_state_d = RESP_IDLE;
-          n_rd_in_flight_d = '0;
-        end
       end
       default: begin
-        resp_state_d = RESP_IDLE;
-        n_rd_in_flight_d = '0;
+        resp_state_d = RESP_RESET;
       end
     endcase
   end
