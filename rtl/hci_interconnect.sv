@@ -268,6 +268,19 @@ module hci_interconnect
     
       end : hwpe_req2mem
 
+      // Set arbitration tree to be perfectly fair. It must not
+      // follow the max stall policy of the HWPE vs LIC arbiter.
+      // FIXME: it would be interesting to explore what happens
+      // with an unfair but configurable setting. Probably we need
+      // a generator to do that, I do not see a way to code it in
+      // pure SystemVerilog.
+      hci_interconnect_ctrl_t ctrl_arbiter_tree;
+      always_comb
+      begin
+        ctrl_arbiter_tree = ctrl_i;
+        ctrl_arbiter_tree.low_prio_max_stall = 1;
+      end
+
       hci_arbiter_tree #(
         .NB_REQUESTS(N_HWPE),
         .NB_CHAN ( N_MEM ),
@@ -278,7 +291,7 @@ module hci_interconnect
         .clk_i   ( clk_i               ),
         .rst_ni  ( rst_ni              ),
         .clear_i ( clear_i             ),
-        .ctrl_i  ( ctrl_i              ),
+        .ctrl_i  ( ctrl_arbiter_tree   ),
         .in      ( hwpe_mem            ),
         .out     ( hwpe_mem_muxed      )
       );
