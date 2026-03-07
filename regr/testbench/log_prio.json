@@ -1,0 +1,11 @@
+{
+  "description": "Testbench configuration parameters",
+  "parameters": {
+    "CLK_PERIOD": 50,
+    "RST_CLK_CYCLES": 10,
+    "RANDOM_GNT": 0,
+    "INVERT_PRIO": 0,
+    "PRIORITY_CNT_NUMERATOR": 9,
+    "PRIORITY_CNT_DENOMINATOR": 10
+  }
+}
