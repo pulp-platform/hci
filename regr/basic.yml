@@ -19,13 +19,13 @@
 hci_tests:
   log_fair:
     path: .
-    command: make clean-sim-verif stim-verif compile-verif run-verif TESTBENCH_JSON=regr/testbench/fair.json HARDWARE_JSON=regr/hardware/log.json
+    command: make clean-config-verif clean-stim-verif clean-sim-verif config-verif stim-verif compile-verif run-verif TESTBENCH_JSON=regr/testbench/fair/testbench.json HARDWARE_JSON=regr/hardware/log/hardware.json
   hci_fair:
     path: .
-    command: make clean-sim-verif stim-verif compile-verif run-verif TESTBENCH_JSON=regr/testbench/fair.json HARDWARE_JSON=regr/hardware/hci.json
+    command: make clean-config-verif clean-stim-verif clean-sim-verif config-verif stim-verif compile-verif run-verif TESTBENCH_JSON=regr/testbench/fair/testbench.json HARDWARE_JSON=regr/hardware/hci/hardware.json
   hci_hwpe_prio:
     path: .
-    command: make clean-sim-verif stim-verif compile-verif run-verif TESTBENCH_JSON=regr/testbench/hwpe_prio.json HARDWARE_JSON=regr/hardware/hci.json
+    command: make clean-config-verif clean-stim-verif clean-sim-verif config-verif stim-verif compile-verif run-verif TESTBENCH_JSON=regr/testbench/hwpe_prio/testbench.json HARDWARE_JSON=regr/hardware/hci/hardware.json
   hci_log_prio:
     path: .
-    command: make clean-sim-verif stim-verif compile-verif run-verif TESTBENCH_JSON=regr/testbench/log_prio.json HARDWARE_JSON=regr/hardware/hci.json
+    command: make clean-config-verif clean-stim-verif clean-sim-verif config-verif stim-verif compile-verif run-verif TESTBENCH_JSON=regr/testbench/log_prio/testbench.json HARDWARE_JSON=regr/hardware/hci/hardware.json
