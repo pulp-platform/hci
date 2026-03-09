@@ -26,7 +26,6 @@ module throughput_monitor #(
 ) (
   input logic                clk_i,
   input logic                rst_ni,
-  input logic [N_MASTER-1:0] end_req_i,
   input logic [N_MASTER-1:0] end_resp_i,
   // Read transactions number
   input int unsigned         n_read_complete_log_i[N_MASTER-N_HWPE],
@@ -36,27 +35,10 @@ module throughput_monitor #(
   input int unsigned         n_write_granted_hwpe_i[N_HWPE],
   // Completion-side throughput: accepted writes + completed reads per elapsed completion cycle.
   output real                throughput_complete_o,
-  // Elapsed cycles from reset release to end_stimuli.
-  output real                stim_latency_o,
   // Total simulation time (cycles) and simulation time per master (cycles)
   output real                tot_latency_o,
   output real                latency_per_master_o[N_MASTER]
 );
-
-  // Stimulus duration at stimulus completion.
-  initial begin
-    time start_time, end_time;
-    real stim_time_cycles;
-    stim_latency_o = -1;
-    wait (rst_ni);
-    #(CLK_PERIOD/100);
-    @(posedge clk_i);
-    start_time = $time;
-    wait (&end_req_i);
-    end_time = $time;
-    stim_time_cycles = real'(end_time - start_time) / real'(CLK_PERIOD);  // cycles
-    stim_latency_o = stim_time_cycles;
-  end
 
   // Completion-side throughput at full completion.
   initial begin
