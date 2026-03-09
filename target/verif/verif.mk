@@ -94,11 +94,7 @@ clean-config-verif:
 ##############
 
 # Parameters
-ifdef gui
-  GUI ?= $(gui)
-else
-  GUI ?= 0
-endif
+GUI ?= $(if $(gui),$(gui),0)
 # Top-level to simulate
 sim_top_level ?= tb_hci
 sim_vsim_lib ?= $(HCI_VERIF_DIR)/vsim/work
