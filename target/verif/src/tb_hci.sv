@@ -4,8 +4,7 @@
  * Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  * Luca Codeluppi <lcodelupp@student.ethz.ch>
  *
- *
- * Copyright (C) 2019-2025 ETH Zurich, University of Bologna
+ * Copyright (C) 2019-2026 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -394,13 +393,13 @@ module tb_hci
   real throughput_completed;
   real tot_latency;
 
-  throughput_monitor #(
+  bandwidth_monitor #(
     .N_MASTER(N_DRIVERS),
     .N_HWPE(N_HWPE),
     .CLK_PERIOD(CLK_PERIOD),
     .DATA_WIDTH(DATA_WIDTH),
     .HWPE_WIDTH_FACT(HWPE_WIDTH_FACT)
-  ) i_throughput_monitor (
+  ) i_bandwidth_monitor (
     .clk_i(clk),
     .rst_ni(rst_n),
     .end_resp_i(s_end_resp),
@@ -413,10 +412,10 @@ module tb_hci
     .latency_per_master_o(latency_per_master)
   );
 
-  latency_monitor #(
+  req_gnt_monitor #(
     .N_MASTER(N_DRIVERS),
     .N_HWPE(N_HWPE)
-  ) i_latency_monitor (
+  ) i_req_gnt_monitor (
     .clk_i(clk),
     .rst_ni(rst_n),
     .hci_driver_log_if(hci_driver_log_if),

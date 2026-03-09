@@ -1,7 +1,10 @@
 /*
- * throughput_monitor.sv
+ * bandwidth_monitor.sv
  *
- * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
+ * Sergio Mazzola <smazzola@iis.ee.ethz.ch>
+ * Luca Codeluppi <lcodelupp@student.ethz.ch>
+ *
+ * Copyright (C) 2019-2026 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -13,11 +16,11 @@
  */
 
 /**
- * Throughput monitor
- * Measures actual throughput and simulation time for each master
+ * Bandwidth monitor
+ * Measures actual bandwidth and completion time for each master
  */
 
-module throughput_monitor #(
+module bandwidth_monitor #(
   parameter int unsigned N_MASTER,
   parameter int unsigned N_HWPE,
   parameter int unsigned CLK_PERIOD,
