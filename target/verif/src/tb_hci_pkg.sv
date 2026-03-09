@@ -4,8 +4,7 @@
  * Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  * Luca Codeluppi <lcodelupp@student.ethz.ch>
  *
- *
- * Copyright (C) 2019-2025 ETH Zurich, University of Bologna
+ * Copyright (C) 2019-2026 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
