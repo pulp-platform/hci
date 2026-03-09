@@ -20,10 +20,8 @@
 module simulation_report
   import tb_hci_pkg::*;
 (
-  input logic [N_DRIVERS-1:0] end_req_i,
   input logic [N_DRIVERS-1:0] end_resp_i,
   input real                  throughput_complete_i,
-  input real                  stim_latency_i,
   input real                  tot_latency_i,
   input real                 latency_per_master_i[N_DRIVERS],
   input real                 sum_req_to_gnt_latency_log_i[N_DRIVERS-N_HWPE],
@@ -88,8 +86,6 @@ module simulation_report
     hwpe_masters_with_grants = '0;
     missing_reads = 1'b0;
 
-    wait (&end_req_i);
-    wait (stim_latency_i >= 0);
     wait (&end_resp_i);
     wait (throughput_complete_i >= 0);
     wait (tot_latency_i >= 0);
@@ -242,7 +238,6 @@ module simulation_report
       "Actual BW (completion):  %0.2f bit/cycle  [utilization: %0.1f%%]",
       throughput_complete_i, actual_bw_utilization
     );
-    $display("Stimulus phase duration:  %0.2f cycles", stim_latency_i);
     $display("Completion phase duration: %0.2f cycles", tot_latency_i);
     $display(
       "Granted transactions: reads=%0d writes=%0d total=%0d",

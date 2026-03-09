@@ -24,7 +24,6 @@ module tb_hci
 ();
 
   logic                   clk, rst_n;
-  logic [N_DRIVERS-1:0]   s_end_req;   // end_req_o from all drivers, [N_DRIVERS-1:0] ordering
   logic [N_DRIVERS-1:0]   s_end_resp;  // end_resp_o from all drivers, [N_DRIVERS-1:0] ordering
   logic [N_DRIVERS-1:0]   s_clear_drv; // per-driver clear_i (held 1 until dependencies done)
   hci_interconnect_ctrl_t s_hci_ctrl;
@@ -342,7 +341,6 @@ module tb_hci
         .rst_ni(rst_n),
         .clear_i(s_clear_drv[ii]),
         .hci_if(hci_driver_log_if[ii]),
-        .end_req_o(s_end_req[ii]),
         .end_resp_o(s_end_resp[ii]),
         .n_issued_tr_o(s_issued_transactions[ii]),
         .n_issued_rd_tr_o(s_issued_read_transactions[ii]),
@@ -366,7 +364,6 @@ module tb_hci
         .rst_ni(rst_n),
         .clear_i(s_clear_drv[N_LOG_MASTERS + ii]),
         .hci_if(hci_driver_hwpe_if[ii]),
-        .end_req_o(s_end_req[N_LOG_MASTERS + ii]),
         .end_resp_o(s_end_resp[N_LOG_MASTERS + ii]),
         .n_issued_tr_o(s_issued_transactions[N_LOG_MASTERS + ii]),
         .n_issued_rd_tr_o(s_issued_read_transactions[N_LOG_MASTERS + ii]),
@@ -392,7 +389,6 @@ module tb_hci
 
   real latency_per_master[N_DRIVERS];
   real throughput_completed;
-  real stim_latency;
   real tot_latency;
 
   throughput_monitor #(
@@ -404,14 +400,12 @@ module tb_hci
   ) i_throughput_monitor (
     .clk_i(clk),
     .rst_ni(rst_n),
-    .end_req_i(s_end_req),
     .end_resp_i(s_end_resp),
     .n_read_complete_log_i(N_READ_COMPLETE_TRANSACTIONS_LOG),
     .n_read_complete_hwpe_i(N_READ_COMPLETE_TRANSACTIONS_HWPE),
     .n_write_granted_log_i(N_WRITE_GRANTED_TRANSACTIONS_LOG),
     .n_write_granted_hwpe_i(N_WRITE_GRANTED_TRANSACTIONS_HWPE),
     .throughput_complete_o(throughput_completed),
-    .stim_latency_o(stim_latency),
     .tot_latency_o(tot_latency),
     .latency_per_master_o(latency_per_master)
   );
@@ -437,10 +431,8 @@ module tb_hci
   );
 
   simulation_report i_simulation_report (
-    .end_req_i(s_end_req),
     .end_resp_i(s_end_resp),
     .throughput_complete_i(throughput_completed),
-    .stim_latency_i(stim_latency),
     .tot_latency_i(tot_latency),
     .latency_per_master_i(latency_per_master),
     .sum_req_to_gnt_latency_log_i(SUM_REQ_TO_GNT_LATENCY_LOG),

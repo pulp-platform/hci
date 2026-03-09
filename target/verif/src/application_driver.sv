@@ -28,7 +28,6 @@ module application_driver #(
   input logic             rst_ni,
   input logic             clear_i, // used to gate the driver or to reset it
   hci_core_intf.initiator hci_if,
-  output logic            end_req_o,
   output logic            end_resp_o,
   output int unsigned     n_issued_tr_o,
   output int unsigned     n_issued_rd_tr_o,
@@ -138,7 +137,6 @@ module application_driver #(
     hci_if.r_ready = 1'b1;
     hci_if.user = '0;
     // Defaults (outputs)
-    end_req_o = 1'b0;
     end_resp_o = 1'b0;
     // inputs: gnt, r_data, r_valid, r_user, r_id
 
@@ -219,7 +217,6 @@ module application_driver #(
         end
       end
       REQ_DONE: begin
-        end_req_o = 1'b1;
         if (n_rd_resp_retired_q >= n_rd_req_issued_q) begin
           // All read responses have been retired
           req_state_d = RSP_DONE;
@@ -228,7 +225,6 @@ module application_driver #(
         end
       end
       RSP_DONE: begin
-        end_req_o = 1'b1;
         end_resp_o = 1'b1;
       end
       default: begin
