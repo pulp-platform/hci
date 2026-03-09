@@ -1,58 +1,508 @@
 {
-  "description": "8 cores at 50% traffic in dedicated regions + 3 HWPEs: DMA imports tile B, GEMM reads tile B and writes output, Transpose reads GEMM output and writes transposed result. DMA and GEMM run concurrently (wave0), Transpose waits for wave0.",
+  "description": "MobileViT-inspired materialized attention kernel. d_model=192, num_heads=4, d_head=48, N=256 tokens, B=128 (2 tiles). One head at a time. Static resident: K^T_head (0x00000, 16kB), V_head (0x04000, 16kB). Ping-pong workspaces: Buf0={Q0 (0x08000,8kB), A0/P0 (0x0A000,64kB), O0 (0x1A000,8kB)}, Buf1={Q1 (0x1C000,8kB), A1/P1 (0x1E000,64kB), O1 (0x2E000,8kB)}. Pipeline: DMA preloads all tensors (dma_setup); GEMM computes Q*K^T->A (gemm_qk_t0); 8 cores softmax A->P in-place (softmax_t0); GEMM computes P*V->O (gemm_pv_t0); 8 cores norm O in-place (norm_t0); repeat for tile 1. Single GEMM engine serializes all 4 GEMM ops.",
 
   "log_masters": [
-    { "id": 0, "description": "Core 0", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00000000", "region_base_address": "0x00000000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
-    { "id": 1, "description": "Core 1", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00001000", "region_base_address": "0x00001000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
-    { "id": 2, "description": "Core 2", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00002000", "region_base_address": "0x00002000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
-    { "id": 3, "description": "Core 3", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00003000", "region_base_address": "0x00003000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
-    { "id": 4, "description": "Core 4", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00004000", "region_base_address": "0x00004000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
-    { "id": 5, "description": "Core 5", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00005000", "region_base_address": "0x00005000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
-    { "id": 6, "description": "Core 6", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00006000", "region_base_address": "0x00006000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
-    { "id": 7, "description": "Core 7", "mem_access_type": "linear", "n_transactions": 2000, "stride0": 1, "start_address": "0x00007000", "region_base_address": "0x00007000", "region_size_bytes": 4096, "traffic_pct": 50, "traffic_read_pct": 50 },
-    { "id": 8, "description": "External 0 (idle)", "mem_access_type": "idle" }
+    {
+      "id": 0,
+      "description": "Core 0",
+      "patterns": [
+        {
+          "description": "softmax tile 0: read+write A0/P0 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t0",
+          "wait_for": ["gemm_qk_t0"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x0A000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 0: read+write O0 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t0",
+          "wait_for": ["gemm_pv_t0"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1A000",
+          "region_size_bytes": 8192
+        },
+        {
+          "description": "softmax tile 1: read+write A1/P1 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t1",
+          "wait_for": ["gemm_qk_t1"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1E000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 1: read+write O1 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t1",
+          "wait_for": ["gemm_pv_t1"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x2E000",
+          "region_size_bytes": 8192
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "description": "Core 1",
+      "patterns": [
+        {
+          "description": "softmax tile 0: read+write A0/P0 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t0",
+          "wait_for": ["gemm_qk_t0"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x0A000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 0: read+write O0 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t0",
+          "wait_for": ["gemm_pv_t0"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1A000",
+          "region_size_bytes": 8192
+        },
+        {
+          "description": "softmax tile 1: read+write A1/P1 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t1",
+          "wait_for": ["gemm_qk_t1"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1E000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 1: read+write O1 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t1",
+          "wait_for": ["gemm_pv_t1"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x2E000",
+          "region_size_bytes": 8192
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "description": "Core 2",
+      "patterns": [
+        {
+          "description": "softmax tile 0: read+write A0/P0 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t0",
+          "wait_for": ["gemm_qk_t0"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x0A000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 0: read+write O0 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t0",
+          "wait_for": ["gemm_pv_t0"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1A000",
+          "region_size_bytes": 8192
+        },
+        {
+          "description": "softmax tile 1: read+write A1/P1 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t1",
+          "wait_for": ["gemm_qk_t1"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1E000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 1: read+write O1 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t1",
+          "wait_for": ["gemm_pv_t1"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x2E000",
+          "region_size_bytes": 8192
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "description": "Core 3",
+      "patterns": [
+        {
+          "description": "softmax tile 0: read+write A0/P0 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t0",
+          "wait_for": ["gemm_qk_t0"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x0A000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 0: read+write O0 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t0",
+          "wait_for": ["gemm_pv_t0"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1A000",
+          "region_size_bytes": 8192
+        },
+        {
+          "description": "softmax tile 1: read+write A1/P1 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t1",
+          "wait_for": ["gemm_qk_t1"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1E000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 1: read+write O1 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t1",
+          "wait_for": ["gemm_pv_t1"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x2E000",
+          "region_size_bytes": 8192
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "description": "Core 4",
+      "patterns": [
+        {
+          "description": "softmax tile 0: read+write A0/P0 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t0",
+          "wait_for": ["gemm_qk_t0"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x0A000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 0: read+write O0 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t0",
+          "wait_for": ["gemm_pv_t0"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1A000",
+          "region_size_bytes": 8192
+        },
+        {
+          "description": "softmax tile 1: read+write A1/P1 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t1",
+          "wait_for": ["gemm_qk_t1"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1E000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 1: read+write O1 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t1",
+          "wait_for": ["gemm_pv_t1"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x2E000",
+          "region_size_bytes": 8192
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "description": "Core 5",
+      "patterns": [
+        {
+          "description": "softmax tile 0: read+write A0/P0 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t0",
+          "wait_for": ["gemm_qk_t0"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x0A000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 0: read+write O0 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t0",
+          "wait_for": ["gemm_pv_t0"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1A000",
+          "region_size_bytes": 8192
+        },
+        {
+          "description": "softmax tile 1: read+write A1/P1 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t1",
+          "wait_for": ["gemm_qk_t1"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1E000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 1: read+write O1 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t1",
+          "wait_for": ["gemm_pv_t1"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x2E000",
+          "region_size_bytes": 8192
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "description": "Core 6",
+      "patterns": [
+        {
+          "description": "softmax tile 0: read+write A0/P0 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t0",
+          "wait_for": ["gemm_qk_t0"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x0A000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 0: read+write O0 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t0",
+          "wait_for": ["gemm_pv_t0"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1A000",
+          "region_size_bytes": 8192
+        },
+        {
+          "description": "softmax tile 1: read+write A1/P1 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t1",
+          "wait_for": ["gemm_qk_t1"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1E000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 1: read+write O1 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t1",
+          "wait_for": ["gemm_pv_t1"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x2E000",
+          "region_size_bytes": 8192
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "description": "Core 7",
+      "patterns": [
+        {
+          "description": "softmax tile 0: read+write A0/P0 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t0",
+          "wait_for": ["gemm_qk_t0"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x0A000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 0: read+write O0 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t0",
+          "wait_for": ["gemm_pv_t0"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1A000",
+          "region_size_bytes": 8192
+        },
+        {
+          "description": "softmax tile 1: read+write A1/P1 in-place",
+          "mem_access_type": "random",
+          "phase": "softmax_t1",
+          "wait_for": ["gemm_qk_t1"],
+          "n_transactions": 2048,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x1E000",
+          "region_size_bytes": 65536
+        },
+        {
+          "description": "norm tile 1: read+write O1 in-place",
+          "mem_access_type": "random",
+          "phase": "norm_t1",
+          "wait_for": ["gemm_pv_t1"],
+          "n_transactions": 384,
+          "traffic_pct": 75,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x2E000",
+          "region_size_bytes": 8192
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "description": "External 0 (idle)",
+      "mem_access_type": "idle"
+    }
   ],
 
   "hwpe_masters": [
     {
       "id": 0,
-      "description": "DMA — wide tile import into buffer B (0x08000–0x0FFFF)",
-      "mem_access_type": "random",
-      "n_transactions": 1000,
-      "traffic_pct": 100,
-      "traffic_read_pct": 0,
-      "region_base_address": "0x00008000",
-      "region_size_bytes": 32768,
-      "phase": "hwpe_wave0"
+      "description": "DMA: preload K^T_head, V_head, Q0, Q1 (all writes, one-shot)",
+      "patterns": [
+        {
+          "description": "Preload K^T_head (0x00000, 12kB active / 16kB padded), V_head (0x04000), Q0 (0x08000), Q1 (0x1C000)",
+          "mem_access_type": "random",
+          "phase": "dma_setup",
+          "n_transactions": 9216,
+          "traffic_pct": 100,
+          "traffic_read_pct": 0,
+          "region_base_address": "0x00000",
+          "region_size_bytes": 122880
+        }
+      ]
     },
     {
       "id": 1,
-      "description": "GEMM — reads tile B from DMA buffer (0x08000–0x0FFFF), writes output to buffer C (0x10000–0x17FFF)",
-      "mem_access_type": "matmul_phased",
-      "n_transactions": 1000,
-      "region_base_address_a": "0x00008000",
-      "region_size_bytes_a": 32768,
-      "matmul_ratio_b": 0,
-      "region_base_address_c": "0x00010000",
-      "region_size_bytes_c": 32768,
-      "matmul_ratio_a": 1,
-      "matmul_ratio_c": 1,
-      "phase": "hwpe_wave0"
-    },
-    {
-      "id": 2,
-      "description": "Transpose engine — reads GEMM output (0x10000–0x17FFF), writes transposed result (0x18000–0x1FFFF)",
-      "mem_access_type": "matmul_phased",
-      "n_transactions": 1000,
-      "region_base_address_a": "0x00010000",
-      "region_size_bytes_a": 32768,
-      "matmul_ratio_b": 0,
-      "region_base_address_c": "0x00018000",
-      "region_size_bytes_c": 32768,
-      "matmul_ratio_a": 1,
-      "matmul_ratio_c": 1,
-      "phase": "hwpe_wave1",
-      "wait_for": ["hwpe_wave0"]
+      "description": "GEMM engine: 4 sequential ops (QK_t0, PV_t0, QK_t1, PV_t1)",
+      "patterns": [
+        {
+          "description": "QK tile 0: read Q0 [128x48 int8], write A0 [128x256 int16]",
+          "mem_access_type": "matmul_phased",
+          "phase": "gemm_qk_t0",
+          "wait_for": ["dma_setup"],
+          "matrix_m": 128,
+          "matrix_n": 256,
+          "matrix_k": 48,
+          "region_base_address_a": "0x08000",
+          "region_size_bytes_a": 8192,
+          "matmul_ratio_a": 1,
+          "region_base_address_b": "0x00000",
+          "region_size_bytes_b": 16384,
+          "matmul_ratio_b": 0,
+          "region_base_address_c": "0x0A000",
+          "region_size_bytes_c": 65536,
+          "matmul_ratio_c": 4
+        },
+        {
+          "description": "PV tile 0: read P0 [128x256 int16], write O0 [128x48 int8]",
+          "mem_access_type": "matmul_phased",
+          "phase": "gemm_pv_t0",
+          "wait_for": ["softmax_t0"],
+          "matrix_m": 128,
+          "matrix_n": 48,
+          "matrix_k": 256,
+          "region_base_address_a": "0x0A000",
+          "region_size_bytes_a": 65536,
+          "matmul_ratio_a": 4,
+          "region_base_address_b": "0x04000",
+          "region_size_bytes_b": 16384,
+          "matmul_ratio_b": 0,
+          "region_base_address_c": "0x1A000",
+          "region_size_bytes_c": 8192,
+          "matmul_ratio_c": 1
+        },
+        {
+          "description": "QK tile 1: read Q1 [128x48 int8], write A1 [128x256 int16]",
+          "mem_access_type": "matmul_phased",
+          "phase": "gemm_qk_t1",
+          "wait_for": ["norm_t0"],
+          "matrix_m": 128,
+          "matrix_n": 256,
+          "matrix_k": 48,
+          "region_base_address_a": "0x1C000",
+          "region_size_bytes_a": 8192,
+          "matmul_ratio_a": 1,
+          "region_base_address_b": "0x00000",
+          "region_size_bytes_b": 16384,
+          "matmul_ratio_b": 0,
+          "region_base_address_c": "0x1E000",
+          "region_size_bytes_c": 65536,
+          "matmul_ratio_c": 4
+        },
+        {
+          "description": "PV tile 1: read P1 [128x256 int16], write O1 [128x48 int8]",
+          "mem_access_type": "matmul_phased",
+          "phase": "gemm_pv_t1",
+          "wait_for": ["softmax_t1"],
+          "matrix_m": 128,
+          "matrix_n": 48,
+          "matrix_k": 256,
+          "region_base_address_a": "0x1E000",
+          "region_size_bytes_a": 65536,
+          "matmul_ratio_a": 4,
+          "region_base_address_b": "0x04000",
+          "region_size_bytes_b": 16384,
+          "matmul_ratio_b": 0,
+          "region_base_address_c": "0x2E000",
+          "region_size_bytes_c": 8192,
+          "matmul_ratio_c": 1
+        }
+      ]
     }
   ]
 }

@@ -24,48 +24,39 @@
   },
 
   "$defs": {
-    "master": {
+
+    "pattern": {
       "type": "object",
-      "description": "Per-master stimulus configuration. The active pattern is selected by mem_access_type.",
+      "description": "A single traffic pattern segment. Multiple patterns on the same master are executed sequentially, separated by PAUSE fence tokens in the stimulus file.",
       "required": ["mem_access_type"],
       "unevaluatedProperties": false,
       "properties": {
 
-        "id": {
-          "type": "integer",
-          "description": "Optional consistency label. Mapping is always positional; a mismatch triggers a warning."
-        },
         "description": {
           "type": "string",
-          "description": "Human-readable label shown in the memory-map report."
+          "description": "Human-readable label for this pattern segment, shown in the memory-map report."
         },
         "mem_access_type": {
           "type": "string",
           "enum": ["idle", "random", "linear", "2d", "3d", "matmul_phased", "matmul"],
-          "description": "Access pattern selector. 'matmul' is an alias for 'matmul_phased'. Use traffic_pct/traffic_read_pct on 'random'/'linear' to model bus utilization."
+          "description": "Access pattern selector. 'matmul' is an alias for 'matmul_phased'."
         },
         "phase": {
           "type": "string",
           "default": "default",
-          "description": "Phase group this master belongs to, referenced by other masters' wait_for."
+          "description": "Phase name for this pattern segment. Used by other patterns' wait_for to reference this segment. The master's phase identity is determined by its first pattern's phase."
         },
         "wait_for": {
           "type": "array",
           "items": { "type": "string" },
           "default": [],
-          "description": "Phase names this master waits for before its WAIT_MASK clears in the testbench."
-        },
-        "start_delay_cycles": {
-          "type": "integer",
-          "minimum": 0,
-          "default": 0,
-          "description": "Number of idle cycles prepended to the processed stimuli file (static start delay)."
+          "description": "Phase names this pattern waits for before starting. Generates a PAUSE fence before this pattern segment and holds the driver until all referenced phases have advanced past the same fence level."
         },
 
         "n_transactions": {
           "type": "integer",
           "minimum": 0,
-          "description": "Number of real memory accesses (idles are NOT counted). Mandatory for 'random'. For other patterns can be derived from geometry fields (see per-pattern rules)."
+          "description": "Number of real memory accesses (idles are NOT counted). Mandatory for 'random'. For other patterns can be derived from geometry fields."
         },
 
         "region_base_address": {
@@ -73,20 +64,20 @@
             { "type": "integer", "minimum": 0 },
             { "type": "string", "description": "Decimal, hex (0x...) or binary string." }
           ],
-          "description": "[random, matmul_phased] Base byte address of the memory region. Default: master_local_idx * (total_mem / n_peers_of_kind), aligned to access_bytes."
+          "description": "[random, matmul_phased] Base byte address of the memory region."
         },
         "region_size_bytes": {
           "oneOf": [
             { "type": "integer", "minimum": 0 },
             { "type": "string", "description": "Decimal, hex (0x...) or binary string." }
           ],
-          "description": "[random, matmul_phased] Size in bytes of the memory region. Default: total_mem / n_peers_of_kind. Clamped so region does not exceed total memory."
+          "description": "[random, matmul_phased] Size in bytes of the memory region."
         },
 
         "start_address": {
           "type": "string",
           "default": "0",
-          "description": "[linear, 2d, 3d] Start byte address as decimal, hex (0x...) or binary string."
+          "description": "[linear, 2d, 3d] Start byte address."
         },
         "stride0": {
           "type": "integer",
@@ -114,7 +105,7 @@
         "len_d0": {
           "type": "integer",
           "minimum": 1,
-          "description": "[2d, 3d] Innermost dimension length. Can replace n_transactions together with len_d1 (and len_d2 for 3d)."
+          "description": "[2d, 3d] Innermost dimension length."
         },
         "len_d1": {
           "type": "integer",
@@ -130,7 +121,7 @@
         "matrix_m": {
           "type": "integer",
           "minimum": 1,
-          "description": "[matmul_phased] Rows of A and C. Can replace n_transactions together with matrix_n and matrix_k (total = m*k + k*n + m*n)."
+          "description": "[matmul_phased] Rows of A and C."
         },
         "matrix_n": {
           "type": "integer",
@@ -144,7 +135,7 @@
         },
         "region_base_address_a": {
           "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }],
-          "description": "[matmul_phased] Base address of the read-A region. If set together with region_size_bytes_a, overrides the auto-split for phase A."
+          "description": "[matmul_phased] Base address of the read-A region."
         },
         "region_size_bytes_a": {
           "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }],
@@ -166,12 +157,11 @@
           "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }],
           "description": "[matmul_phased] Size in bytes of the write-C region."
         },
-
         "matmul_ratio_a": {
           "type": "integer",
           "minimum": 0,
           "default": 1,
-          "description": "[matmul_phased] Relative weight of the read-A phase in the transaction split."
+          "description": "[matmul_phased] Relative weight of the read-A phase."
         },
         "matmul_ratio_b": {
           "type": "integer",
@@ -191,19 +181,19 @@
           "minimum": 1,
           "maximum": 100,
           "default": 100,
-          "description": "[random, linear] Bus utilization percentage. After each transaction emit floor((100-pct)/pct) idle cycles. E.g. 50 => 1 idle per transaction (req, idle, req, idle, ...). Default 100 = back-to-back."
+          "description": "[random, linear] Bus utilization percentage."
         },
         "traffic_read_pct": {
           "type": "integer",
           "minimum": 0,
           "maximum": 100,
-          "description": "[random, linear] Percentage of accesses that are reads (wen=1). If omitted, wen is random per transaction. When set, all reads are emitted first, then all writes."
+          "description": "[random, linear] Percentage of accesses that are reads (wen=1)."
         },
         "idle_cycles_between_phases": {
           "type": "integer",
           "minimum": 0,
           "default": 0,
-          "description": "[2d, 3d, matmul_phased] Number of req=0 cycles inserted at each phase boundary (between outer rows for 2d/3d, between read-A/read-B/write-C for matmul_phased). Models compute time between memory bursts."
+          "description": "[2d, 3d, matmul_phased] Idle cycles inserted at each inner phase boundary."
         }
       },
 
@@ -233,6 +223,37 @@
             "anyOf": [{ "required": ["n_transactions"] }, { "required": ["matrix_m", "matrix_n", "matrix_k"] }]
           }
         }
+      ]
+    },
+
+    "master": {
+      "type": "object",
+      "description": "Per-master configuration. A master either has a flat single-pattern config (legacy, backward compatible) or a 'patterns' list for multi-phase execution.",
+      "unevaluatedProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Optional consistency label. Mapping is always positional."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable master label."
+        },
+        "start_delay_cycles": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of idle cycles prepended to the stimulus file before the first pattern."
+        },
+        "patterns": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Ordered list of pattern segments. Executed sequentially; a PAUSE fence token is inserted between each pair of consecutive patterns. The wait_for of pattern f defines which phases must have advanced past fence f before this master resumes. If omitted, the master config itself is treated as a single flat pattern (legacy format).",
+          "items": { "$ref": "#/$defs/pattern" }
+        }
+      },
+      "allOf": [
+        { "$ref": "#/$defs/pattern" }
       ]
     }
   }
