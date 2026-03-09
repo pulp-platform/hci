@@ -71,6 +71,10 @@ class StimuliGenerator(PatternsMixin):
             + "\n"
         )
 
+    def _write_pause(self, file_obj):
+        """Write a PAUSE fence token line."""
+        file_obj.write("PAUSE\n")
+
     def data_wen(self):
         wen = random.randint(0, 1)  # 1=read, 0=write
         if wen:

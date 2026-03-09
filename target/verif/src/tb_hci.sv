@@ -26,8 +26,10 @@ module tb_hci
 ();
 
   logic                   clk, rst_n;
-  logic [N_DRIVERS-1:0]   s_end_resp;  // end_resp_o from all drivers, [N_DRIVERS-1:0] ordering
-  logic [N_DRIVERS-1:0]   s_clear_drv; // per-driver clear_i (held 1 until dependencies done)
+  logic [N_DRIVERS-1:0]   s_end_resp;      // end_resp_o from all drivers
+  logic [N_DRIVERS-1:0]   s_fence_reached; // fence_reached_o from all drivers (level, HIGH while PAUSED)
+  logic [N_DRIVERS-1:0]   s_resume;        // resume_i to each driver (asserted when fence deps are met)
+  int unsigned             fence_idx [N_DRIVERS]; // number of fences each driver has passed so far
   hci_interconnect_ctrl_t s_hci_ctrl;
 
   clk_rst_gen #(
@@ -38,9 +40,9 @@ module tb_hci
     .rst_no(rst_n)
   );
 
-  /////////
-  // HCI //
-  /////////
+  ////////////////////
+  // HCI interfaces //
+  ////////////////////
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '{
     DW:  DW_cores,
@@ -164,6 +166,12 @@ module tb_hci
     .clk(clk)
   );
 
+  ///////////////////////////
+  // Interface assignments //
+  ///////////////////////////
+
+  /* Assignments of narrow initiators to LOG branch of HCI */
+
   generate
     for (genvar ii = 0; ii < N_CORE; ii++) begin : gen_core_to_narrow
       hci_core_assign i_core_to_narrow_assign (
@@ -185,7 +193,11 @@ module tb_hci
         .tcdm_initiator(hci_initiator_ext[ii])
       );
     end
+  endgenerate
 
+  /* Assignments of wide initiators to HCI (either LOG branch, HCI branch, or static MUX) */
+
+  generate
     if (INTERCO_TYPE == HCI) begin : gen_hwpe_hci
       for (genvar ii = 0; ii < N_HWPE; ii++) begin : gen_hwpe_hci_assign
         hci_core_assign i_hwpe_hci_assign (
@@ -194,16 +206,36 @@ module tb_hci
         );
       end
     end else if (INTERCO_TYPE == MUX) begin : gen_hwpe_mux
-      // In MUX mode, sel_i points at the lowest-indexed HWPE that has not yet finished
-      // (i.e. whose end_resp_o has not fired). Once HWPE k asserts end_resp_o, sel_i
-      // advances to k+1. We cannot use s_clear_drv here because HWPE 0 always has
-      // eff_mask='0 so its clear_drv is permanently 0 even after it finishes.
+      // Phase-ordered MUX arbitration:
+      //
+      // The mux is held by whichever HWPE is currently running (not paused, not done).
+      // In-flight reads are drained before any PAUSE (DRAIN_FOR_PAUSE state in the
+      // driver FSM), so sel_i is safe to switch as soon as fence_reached_o goes high.
+      //
+      // When no HWPE is running (all are either paused or done), the mux is granted
+      // to the lowest-indexed HWPE that is paused AND whose fence dependencies are
+      // satisfied (s_resume high). This serializes same-phase jobs by master ID and
+      // respects cross-phase data dependencies.
       logic [$clog2(N_HWPE > 1 ? N_HWPE-1 : 1):0] s_mux_sel;
       always_comb begin
+        automatic logic any_running;
+        any_running = 1'b0;
+        for (int i = 0; i < N_HWPE; i++) begin
+          if (!s_end_resp[N_LOG_MASTERS + i] && !s_fence_reached[N_LOG_MASTERS + i])
+            any_running = 1'b1;
+        end
         s_mux_sel = ($clog2(N_HWPE > 1 ? N_HWPE-1 : 1) + 1)'(N_HWPE - 1);
         for (int i = N_HWPE-1; i >= 0; i--) begin
-          if (!s_end_resp[N_LOG_MASTERS + i])
-            s_mux_sel = ($clog2(N_HWPE > 1 ? N_HWPE-1 : 1) + 1)'(i);
+          if (any_running) begin
+            // Active HWPE holds the mux; lowest index wins (descending loop)
+            if (!s_end_resp[N_LOG_MASTERS + i] && !s_fence_reached[N_LOG_MASTERS + i])
+              s_mux_sel = ($clog2(N_HWPE > 1 ? N_HWPE-1 : 1) + 1)'(i);
+          end else begin
+            // No HWPE running: grant to lowest-indexed paused+ready HWPE
+            if (!s_end_resp[N_LOG_MASTERS + i] && s_fence_reached[N_LOG_MASTERS + i]
+                && s_resume[N_LOG_MASTERS + i])
+              s_mux_sel = ($clog2(N_HWPE > 1 ? N_HWPE-1 : 1) + 1)'(i);
+          end
         end
       end
       hci_core_mux_static #(
@@ -239,6 +271,10 @@ module tb_hci
     end
   endgenerate
 
+  /////////////////
+  // Fence logic //
+  /////////////////
+
   logic s_clear;
   assign s_clear = 1'b0;
 
@@ -247,31 +283,54 @@ module tb_hci
   assign s_hci_ctrl.priority_cnt_numerator = PRIORITY_CNT_NUMERATOR;
   assign s_hci_ctrl.priority_cnt_denominator = PRIORITY_CNT_DENOMINATOR;
 
-  // Driver clear logic: driver i is held in reset until all drivers j in its effective wait
-  // mask have asserted end_resp_o. If the effective mask is zero, the driver starts immediately.
-  //
-  // In MUX mode the user-defined WAIT_MASKS are ignored for HWPE drivers: instead a strict
-  // sequential chain is enforced (HWPE i waits for HWPE i-1), because hci_core_mux_static
-  // only forwards one HWPE at a time. HWPE ordering follows the index = position in
-  // hwpe_masters[] in workload.json. LOG master masks are always taken from WAIT_MASKS.
-  //
-  // All drivers use end_resp_o (s_end_resp) as the handoff condition, guaranteeing that all
-  // in-flight reads from the predecessor have been fully retired before the successor starts.
-  // This is required for correctness in MUX mode (hci_core_mux_static gates r_valid to the
-  // non-selected channel), and is conservatively safe for all other modes.
-  generate
-    for (genvar ii = 0; ii < N_DRIVERS; ii++) begin : gen_driver_clear
-      logic [N_DRIVERS-1:0] eff_mask;
-      if (INTERCO_TYPE == MUX && ii >= N_LOG_MASTERS) begin : gen_mux_mask
-        // HWPE 0 (ii == N_LOG_MASTERS): no wait; HWPE k waits for HWPE k-1's end_resp_o
-        assign eff_mask = (ii == N_LOG_MASTERS) ? '0 : (N_DRIVERS'(1) << (ii - 1));
-      end else begin : gen_default_mask
-        assign eff_mask = WAIT_MASKS[ii];
+  // fence_idx[i]: number of fences driver i has fully passed (exited PAUSED state).
+  // Increments when the handshake fires: resume_i asserted while fence_reached_o is high.
+  // This is the same cycle the driver transitions out of PAUSED, so dependents see the
+  // updated count immediately on the next cycle (after the registered flip-flop updates).
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      for (int i = 0; i < N_DRIVERS; i++) fence_idx[i] <= '0;
+    end else begin
+      for (int i = 0; i < N_DRIVERS; i++) begin
+        if (s_resume[i] && s_fence_reached[i])
+          fence_idx[i] <= fence_idx[i] + 1;
       end
-      assign s_clear_drv[ii] = (eff_mask != '0) &&
-                                ((s_end_resp & eff_mask) != eff_mask);
     end
-  endgenerate
+  end
+
+  // s_resume[i]: fire when for every set bit j in FENCE_MASKS[i][fence_idx[i]],
+  // fence_idx[j] >= FENCE_REQ_LEVELS[i][fence_idx[i]][j].
+  //
+  // fence_idx[j] >= p_j+1 means j has exited the trailing PAUSE after pattern p_j,
+  // i.e. j has completed pattern p_j. No s_fence_reached shortcut needed — the
+  // trailing PAUSE of a zero-mask fence is exited in one cycle, so fence_idx
+  // advances promptly and the check is unambiguous.
+  //
+  // In MUX mode bus serialization is handled by s_mux_sel independently.
+  always_comb begin
+    for (int i = 0; i < N_DRIVERS; i++) begin
+      automatic logic [N_DRIVERS-1:0] cur_mask;
+      automatic logic                 all_satisfied;
+      cur_mask = (fence_idx[i] < MAX_FENCES) ? FENCE_MASKS[i][fence_idx[i]] : '0;
+      all_satisfied = 1'b1;
+      for (int j = 0; j < N_DRIVERS; j++) begin
+        if (cur_mask[j]) begin
+          automatic logic [3:0] req;
+          req = (fence_idx[i] < MAX_FENCES) ?
+                FENCE_REQ_LEVELS_PACKED[i][fence_idx[i]][j*4+3 -: 4] : 4'h0;
+          if (fence_idx[j] < req)
+            all_satisfied = 1'b0;
+        end
+      end
+      // Only assert resume_i while the driver is actually in PAUSED state.
+      // Gating with fence_reached_o makes the signal a clean pulse.
+      s_resume[i] = all_satisfied && s_fence_reached[i];
+    end
+  end
+
+  /////////
+  // HCI //
+  /////////
 
   hci_interconnect #(
     .N_HWPE(N_WIDE_HCI),
@@ -341,8 +400,9 @@ module tb_hci
       ) i_app_driver_log (
         .clk_i(clk),
         .rst_ni(rst_n),
-        .clear_i(s_clear_drv[ii]),
+        .resume_i(s_resume[ii]),
         .hci_if(hci_driver_log_if[ii]),
+        .fence_reached_o(s_fence_reached[ii]),
         .end_resp_o(s_end_resp[ii]),
         .n_issued_tr_o(s_issued_transactions[ii]),
         .n_issued_rd_tr_o(s_issued_read_transactions[ii]),
@@ -364,8 +424,9 @@ module tb_hci
       ) i_app_driver_hwpe (
         .clk_i(clk),
         .rst_ni(rst_n),
-        .clear_i(s_clear_drv[N_LOG_MASTERS + ii]),
+        .resume_i(s_resume[N_LOG_MASTERS + ii]),
         .hci_if(hci_driver_hwpe_if[ii]),
+        .fence_reached_o(s_fence_reached[N_LOG_MASTERS + ii]),
         .end_resp_o(s_end_resp[N_LOG_MASTERS + ii]),
         .n_issued_tr_o(s_issued_transactions[N_LOG_MASTERS + ii]),
         .n_issued_rd_tr_o(s_issued_read_transactions[N_LOG_MASTERS + ii]),
@@ -432,6 +493,10 @@ module tb_hci
     .n_read_complete_hwpe_o(N_READ_COMPLETE_TRANSACTIONS_HWPE)
   );
 
+  ///////////////
+  // Reporting //
+  ///////////////
+
   simulation_report i_simulation_report (
     .end_resp_i(s_end_resp),
     .throughput_complete_i(throughput_completed),
@@ -448,6 +513,10 @@ module tb_hci
     .n_read_complete_transactions_log_i(N_READ_COMPLETE_TRANSACTIONS_LOG),
     .n_read_complete_transactions_hwpe_i(N_READ_COMPLETE_TRANSACTIONS_HWPE)
   );
+
+  ////////////////
+  // Assertions //
+  ////////////////
 
   localparam int unsigned MAX_BANK_LOCAL_ADDR =
       TOT_MEM_SIZE * 1024 / N_BANKS - WIDTH_OF_MEMORY_BYTE;

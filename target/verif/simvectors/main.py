@@ -327,15 +327,18 @@ def main(argv=None):
               f"'n_transactions' and no geometry fields to derive it from.")
         sys.exit(1)
 
-    def _generate_master(
+    def _generate_pattern(
         filepath: Path,
-        master_config: dict,
+        pattern_config: dict,
         *,
         is_hwpe: bool,
         master_global_idx: int,
         master_local_idx: int,
         n_peers_of_kind: int,
+        append: bool,
     ):
+        """Generate one pattern segment. append=True opens file in append mode.
+        Every pattern always writes a trailing PAUSE (handled by the generator)."""
         nonlocal next_start_id
         data_width = HWPE_WIDTH_FACT * DATA_WIDTH if is_hwpe else DATA_WIDTH
         kind = 'master_hwpe' if is_hwpe else 'master_log'
@@ -345,29 +348,28 @@ def main(argv=None):
             str(filepath), 0, master_global_idx
         )
 
-        if 'mem_access_type' not in master_config:
-            print(f"ERROR: {kind}_{master_local_idx} is missing mem_access_type.")
+        if 'mem_access_type' not in pattern_config:
+            print(f"ERROR: {kind}_{master_local_idx} pattern is missing mem_access_type.")
             sys.exit(1)
 
         config = _normalize_mem_access_type(
-            master_config['mem_access_type'],
+            pattern_config['mem_access_type'],
             f"{kind}_{master_local_idx}",
         )
-        start_address = str(master_config.get('start_address', '0'))
-        stride0 = int(master_config.get('stride0', 0))
-        len_d0 = int(master_config.get('len_d0', 0))
-        stride1 = int(master_config.get('stride1', 0))
-        len_d1 = int(master_config.get('len_d1', 0))
-        stride2 = int(master_config.get('stride2', 0))
+        start_address = str(pattern_config.get('start_address', '0'))
+        stride0 = int(pattern_config.get('stride0', 0))
+        len_d0 = int(pattern_config.get('len_d0', 0))
+        stride1 = int(pattern_config.get('stride1', 0))
+        len_d1 = int(pattern_config.get('len_d1', 0))
+        stride2 = int(pattern_config.get('stride2', 0))
 
-        # Region parameters
         total_mem_bytes = int(TOT_MEM_SIZE * 1024)
         access_bytes = max(1, int(data_width // 8))
         default_region_size = total_mem_bytes // max(1, n_peers_of_kind)
         default_region_base = master_local_idx * default_region_size
 
-        region_base = _parse_maybe_bin_int(master_config.get('region_base_address'), default_region_base)
-        region_size = _parse_maybe_bin_int(master_config.get('region_size_bytes'), default_region_size)
+        region_base = _parse_maybe_bin_int(pattern_config.get('region_base_address'), default_region_base)
+        region_size = _parse_maybe_bin_int(pattern_config.get('region_size_bytes'), default_region_size)
 
         region_base = (region_base // access_bytes) * access_bytes
         if region_base >= total_mem_bytes:
@@ -378,16 +380,11 @@ def main(argv=None):
         if region_base + region_size > total_mem_bytes:
             region_size = ((total_mem_bytes - region_base) // access_bytes) * access_bytes
 
-        n_test = _resolve_n_transactions(master_config, config, data_width, kind, master_local_idx)
+        n_test = _resolve_n_transactions(pattern_config, config, data_width, kind, master_local_idx)
         master.N_TEST = n_test
 
-        # Start delay: prepend idle lines directly to the stimuli file after generation
-        start_delay = int(master_config.get('start_delay_cycles', 0))
-        if start_delay > 0:
-            pending_start_delays.append((filepath, start_delay, data_width))
-
         if config == 'random':
-            tpct = master_config.get('traffic_pct')
+            tpct = pattern_config.get('traffic_pct')
             next_start_id = master.random_gen(
                 next_start_id,
                 LIST_OF_FORBIDDEN_ADDRESSES_READ,
@@ -395,33 +392,37 @@ def main(argv=None):
                 region_base=region_base,
                 region_size=region_size,
                 traffic_pct=int(tpct) if tpct is not None else 100,
-                traffic_read_pct=master_config.get('traffic_read_pct'),
+                traffic_read_pct=pattern_config.get('traffic_read_pct'),
+                append=append,
             )
         elif config == 'linear':
-            tpct = master_config.get('traffic_pct')
+            tpct = pattern_config.get('traffic_pct')
             next_start_id = master.linear_gen(
                 stride0, start_address, next_start_id,
                 LIST_OF_FORBIDDEN_ADDRESSES_READ,
                 LIST_OF_FORBIDDEN_ADDRESSES_WRITE,
                 traffic_pct=int(tpct) if tpct is not None else 100,
-                traffic_read_pct=master_config.get('traffic_read_pct'),
+                traffic_read_pct=pattern_config.get('traffic_read_pct'),
+                append=append,
             )
         elif config == '2d':
             next_start_id = master.gen_2d(
                 stride0, len_d0, stride1, start_address, next_start_id,
                 LIST_OF_FORBIDDEN_ADDRESSES_READ,
                 LIST_OF_FORBIDDEN_ADDRESSES_WRITE,
-                idle_cycles_between_phases=int(master_config.get('idle_cycles_between_phases', 0)),
+                idle_cycles_between_phases=int(pattern_config.get('idle_cycles_between_phases', 0)),
+                append=append,
             )
         elif config == '3d':
             next_start_id = master.gen_3d(
                 stride0, len_d0, stride1, len_d1, stride2, start_address, next_start_id,
                 LIST_OF_FORBIDDEN_ADDRESSES_READ,
                 LIST_OF_FORBIDDEN_ADDRESSES_WRITE,
-                idle_cycles_between_phases=int(master_config.get('idle_cycles_between_phases', 0)),
+                idle_cycles_between_phases=int(pattern_config.get('idle_cycles_between_phases', 0)),
+                append=append,
             )
         elif config == 'idle':
-            next_start_id = master.idle_gen(next_start_id)
+            next_start_id = master.idle_gen(next_start_id, append=append)
         elif config == 'matmul_phased':
             if not is_hwpe:
                 print(
@@ -441,26 +442,81 @@ def main(argv=None):
                 LIST_OF_FORBIDDEN_ADDRESSES_WRITE,
                 region_base,
                 region_size,
-                int(master_config.get('matmul_ratio_a', 1)),
-                int(master_config.get('matmul_ratio_b', 1)),
-                int(master_config.get('matmul_ratio_c', 1)),
-                idle_cycles_between_phases=int(master_config.get('idle_cycles_between_phases', 0)),
-                region_base_address_a=_parse_maybe_bin_int(master_config.get('region_base_address_a'), None),
-                region_size_bytes_a=_parse_maybe_bin_int(master_config.get('region_size_bytes_a'), None),
-                region_base_address_b=_parse_maybe_bin_int(master_config.get('region_base_address_b'), None),
-                region_size_bytes_b=_parse_maybe_bin_int(master_config.get('region_size_bytes_b'), None),
-                region_base_address_c=_parse_maybe_bin_int(master_config.get('region_base_address_c'), None),
-                region_size_bytes_c=_parse_maybe_bin_int(master_config.get('region_size_bytes_c'), None),
+                int(pattern_config.get('matmul_ratio_a', 1)),
+                int(pattern_config.get('matmul_ratio_b', 1)),
+                int(pattern_config.get('matmul_ratio_c', 1)),
+                idle_cycles_between_phases=int(pattern_config.get('idle_cycles_between_phases', 0)),
+                region_base_address_a=_parse_maybe_bin_int(pattern_config.get('region_base_address_a'), None),
+                region_size_bytes_a=_parse_maybe_bin_int(pattern_config.get('region_size_bytes_a'), None),
+                region_base_address_b=_parse_maybe_bin_int(pattern_config.get('region_base_address_b'), None),
+                region_size_bytes_b=_parse_maybe_bin_int(pattern_config.get('region_size_bytes_b'), None),
+                region_base_address_c=_parse_maybe_bin_int(pattern_config.get('region_base_address_c'), None),
+                region_size_bytes_c=_parse_maybe_bin_int(pattern_config.get('region_size_bytes_c'), None),
+                append=append,
             )
 
         _record_memory_map(
             kind, master_local_idx,
-            master_config.get('description', ''),
+            pattern_config.get('description', ''),
             config, n_test, data_width, access_bytes,
             region_base, region_size,
             start_address, stride0, len_d0, stride1, len_d1, stride2,
-            master_config, total_mem_bytes,
+            pattern_config, total_mem_bytes,
         )
+
+    def _generate_master(
+        filepath: Path,
+        master_config: dict,
+        *,
+        is_hwpe: bool,
+        master_global_idx: int,
+        master_local_idx: int,
+        n_peers_of_kind: int,
+    ):
+        """Generate stimulus for a master, supporting single flat pattern or patterns list."""
+        data_width = HWPE_WIDTH_FACT * DATA_WIDTH if is_hwpe else DATA_WIDTH
+
+        # Resolve pattern list: either explicit 'patterns' list or a single flat pattern
+        if 'patterns' in master_config:
+            patterns = master_config['patterns']
+            if not patterns:
+                kind = 'master_hwpe' if is_hwpe else 'master_log'
+                print(f"ERROR: {kind}_{master_local_idx} has empty patterns list.")
+                sys.exit(1)
+        else:
+            # Legacy flat format: treat the master config itself as a single pattern
+            patterns = [master_config]
+
+        # Start delay applies to the whole master (prepended before first pattern)
+        start_delay = int(master_config.get('start_delay_cycles', 0))
+        if start_delay > 0:
+            pending_start_delays.append((filepath, start_delay, data_width))
+
+        # For each pattern with wait_for, prepend a synthetic idle+PAUSE that acts as
+        # the blocking fence. The pattern's own trailing PAUSE is always mask=0 (free
+        # pass), so fence_idx advances immediately after the real work is done.
+        # This separates "I am done" (trailing PAUSE, free) from "I may start" (idle
+        # gate, blocking), giving resume_i a single clean meaning: start your next job.
+        dw = HWPE_WIDTH_FACT * DATA_WIDTH if is_hwpe else DATA_WIDTH
+        first_written = False
+        for p_idx, pattern_config in enumerate(patterns):
+            if pattern_config.get('wait_for'):
+                # Synthetic idle+PAUSE gates this pattern
+                _idle = StimuliGenerator(IW, DATA_WIDTH, N_BANKS, TOT_MEM_SIZE,
+                                         dw, ADD_WIDTH, str(filepath), 0, master_global_idx)
+                _idle.N_TEST = 0
+                _idle.idle_gen(next_start_id, append=first_written)
+                first_written = True
+            _generate_pattern(
+                filepath,
+                pattern_config,
+                is_hwpe=is_hwpe,
+                master_global_idx=master_global_idx,
+                master_local_idx=master_local_idx,
+                n_peers_of_kind=n_peers_of_kind,
+                append=first_written,
+            )
+            first_written = True
 
     global_idx = 0
 
@@ -511,56 +567,148 @@ def main(argv=None):
     print("STEP 0 COMPLETED: generate stimuli files")
 
     # -----------------------------------------------------------------------
-    # Compute WAIT_MASKS and emit phases.mk
+    # Compute FENCE_MASKS and emit fence_masks.mk
+    #
+    # Fence slot f corresponds to the PAUSE before pattern f in the stimulus
+    # file (i.e. between pattern f-1 and pattern f). The mask at slot f holds
+    # the set of drivers that must have passed fence f before this driver can
+    # resume from that PAUSE.
+    #
+    # For a master with N patterns, there are N fence slots (slot 0 = before
+    # pattern 0, slot f = before pattern f). The wait_for of pattern f defines
+    # the mask at fence slot f.
+    #
+    # Legacy flat masters (no 'patterns' key) are treated as single-pattern
+    # masters: one fence slot (slot 0) from the top-level wait_for field.
     # -----------------------------------------------------------------------
     N_DRIVERS = N_LOG + N_HWPE
 
+    def _patterns_of(master_config):
+        """Return the list of pattern configs for a master."""
+        if 'patterns' in master_config:
+            return master_config['patterns']
+        return [master_config]
+
+    # Build phase->driver map: every pattern of every driver registers its phase.
+    # This allows wait_for to reference any phase, not just first patterns.
+    # A phase may be associated with multiple drivers (e.g. 8 cores all in softmax_t0).
     phase_to_drivers: dict[str, list[int]] = {}
-    driver_phases: list[str] = []
+    all_masters = [(m, False) for m in log_masters] + [(m, True) for m in hwpe_masters]
+    for i, (m, _) in enumerate(all_masters):
+        for pat in _patterns_of(m):
+            phase = str(pat.get('phase', 'default'))
+            if i not in phase_to_drivers.get(phase, []):
+                phase_to_drivers.setdefault(phase, []).append(i)
 
-    for i, m in enumerate(log_masters):
-        phase = str(m.get('phase', 'default'))
-        driver_phases.append(phase)
-        phase_to_drivers.setdefault(phase, []).append(i)
+    # Build phase->pattern_index map: for each phase, which pattern index within
+    # each driver corresponds to that phase. Used to compute FENCE_REQ_LEVELS.
+    # phase_pattern_idx[phase][driver] = pattern index of that phase in that driver
+    phase_pattern_idx: dict[str, dict[int, int]] = {}
+    for i, (m, _) in enumerate(all_masters):
+        for p_idx, pat in enumerate(_patterns_of(m)):
+            phase = str(pat.get('phase', 'default'))
+            phase_pattern_idx.setdefault(phase, {})[i] = p_idx
 
-    for i, m in enumerate(hwpe_masters):
-        gidx = N_LOG + i
-        phase = str(m.get('phase', 'default'))
-        driver_phases.append(phase)
-        phase_to_drivers.setdefault(phase, []).append(gidx)
-
-    wait_masks: list[int] = [0] * N_DRIVERS
-
-    for i, m in enumerate(log_masters):
+    def _resolve_wait_mask(wait_for_list):
         mask = 0
-        for dep_phase in m.get('wait_for', []):
+        for dep_phase in wait_for_list:
             for dep_drv in phase_to_drivers.get(str(dep_phase), []):
                 mask |= (1 << dep_drv)
-        wait_masks[i] = mask
+        return mask
 
-    for i, m in enumerate(hwpe_masters):
-        gidx = N_LOG + i
-        mask = 0
-        for dep_phase in m.get('wait_for', []):
+    # Precompute per-driver fence_idx value after finishing pattern p:
+    # = number of fences (synthetic idle gates + trailing PAUSEs) passed up to and
+    #   including the trailing PAUSE of pattern p.
+    def _fence_idx_after_pattern(drv_idx, pat_idx):
+        pats = _patterns_of(all_masters[drv_idx][0])
+        # Count synthetic idle gates for patterns 0..pat_idx (those with wait_for)
+        n_gates = sum(1 for k in range(pat_idx + 1) if pats[k].get('wait_for'))
+        # Plus trailing PAUSEs for patterns 0..pat_idx
+        n_trailing = pat_idx + 1
+        return n_gates + n_trailing
+
+    def _resolve_req_levels(wait_for_list):
+        """Required fence_idx[j] = fence_idx value of j after finishing pattern p_j."""
+        levels = [0] * N_DRIVERS
+        for dep_phase in wait_for_list:
             for dep_drv in phase_to_drivers.get(str(dep_phase), []):
-                mask |= (1 << dep_drv)
-        wait_masks[gidx] = mask
+                p_idx = phase_pattern_idx.get(str(dep_phase), {}).get(dep_drv, 0)
+                levels[dep_drv] = _fence_idx_after_pattern(dep_drv, p_idx)
+        return levels
 
+    # Build per-driver fence mask and req_level lists.
+    # Each pattern with wait_for gets a synthetic idle gate (mask = wait_for) before it.
+    # Trailing PAUSEs always have mask=0 (free pass — just advance fence_idx).
+    # Fences are enumerated in file order: for each pattern p:
+    #   if p has wait_for: synthetic idle fence (mask = wait_for of p)
+    #   trailing PAUSE fence (mask = 0)
+    fence_masks:  list[list[int]]       = []
+    req_levels:   list[list[list[int]]] = []
+    for i, (m, _) in enumerate(all_masters):
+        patterns = _patterns_of(m)
+        per_masks  = []
+        per_levels = []
+        for pat in patterns:
+            if pat.get('wait_for'):
+                # Synthetic idle gate: blocking fence
+                per_masks.append(_resolve_wait_mask(pat['wait_for']))
+                per_levels.append(_resolve_req_levels(pat['wait_for']))
+            # Trailing PAUSE: free pass, just signals completion
+            per_masks.append(0)
+            per_levels.append([0] * N_DRIVERS)
+        fence_masks.append(per_masks)
+        req_levels.append(per_levels)
+
+    max_fences = max((len(fm) for fm in fence_masks), default=1)
+
+    # Pad to max_fences
+    for i in range(N_DRIVERS):
+        while len(fence_masks[i]) < max_fences:
+            fence_masks[i].append(0)
+        while len(req_levels[i]) < max_fences:
+            req_levels[i].append([0] * N_DRIVERS)
+
+    # Emit SV literals
     hex_width = max(1, (N_DRIVERS + 3) // 4)
-    mask_literals = [f"{N_DRIVERS}'h{wait_masks[i]:0{hex_width}x}" for i in range(N_DRIVERS)]
-    wait_masks_param = "'{" + ", ".join(mask_literals) + "}"
+    per_driver_literals = []
+    for i in range(N_DRIVERS):
+        slot_literals = [f"{N_DRIVERS}'h{fence_masks[i][f]:0{hex_width}x}" for f in range(max_fences)]
+        per_driver_literals.append("'{" + ", ".join(slot_literals) + "}")
+    fence_masks_param = "'{" + ", ".join(per_driver_literals) + "}"
+
+    # FENCE_REQ_LEVELS[N_DRIVERS][MAX_FENCES][N_DRIVERS] — int unsigned
+    # Pack FENCE_REQ_LEVELS as FENCE_REQ_LEVELS_PACKED[i][f] = N_DRIVERS*4-bit vector.
+    # Bits [j*4+3:j*4] = required fence_idx[j] (4 bits, supports 0..15).
+    LEVEL_BITS = 4
+    packed_width = N_DRIVERS * LEVEL_BITS
+    packed_hex_digits = (packed_width + 3) // 4
+    req_driver_literals = []
+    for i in range(N_DRIVERS):
+        fence_literals = []
+        for f in range(max_fences):
+            val = 0
+            for j in range(N_DRIVERS):
+                val |= (req_levels[i][f][j] & 0xF) << (j * LEVEL_BITS)
+            fence_literals.append(f"{packed_width}'h{val:0{packed_hex_digits}x}")
+        req_driver_literals.append("'{" + ", ".join(fence_literals) + "}")
+    fence_req_levels_packed_param = "'{" + ", ".join(req_driver_literals) + "}"
 
     if args.emit_phases_mk:
         phases_mk_path = Path(args.emit_phases_mk)
         phases_mk_path.parent.mkdir(parents=True, exist_ok=True)
         phases_mk_path.write_text(
             "# Auto-generated by main.py - DO NOT EDIT MANUALLY\n"
-            "# Per-driver dependency masks for tb_hci.sv (WAIT_MASKS_PARAM).\n"
+            "# Per-driver per-fence dependency data for tb_hci.sv.\n"
             f"# Drivers 0..{N_LOG-1} = log masters, {N_LOG}..{N_DRIVERS-1} = HWPE masters.\n"
-            f"WAIT_MASKS_PARAM := {wait_masks_param}\n",
+            f"# fence f = PAUSE after pattern f; fence_idx[i]==k means i completed k patterns.\n"
+            f"# FENCE_MASKS[i][f][j]=1: j is a dependency of i at fence f.\n"
+            f"# FENCE_REQ_LEVELS_PACKED[i][f]: packed {N_DRIVERS*4}-bit vector, bits [j*4+3:j*4] = min fence_idx[j].\n"
+            f"MAX_FENCES_PARAM := {max_fences}\n"
+            f"FENCE_MASKS_PARAM := {fence_masks_param}\n"
+            f"FENCE_REQ_LEVELS_PACKED_PARAM := {fence_req_levels_packed_param}\n",
             encoding='utf-8',
         )
-        print(f"PHASES.MK written: {phases_mk_path}")
+        print(f"FENCE_MASKS.MK written: {phases_mk_path}")
 
     # -----------------------------------------------------------------------
     # Build and emit memory map report
@@ -586,11 +734,12 @@ def main(argv=None):
         driver_names = [f"log_{d}" if d < N_LOG else f"hwpe_{d - N_LOG}" for d in drivers]
         lines.append(f"    phase '{phase}': {', '.join(driver_names)}")
     for i in range(N_DRIVERS):
-        if wait_masks[i]:
-            name = f"log_{i}" if i < N_LOG else f"hwpe_{i - N_LOG}"
-            deps = [f"log_{j}" if j < N_LOG else f"hwpe_{j - N_LOG}"
-                    for j in range(N_DRIVERS) if wait_masks[i] & (1 << j)]
-            lines.append(f"    {name} waits for: {', '.join(deps)}")
+        name = f"log_{i}" if i < N_LOG else f"hwpe_{i - N_LOG}"
+        for f, mask in enumerate(fence_masks[i]):
+            if mask:
+                deps = [f"log_{j}" if j < N_LOG else f"hwpe_{j - N_LOG}"
+                        for j in range(N_DRIVERS) if mask & (1 << j)]
+                lines.append(f"    {name} after pattern[{f}] (fence {f}) waits for: {', '.join(deps)}")
     lines.append("=" * 72)
 
     report_text = "\n".join(lines) + "\n"

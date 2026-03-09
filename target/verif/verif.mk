@@ -14,7 +14,7 @@ HCI_VERIF_CFG_GEN_DIR = $(HCI_VERIF_CFG_DIR)/generated
 include $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk
 include $(HCI_VERIF_CFG_GEN_DIR)/testbench.mk
 ifeq (,$(filter clean%,$(MAKECMDGOALS)))
--include $(HCI_VERIF_CFG_GEN_DIR)/wait_masks.mk
+-include $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
 endif
 
 # Bender targets and defines
@@ -50,7 +50,7 @@ $(SIMVECTORS_GEN_DIR)/.stim_stamp: $(VERIF_CFG_JSON) $(VERIF_CFG_MK) $(STIM_SRC_
 		--workload_config $(WORKLOAD_JSON) \
 		--testbench_config $(TESTBENCH_JSON) \
 		--hardware_config $(HARDWARE_JSON) \
-		--emit_phases_mk $(HCI_VERIF_CFG_GEN_DIR)/wait_masks.mk
+		--emit_phases_mk $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
 	date > $@
 
 .PHONY: clean-stim-verif
@@ -87,7 +87,7 @@ $(HCI_VERIF_CFG_GEN_DIR):
 
 .PHONY: clean-config-verif
 clean-config-verif:
-	rm -f $(VERIF_CFG_MK) $(HCI_VERIF_CFG_GEN_DIR)/wait_masks.mk
+	rm -f $(VERIF_CFG_MK) $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
 
 ##############
 # Simulation #
@@ -116,13 +116,15 @@ ifeq ($(GUI),0)
 	SIM_HCI_VSIM_ARGS += -c
 endif
 
-WAIT_MASKS_MK := $(HCI_VERIF_CFG_GEN_DIR)/wait_masks.mk
-WAIT_MASKS_PARAM = $(shell grep '^WAIT_MASKS_PARAM' $(WAIT_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
+FENCE_MASKS_MK := $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
+MAX_FENCES_PARAM       = $(shell grep '^MAX_FENCES_PARAM'       $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
+FENCE_MASKS_PARAM      = $(shell grep '^FENCE_MASKS_PARAM'      $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
+FENCE_REQ_LEVELS_PARAM = $(shell grep '^FENCE_REQ_LEVELS_PACKED_PARAM' $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
 
 $(HCI_VERIF_DIR)/vsim/compile.tcl: $(HCI_ROOT)/Bender.lock $(HCI_ROOT)/Bender.yml $(HCI_ROOT)/bender.mk $(HCI_VERIF_DIR)/bender.mk $(SIM_SRC_FILES) $(VERIF_CFG_MK) $(SIMVECTORS_GEN_DIR)/.stim_stamp
 	mkdir -p $(HCI_VERIF_DIR)/vsim
 	$(BENDER) script vsim $(COMMON_DEFS) $(VERIF_DEFS) $(COMMON_TARGS) $(VERIF_TARGS) \
-		--vlog-arg="$(SIM_HCI_VLOG_ARGS) \"+define+WAIT_MASKS_PARAM=$(WAIT_MASKS_PARAM)\"" > $@
+		--vlog-arg="$(SIM_HCI_VLOG_ARGS) \"+define+MAX_FENCES_PARAM=$(MAX_FENCES_PARAM) +define+FENCE_MASKS_PARAM=$(FENCE_MASKS_PARAM) +define+FENCE_REQ_LEVELS_PARAM=$(FENCE_REQ_LEVELS_PARAM)\"" > $@
 
 .PHONY: compile-verif
 compile-verif: $(sim_vsim_lib)/.hw_compiled

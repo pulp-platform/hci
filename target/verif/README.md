@@ -107,7 +107,7 @@ Masters can be assigned to named **phases** and can declare **dependencies** on 
 
 ### Mechanism
 
-`main.py` reads the `phase`/`wait_for` fields and computes a **wait mask** per driver: a bitmask of width `N_DRIVERS` where bit `j` is set if this driver must wait for driver `j`'s `end_req_o`. The masks are encoded as a SV unpacked array literal in `config/generated/wait_masks.mk` and passed to the simulator as the `WAIT_MASKS_PARAM` define.
+`main.py` reads the `phase`/`wait_for` fields and computes a **wait mask** per driver: a bitmask of width `N_DRIVERS` where bit `j` is set if this driver must wait for driver `j`'s `end_req_o`. The masks are encoded as a SV unpacked array literal in `config/generated/fence_masks.mk` and passed to the simulator as the `WAIT_MASKS_PARAM` define.
 
 In `tb_hci_pkg.sv`, `WAIT_MASKS[i]` holds driver `i`'s mask. In `tb_hci.sv`, each driver's `clear_i` is combinationally held high until all drivers in its mask have asserted `end_req_o`:
 
@@ -170,7 +170,7 @@ This allows verifying that regions are correctly partitioned and identifying any
 | Target | Action |
 |--------|--------|
 | `make config-verif` | Generate `hardware.mk`, `testbench.mk` from JSON |
-| `make stim-verif` | Generate stimuli and `wait_masks.mk` from workload/hardware/testbench JSON |
+| `make stim-verif` | Generate stimuli and `fence_masks.mk` from workload/hardware/testbench JSON |
 | `make compile-verif` | Compile RTL and testbench with QuestaSim |
 | `make opt-verif` | Optimize compiled design |
 | `make run-verif` | Run simulation |
