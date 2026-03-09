@@ -28,6 +28,7 @@ module tb_hci
 
   logic                   clk, rst_n;
   logic [N_DRIVERS-1:0]   s_end_req;   // end_req_o from all drivers, [N_DRIVERS-1:0] ordering
+  logic [N_DRIVERS-1:0]   s_end_resp;  // end_resp_o from all drivers, [N_DRIVERS-1:0] ordering
   logic [N_DRIVERS-1:0]   s_clear_drv; // per-driver clear_i (held 1 until dependencies done)
   hci_interconnect_ctrl_t s_hci_ctrl;
 
@@ -195,13 +196,15 @@ module tb_hci
         );
       end
     end else if (INTERCO_TYPE == MUX) begin : gen_hwpe_mux
-      // In MUX mode, sel_i must point at the currently active HWPE (the one not gated by
-      // clear_i). Priority: lowest index wins if multiple are somehow simultaneously active.
+      // In MUX mode, sel_i points at the lowest-indexed HWPE that has not yet finished
+      // (i.e. whose end_resp_o has not fired). Once HWPE k asserts end_resp_o, sel_i
+      // advances to k+1. We cannot use s_clear_drv here because HWPE 0 always has
+      // eff_mask='0 so its clear_drv is permanently 0 even after it finishes.
       logic [$clog2(N_HWPE > 1 ? N_HWPE-1 : 1):0] s_mux_sel;
       always_comb begin
-        s_mux_sel = '0;
+        s_mux_sel = ($clog2(N_HWPE > 1 ? N_HWPE-1 : 1) + 1)'(N_HWPE - 1);
         for (int i = N_HWPE-1; i >= 0; i--) begin
-          if (!s_clear_drv[N_LOG_MASTERS + i])
+          if (!s_end_resp[N_LOG_MASTERS + i])
             s_mux_sel = ($clog2(N_HWPE > 1 ? N_HWPE-1 : 1) + 1)'(i);
         end
       end
@@ -246,23 +249,28 @@ module tb_hci
   assign s_hci_ctrl.low_prio_max_stall = LOW_PRIO_MAX_STALL;
 
   // Driver clear logic: driver i is held in reset until all drivers j in its effective wait
-  // mask have asserted end_req_o. If the effective mask is zero, the driver starts immediately.
+  // mask have asserted end_resp_o. If the effective mask is zero, the driver starts immediately.
   //
   // In MUX mode the user-defined WAIT_MASKS are ignored for HWPE drivers: instead a strict
   // sequential chain is enforced (HWPE i waits for HWPE i-1), because hci_core_mux_static
   // only forwards one HWPE at a time. HWPE ordering follows the index = position in
   // hwpe_masters[] in workload.json. LOG master masks are always taken from WAIT_MASKS.
+  //
+  // All drivers use end_resp_o (s_end_resp) as the handoff condition, guaranteeing that all
+  // in-flight reads from the predecessor have been fully retired before the successor starts.
+  // This is required for correctness in MUX mode (hci_core_mux_static gates r_valid to the
+  // non-selected channel), and is conservatively safe for all other modes.
   generate
     for (genvar ii = 0; ii < N_DRIVERS; ii++) begin : gen_driver_clear
       logic [N_DRIVERS-1:0] eff_mask;
       if (INTERCO_TYPE == MUX && ii >= N_LOG_MASTERS) begin : gen_mux_mask
-        // HWPE 0 (ii == N_LOG_MASTERS): no wait; HWPE k waits for HWPE k-1
+        // HWPE 0 (ii == N_LOG_MASTERS): no wait; HWPE k waits for HWPE k-1's end_resp_o
         assign eff_mask = (ii == N_LOG_MASTERS) ? '0 : (N_DRIVERS'(1) << (ii - 1));
       end else begin : gen_default_mask
         assign eff_mask = WAIT_MASKS[ii];
       end
       assign s_clear_drv[ii] = (eff_mask != '0) &&
-                                ((s_end_req & eff_mask) != eff_mask);
+                                ((s_end_resp & eff_mask) != eff_mask);
     end
   endgenerate
 
@@ -318,7 +326,6 @@ module tb_hci
   // Application drivers //
   /////////////////////////
 
-  logic [N_DRIVERS-1:0] s_end_resp;
   int unsigned s_issued_transactions[0:N_DRIVERS-1];
   int unsigned s_issued_read_transactions[0:N_DRIVERS-1];
 

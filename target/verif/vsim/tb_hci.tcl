@@ -71,8 +71,8 @@ if {$GUI == 1} {
     }
 
     # Metrics
-    add wave -noupdate -group metrics /tb_hci/s_end_latency
-    add wave -noupdate -group metrics /tb_hci/s_end_stimuli
+    add wave -noupdate -group metrics /tb_hci/s_end_req
+    add wave -noupdate -group metrics /tb_hci/s_end_resp
     add wave -noupdate -group metrics /tb_hci/s_issued_transactions
     add wave -noupdate -group metrics /tb_hci/s_issued_read_transactions
     add wave -noupdate -group metrics /tb_hci/stim_latency
@@ -91,6 +91,7 @@ if {$GUI == 1} {
     add wave -noupdate -group metrics /tb_hci/SUM_REQ_TO_GNT_LATENCY_HWPE
 
     add wave -noupdate /tb_hci/s_clear
+    add wave -noupdate /tb_hci/s_clear_drv
     add wave -noupdate /tb_hci/s_hci_ctrl
 
     configure wave -signalnamewidth 1
