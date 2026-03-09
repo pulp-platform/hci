@@ -4,6 +4,8 @@
 #
 # Sergio Mazzola <smazzola@iis.ee.ethz.ch>
 
+.DELETE_ON_ERROR:
+
 HCI_VERIF_DIR = $(HCI_ROOT)/target/verif
 HCI_VERIF_CFG_DIR = $(HCI_VERIF_DIR)/config
 HCI_VERIF_CFG_GEN_DIR = $(HCI_VERIF_CFG_DIR)/generated
@@ -42,7 +44,7 @@ SIMVECTORS_GEN_DIR := $(HCI_VERIF_DIR)/simvectors/generated
 
 .PHONY: stim-verif
 stim-verif: $(SIMVECTORS_GEN_DIR)/.stim_stamp
-$(SIMVECTORS_GEN_DIR)/.stim_stamp: $(VERIF_CFG_JSON) $(STIM_SRC_FILES) $(GEN_STIM_SCRIPT) | $(HCI_VERIF_CFG_GEN_DIR)
+$(SIMVECTORS_GEN_DIR)/.stim_stamp: $(VERIF_CFG_JSON) $(VERIF_CFG_MK) $(STIM_SRC_FILES) $(GEN_STIM_SCRIPT) | $(HCI_VERIF_CFG_GEN_DIR)
 	mkdir -p $(SIMVECTORS_GEN_DIR)
 	$(PYTHON) $(GEN_STIM_SCRIPT) \
 		--workload_config $(WORKLOAD_JSON) \
