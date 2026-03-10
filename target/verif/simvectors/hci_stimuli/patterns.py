@@ -186,6 +186,7 @@ class PatternsMixin:
     def matmul_phased_gen(self, id_start, forbidden_read, forbidden_write,
                           region_base_address, region_size_bytes,
                           matmul_ratio_a=1, matmul_ratio_b=1, matmul_ratio_c=1,
+                          traffic_pct=100,
                           idle_cycles_between_phases=0,
                           region_base_address_a=None, region_size_bytes_a=None,
                           region_base_address_b=None, region_size_bytes_b=None,
@@ -193,6 +194,7 @@ class PatternsMixin:
                           append=False):
         id_value = id_start; fr_new, fw_new = [], []
         ab = max(1, self.DATA_WIDTH // 8); tm = int(self.TOT_MEM_SIZE * 1024)
+        n_idles = self._idles_per_req(traffic_pct)
 
         def _res(bo, so, fb, fs):
             b = self._align_down(int(bo if bo is not None else fb), ab)
@@ -228,6 +230,7 @@ class PatternsMixin:
                 self._record_access(add, wen, fr_new, fw_new)
                 id_value += 1; addr += ab
                 if addr >= pe: addr = pb
+                for _ in range(n_idles): self._write_idle(fobj)
 
         with self._open(append) as f:
             _emit(f, ca, 1, a_base, a_base+a_size)
