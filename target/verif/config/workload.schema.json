@@ -41,22 +41,22 @@
           "enum": ["idle", "random", "linear", "2d", "3d", "matmul_phased", "matmul"],
           "description": "Access pattern selector. 'matmul' is an alias for 'matmul_phased'."
         },
-        "phase": {
+        "job": {
           "type": "string",
           "default": "default",
-          "description": "Phase name for this pattern segment. Used by other patterns' wait_for to reference this segment. The master's phase identity is determined by its first pattern's phase."
+          "description": "Job name for this pattern segment. Used by other patterns' wait_for_jobs to reference this segment."
         },
-        "wait_for": {
+        "wait_for_jobs": {
           "type": "array",
           "items": { "type": "string" },
           "default": [],
-          "description": "Phase names this pattern waits for before starting. Generates a PAUSE fence before this pattern segment and holds the driver until all referenced phases have advanced past the same fence level."
+          "description": "Job names this pattern waits for before starting. Generates a PAUSE fence before this pattern segment and holds the driver until all referenced jobs have advanced past the same fence level."
         },
 
         "n_transactions": {
           "type": "integer",
           "minimum": 0,
-          "description": "Number of real memory accesses (idles are NOT counted). Mandatory for 'random'. For other patterns can be derived from geometry fields."
+          "description": "Number of real memory accesses (idles are NOT counted). Mandatory for 'random'. For other patterns can be derived from geometry or from region_size_bytes (transaction-width based)."
         },
 
         "region_base_address": {
@@ -64,14 +64,14 @@
             { "type": "integer", "minimum": 0 },
             { "type": "string", "description": "Decimal, hex (0x...) or binary string." }
           ],
-          "description": "[random, matmul_phased] Base byte address of the memory region."
+          "description": "[random, linear, matmul_phased] Base byte address of the memory region."
         },
         "region_size_bytes": {
           "oneOf": [
             { "type": "integer", "minimum": 0 },
             { "type": "string", "description": "Decimal, hex (0x...) or binary string." }
           ],
-          "description": "[random, matmul_phased] Size in bytes of the memory region."
+          "description": "[random, linear, matmul_phased] Size in bytes of the memory region. For linear/matmul_phased, if n_transactions is omitted this can be used to derive it from transaction width."
         },
 
         "start_address": {
@@ -181,7 +181,7 @@
           "minimum": 1,
           "maximum": 100,
           "default": 100,
-          "description": "[random, linear] Bus utilization percentage."
+          "description": "[random, linear, matmul_phased] Modeled request utilization percentage (adds req=0 idles after each request when <100)."
         },
         "traffic_read_pct": {
           "type": "integer",
@@ -204,7 +204,13 @@
         },
         {
           "if": { "properties": { "mem_access_type": { "const": "linear" } }, "required": ["mem_access_type"] },
-          "then": { "anyOf": [{ "required": ["n_transactions"] }, { "required": ["length"] }] }
+          "then": {
+            "anyOf": [
+              { "required": ["n_transactions"] },
+              { "required": ["length"] },
+              { "required": ["region_size_bytes"] }
+            ]
+          }
         },
         {
           "if": { "properties": { "mem_access_type": { "const": "2d" } }, "required": ["mem_access_type"] },
@@ -220,7 +226,11 @@
             "required": ["mem_access_type"]
           },
           "then": {
-            "anyOf": [{ "required": ["n_transactions"] }, { "required": ["matrix_m", "matrix_n", "matrix_k"] }]
+            "anyOf": [
+              { "required": ["n_transactions"] },
+              { "required": ["region_size_bytes"] },
+              { "required": ["matrix_m", "matrix_n", "matrix_k"] }
+            ]
           }
         }
       ]
@@ -228,7 +238,7 @@
 
     "master": {
       "type": "object",
-      "description": "Per-master configuration. A master either has a flat single-pattern config (legacy, backward compatible) or a 'patterns' list for multi-phase execution.",
+      "description": "Per-master configuration. A master either has a flat single-pattern config or a 'patterns' list for multi-job execution.",
       "unevaluatedProperties": false,
       "properties": {
         "id": {
@@ -248,7 +258,7 @@
         "patterns": {
           "type": "array",
           "minItems": 1,
-          "description": "Ordered list of pattern segments. Executed sequentially; a PAUSE fence token is inserted between each pair of consecutive patterns. The wait_for of pattern f defines which phases must have advanced past fence f before this master resumes. If omitted, the master config itself is treated as a single flat pattern (legacy format).",
+          "description": "Ordered list of pattern segments. Executed sequentially; a PAUSE fence token is inserted between each pair of consecutive patterns. The wait_for_jobs of pattern f defines which jobs must have advanced past fence f before this master resumes. If omitted, the master config itself is treated as a single flat pattern.",
           "items": { "$ref": "#/$defs/pattern" }
         }
       },
