@@ -63,11 +63,14 @@ module simulation_report
     logic missing_reads;
     // Ideal bandwidth: maximum data the memory system can serve per cycle.
     // Memory side: N_BANKS narrow ports, each DATA_WIDTH bits wide.
-    real ideal_bw_mem_side_bpc;    // bits per cycle (memory-side ceiling)
-    // Master side: sum of all master bandwidths at 100% traffic.
-    real ideal_bw_master_side_bpc; // bits per cycle (master-side ceiling)
-    real ideal_bw_bpc;             // min(mem, master) = bottleneck ideal BW
+    real ideal_bw_mem_side_bpc;     // bits per cycle (memory-side ceiling)
+    // Interconnect side: HCI-facing narrow/wide initiator interfaces.
+    real ideal_bw_interco_side_bpc; // bits per cycle (interconnect-side ceiling)
+    real ideal_bw_bpc;             // min(mem, interco) = bottleneck ideal BW
     real actual_bw_utilization;    // throughput_complete / ideal_bw
+    int unsigned n_narrow_if_total;
+    int unsigned n_wide_if_total;
+    string interco_type_str;
 
     sum_req_to_gnt_latency_all = 0.0;
     average_req_to_gnt_latency_weighted = 0.0;
@@ -193,15 +196,27 @@ module simulation_report
     // Ideal bandwidth computation.
     // Memory side: each of the N_BANKS banks can serve one DATA_WIDTH word per cycle.
     ideal_bw_mem_side_bpc = real'(N_BANKS) * real'(DATA_WIDTH);
-    // Master side: N_LOG_MASTERS narrow ports + N_HWPE wide ports, all at 100% traffic.
-    ideal_bw_master_side_bpc = real'(N_LOG_MASTERS) * real'(DATA_WIDTH)
-                             + real'(N_HWPE)         * real'(HWPE_WIDTH_FACT * DATA_WIDTH);
+    // Interconnect side: HCI interface ports (narrow + wide).
+    // NOTE: for MUX mode N_WIDE_HCI=1, i.e. one shared wide initiator.
+    n_narrow_if_total = N_NARROW_HCI + N_DMA + N_EXT;
+    n_wide_if_total = N_WIDE_HCI;
+    ideal_bw_interco_side_bpc = real'(n_narrow_if_total) * real'(DATA_WIDTH)
+                              + real'(n_wide_if_total)   * real'(HWPE_WIDTH_FACT * DATA_WIDTH);
     // Bottleneck = minimum of the two sides.
-    ideal_bw_bpc = (ideal_bw_mem_side_bpc < ideal_bw_master_side_bpc)
-                 ? ideal_bw_mem_side_bpc : ideal_bw_master_side_bpc;
+    ideal_bw_bpc = (ideal_bw_mem_side_bpc < ideal_bw_interco_side_bpc)
+                 ? ideal_bw_mem_side_bpc : ideal_bw_interco_side_bpc;
     // Utilization = actual / ideal.
     actual_bw_utilization = (ideal_bw_bpc > 0.0)
                           ? (throughput_complete_i / ideal_bw_bpc * 100.0) : 0.0;
+    if (INTERCO_TYPE == LOG) begin
+      interco_type_str = "LOG";
+    end else if (INTERCO_TYPE == HCI) begin
+      interco_type_str = "HCI";
+    end else if (INTERCO_TYPE == MUX) begin
+      interco_type_str = "MUX";
+    end else begin
+      interco_type_str = "UNKNOWN";
+    end
 
     $display("------ Simulation Summary ------");
     $display("\\\\HW CONFIG\\\\");
@@ -218,6 +233,10 @@ module simulation_report
       SEL_LIC, TS_BIT, EXPFIFO
     );
     $display(
+      "Interconnect-side: TYPE=%s N_NARROW_HCI=%0d N_WIDE_HCI=%0d N_DMA=%0d N_EXT=%0d",
+      interco_type_str, N_NARROW_HCI, N_WIDE_HCI, N_DMA, N_EXT
+    );
+    $display(
       "ID/address: IW=%0d ADDR_WIDTH=%0d ADDR_WIDTH_BANK=%0d",
       IW, ADDR_WIDTH, ADDR_WIDTH_BANK
     );
@@ -228,10 +247,10 @@ module simulation_report
       ideal_bw_mem_side_bpc, N_BANKS, DATA_WIDTH
     );
     $display(
-      "Ideal BW (master side):  %0.0f bit/cycle  [%0d log x %0d bits + %0d hwpe x %0d bits]",
-      ideal_bw_master_side_bpc,
-      N_LOG_MASTERS, DATA_WIDTH,
-      N_HWPE, HWPE_WIDTH_FACT * DATA_WIDTH
+      "Ideal BW (interco side): %0.0f bit/cycle  [%0d narrow-if x %0d bits + %0d wide-if x %0d bits]",
+      ideal_bw_interco_side_bpc,
+      n_narrow_if_total, DATA_WIDTH,
+      n_wide_if_total, HWPE_WIDTH_FACT * DATA_WIDTH
     );
     $display(
       "Ideal BW (bottleneck):   %0.0f bit/cycle",
