@@ -9,7 +9,7 @@
     "DATA_WIDTH": 32,
     "TOT_MEM_SIZE": 256,
     "N_BANKS": 64,
-    "INTERCO_TYPE": "HCI",
+    "INTERCO_TYPE": "MUX",
     "TS_BIT": 21,
     "EXPFIFO": 0,
     "SEL_LIC": 0

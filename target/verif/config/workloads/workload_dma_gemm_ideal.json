@@ -36,65 +36,6 @@
           "region_size_bytes": 8192
         },
         {
-          "description": "Setup preload: tile A1 into buffer #1 (8 KiB)",
-          "mem_access_type": "linear",
-          "job": "dma_load_A1_buf1",
-          "traffic_pct": 100,
-          "traffic_read_pct": 0,
-          "region_base_address": "0x04000",
-          "region_size_bytes": 8192
-        },
-        {
-          "description": "Prefetch tile A2 into buffer #0 (8 KiB)",
-          "mem_access_type": "linear",
-          "job": "dma_load_A2_buf0",
-          "wait_for_jobs": ["gemm_A0"],
-          "traffic_pct": 100,
-          "traffic_read_pct": 0,
-          "region_base_address": "0x02000",
-          "region_size_bytes": 8192
-        },
-        {
-          "description": "Read back C0 after GEMM tile A0",
-          "mem_access_type": "linear",
-          "job": "dma_store_C0_buf2",
-          "wait_for_jobs": ["gemm_A0"],
-          "traffic_pct": 100,
-          "traffic_read_pct": 100,
-          "region_base_address": "0x06000",
-          "region_size_bytes": 8192
-        },
-        {
-          "description": "Prefetch tile A3 into buffer #1 (8 KiB)",
-          "mem_access_type": "linear",
-          "job": "dma_load_A3_buf1",
-          "wait_for_jobs": ["gemm_A1"],
-          "traffic_pct": 100,
-          "traffic_read_pct": 0,
-          "region_base_address": "0x04000",
-          "region_size_bytes": 8192
-        },
-        {
-          "description": "Read back C1 after GEMM tile A1",
-          "mem_access_type": "linear",
-          "job": "dma_store_C1_buf3",
-          "wait_for_jobs": ["gemm_A1"],
-          "traffic_pct": 100,
-          "traffic_read_pct": 100,
-          "region_base_address": "0x08000",
-          "region_size_bytes": 8192
-        },
-        {
-          "description": "Read back C0 after GEMM tile A2",
-          "mem_access_type": "linear",
-          "job": "dma_store_C2_buf2",
-          "wait_for_jobs": ["gemm_A2"],
-          "traffic_pct": 100,
-          "traffic_read_pct": 100,
-          "region_base_address": "0x06000",
-          "region_size_bytes": 8192
-        },
-        {
           "description": "Read back C1 after GEMM tile A3",
           "mem_access_type": "linear",
           "job": "dma_store_C3_buf3",

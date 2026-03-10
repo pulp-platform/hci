@@ -6,8 +6,8 @@ Converts JSON configuration files to Makefile format using Python templates.
 Templates are automatically discovered based on the config type argument.
 """
 
-import json
 import argparse
+import json
 import sys
 from pathlib import Path
 from string import Template
@@ -83,9 +83,9 @@ def parse_args(argv=None):
         help="Configuration type to generate.",
     )
     parser.add_argument(
-        "config_dir",
+        "config_json",
         type=Path,
-        help="Directory containing source-of-truth JSON files.",
+        help="Path to selected source-of-truth JSON file.",
     )
     parser.add_argument(
         "generated_dir",
@@ -98,11 +98,10 @@ def parse_args(argv=None):
 def main():
     args = parse_args()
     config_type = args.config_type
-    config_dir = args.config_dir.resolve()
+    json_file = args.config_json.resolve()
+    config_dir = json_file.parent
     generated_dir = args.generated_dir.resolve()
 
-    # Construct file paths based on config_type argument
-    json_file = config_dir / f"{config_type}.json"
     template_file = generated_dir / f"{config_type}.mk.tpl"
 
     # Load JSON config

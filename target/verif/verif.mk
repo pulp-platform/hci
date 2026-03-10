@@ -77,10 +77,10 @@ VERIF_CFG_MK := $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk \
 config-verif: $(VERIF_CFG_MK)
 
 $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk: $(HARDWARE_JSON) $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk.tpl $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py | $(HCI_VERIF_CFG_GEN_DIR)
-	$(PYTHON) $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py hardware $(dir $(HARDWARE_JSON)) $(HCI_VERIF_CFG_GEN_DIR) > $@
+	$(PYTHON) $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py hardware $(HARDWARE_JSON) $(HCI_VERIF_CFG_GEN_DIR) > $@
 
 $(HCI_VERIF_CFG_GEN_DIR)/testbench.mk: $(TESTBENCH_JSON) $(HCI_VERIF_CFG_GEN_DIR)/testbench.mk.tpl $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py | $(HCI_VERIF_CFG_GEN_DIR)
-	$(PYTHON) $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py testbench $(dir $(TESTBENCH_JSON)) $(HCI_VERIF_CFG_GEN_DIR) > $@
+	$(PYTHON) $(HCI_VERIF_CFG_GEN_DIR)/json_to_mk.py testbench $(TESTBENCH_JSON) $(HCI_VERIF_CFG_GEN_DIR) > $@
 
 $(HCI_VERIF_CFG_GEN_DIR):
 	mkdir -p $@
@@ -156,6 +156,13 @@ clean-sim-verif:
 	rm -f $(HCI_VERIF_DIR)/vsim/modelsim.ini
 	rm -f $(HCI_VERIF_DIR)/vsim/transcript
 	rm -f $(HCI_VERIF_DIR)/vsim/vsim.wlf
+
+################
+# Benchmarking #
+################
+
+benchmarking-sweep:
+	. $(HCI_VERIF_DIR)/scripts/run_sweep.sh
 
 ###########
 # Helpers #
