@@ -84,7 +84,7 @@ def main(argv=None):
     hwpe_masters = workload_config['hwpe_masters']
 
     # Derived parameters
-    ADD_WIDTH = math.ceil(math.log2(TOT_MEM_SIZE * 1000))
+    ADD_WIDTH = math.ceil(math.log2(TOT_MEM_SIZE * 1024))
     N_LOG = N_CORE + N_DMA + N_EXT
     N_LOG_CFG = N_LOG
     IW = 8
@@ -111,7 +111,7 @@ def main(argv=None):
     if N_LOG + N_HWPE < 1:
         print("ERROR: the number of masters must be > 0")
         sys.exit(1)
-    n_words = (TOT_MEM_SIZE * 1000 / N_BANKS) / (DATA_WIDTH / 8)
+    n_words = (TOT_MEM_SIZE * 1024 / N_BANKS) / (DATA_WIDTH / 8)
     if not n_words.is_integer():
         print("ERROR: the number of words is not an integer value")
         sys.exit(1)
@@ -154,8 +154,6 @@ def main(argv=None):
         _create_idle_file(stimuli_dir / 'master_hwpe_0.txt', HWPE_WIDTH_FACT * DATA_WIDTH)
 
     next_start_id = 0
-    LIST_OF_FORBIDDEN_ADDRESSES_WRITE = []
-    LIST_OF_FORBIDDEN_ADDRESSES_READ = []
 
     # Memory map entries collected during generation, printed at the end
     memory_map_entries = []
@@ -233,6 +231,135 @@ def main(argv=None):
             idle_between = master_config.get('idle_cycles_between_phases', 0)
             if idle_between:
                 detail['idle_between_phases'] = f"{idle_between} cycles"
+        elif config == 'multi_linear':
+            regs = master_config.get('regions', []) or []
+            detail['schedule'] = str(master_config.get('schedule', 'round_robin'))
+            detail['burst_len'] = int(master_config.get('burst_len', 1))
+            for idx, reg in enumerate(regs):
+                base = _parse_maybe_bin_int(reg.get('base'), 0)
+                size = _parse_maybe_bin_int(reg.get('size_bytes'), 0)
+                stride_w = int(reg.get('stride_words', 1))
+                rpct = reg.get('read_pct')
+                rpct_txt = f", read={int(rpct)}%" if rpct is not None else ""
+                detail[f"region_{idx}"] = (
+                    f"0x{base:08x} - 0x{base + max(0, size) - 1:08x}  "
+                    f"({size} B, stride={stride_w} words{rpct_txt})"
+                )
+            if regs:
+                first_addr = _parse_maybe_bin_int(regs[0].get('base'), 0)
+                last_reg = regs[-1]
+                lb = _parse_maybe_bin_int(last_reg.get('base'), 0)
+                ls = _parse_maybe_bin_int(last_reg.get('size_bytes'), 0)
+                last_addr = lb + max(0, ls) - access_bytes
+            tpct = master_config.get('traffic_pct')
+            if tpct is not None:
+                n_idles_per_req = max(0, round((100 - int(tpct)) / int(tpct))) if int(tpct) < 100 else 0
+                detail['traffic_pct'] = f"{tpct}%  ({n_idles_per_req} idle(s) after each transaction)"
+        elif config == 'bank_group_linear':
+            span = max(1, int(master_config.get('bank_group_span', 1)))
+            start_bank = int(master_config.get('start_bank', 0)) % max(1, int(N_BANKS))
+            stride_beats = max(1, int(master_config.get('stride_beats', 1)))
+            first_addr = start_bank * access_bytes
+            phase = max(0, n_test - 1) * stride_beats
+            group_idx = phase // span
+            bank = (start_bank + (phase % span)) % max(1, int(N_BANKS))
+            last_addr = (group_idx * N_BANKS + bank) * access_bytes
+            last_addr = last_addr % total_mem_bytes
+            detail['start_bank'] = start_bank
+            detail['bank_group_span'] = span
+            detail['stride_beats'] = stride_beats
+            if 'bank_group_hop' in master_config:
+                detail['bank_group_hop'] = int(master_config.get('bank_group_hop', 0))
+            if 'wen' in master_config:
+                detail['wen'] = int(master_config.get('wen', 1))
+            tpct = master_config.get('traffic_pct')
+            if tpct is not None:
+                n_idles_per_req = max(0, round((100 - int(tpct)) / int(tpct))) if int(tpct) < 100 else 0
+                detail['traffic_pct'] = f"{tpct}%  ({n_idles_per_req} idle(s) after each transaction)"
+        elif config == 'rw_rowwise':
+            row_base = _parse_maybe_bin_int(master_config.get('row_base_address'), region_base)
+            row_size = _parse_maybe_bin_int(master_config.get('row_size_bytes'), access_bytes)
+            n_rows = max(0, int(master_config.get('n_rows', 0)))
+            row_stride = _parse_maybe_bin_int(master_config.get('row_stride_bytes'), row_size)
+            rpr = max(0, int(master_config.get('reads_per_row', 0)))
+            wpr = max(0, int(master_config.get('writes_per_row', 0)))
+            first_addr = row_base
+            last_addr = row_base + max(0, n_rows - 1) * row_stride + max(0, row_size - access_bytes)
+            last_addr = last_addr % total_mem_bytes
+            detail['rows'] = f"n_rows={n_rows}, row_size={row_size} B, row_stride={row_stride} B"
+            detail['per_row'] = f"reads={rpr}, writes={wpr}"
+            idle_between = int(master_config.get('idle_cycles_between_rows', 0))
+            if idle_between:
+                detail['idle_between_rows'] = f"{idle_between} cycles"
+            tpct = master_config.get('traffic_pct')
+            if tpct is not None:
+                n_idles_per_req = max(0, round((100 - int(tpct)) / int(tpct))) if int(tpct) < 100 else 0
+                detail['traffic_pct'] = f"{tpct}%  ({n_idles_per_req} idle(s) after each transaction)"
+        elif config == 'gather_scatter':
+            rr = master_config.get('read_regions', []) or []
+            wr = master_config.get('write_region', {}) or {}
+            for idx, reg in enumerate(rr):
+                b = _parse_maybe_bin_int(reg.get('base'), 0)
+                s = _parse_maybe_bin_int(reg.get('size_bytes'), 0)
+                detail[f"read_region_{idx}"] = f"0x{b:08x} - 0x{b + max(0, s) - 1:08x}  ({s} B)"
+            wb = _parse_maybe_bin_int(wr.get('base'), 0)
+            ws = _parse_maybe_bin_int(wr.get('size_bytes'), 0)
+            detail['write_region'] = f"0x{wb:08x} - 0x{wb + max(0, ws) - 1:08x}  ({ws} B)"
+            detail['schedule'] = str(master_config.get('schedule', '4read_1write'))
+            detail['chunk_bytes'] = int(_parse_maybe_bin_int(master_config.get('chunk_bytes'), access_bytes))
+            if rr:
+                first_addr = _parse_maybe_bin_int(rr[0].get('base'), 0)
+            else:
+                first_addr = wb
+            last_addr = wb + max(0, ws) - access_bytes if ws > 0 else first_addr
+            tpct = master_config.get('traffic_pct')
+            if tpct is not None:
+                n_idles_per_req = max(0, round((100 - int(tpct)) / int(tpct))) if int(tpct) < 100 else 0
+                detail['traffic_pct'] = f"{tpct}%  ({n_idles_per_req} idle(s) after each transaction)"
+        elif config == 'matmul_tiled_interleave':
+            ra = _parse_maybe_bin_int(master_config.get('region_base_address_a'), region_base)
+            sa = _parse_maybe_bin_int(master_config.get('region_size_bytes_a'), region_size // 3)
+            rb = _parse_maybe_bin_int(master_config.get('region_base_address_b'), ra + sa)
+            sb = _parse_maybe_bin_int(master_config.get('region_size_bytes_b'), region_size // 3)
+            rc = _parse_maybe_bin_int(master_config.get('region_base_address_c'), rb + sb)
+            sc = _parse_maybe_bin_int(master_config.get('region_size_bytes_c'), region_size - max(0, sa) - max(0, sb))
+            detail['matrix_A (read)'] = f"0x{ra:08x} - 0x{ra + max(0, sa) - access_bytes:08x}  ({sa} B)"
+            detail['matrix_B (read)'] = f"0x{rb:08x} - 0x{rb + max(0, sb) - access_bytes:08x}  ({sb} B)"
+            detail['matrix_C (write)'] = f"0x{rc:08x} - 0x{rc + max(0, sc) - access_bytes:08x}  ({sc} B)"
+            detail['tile_bytes'] = (
+                f"A={int(_parse_maybe_bin_int(master_config.get('tile_a_bytes'), access_bytes))}, "
+                f"B={int(_parse_maybe_bin_int(master_config.get('tile_b_bytes'), access_bytes))}, "
+                f"C={int(_parse_maybe_bin_int(master_config.get('tile_c_bytes'), access_bytes))}"
+            )
+            detail['tiles'] = int(master_config.get('tiles', 1))
+            detail['ab_c_schedule'] = str(master_config.get('ab_c_schedule', 'A_B_C'))
+            idle_tiles = int(master_config.get('idle_cycles_between_tiles', 0))
+            if idle_tiles:
+                detail['idle_between_tiles'] = f"{idle_tiles} cycles"
+            first_addr = ra
+            last_addr = rc + max(0, sc) - access_bytes
+            tpct = master_config.get('traffic_pct')
+            if tpct is not None:
+                n_idles_per_req = max(0, round((100 - int(tpct)) / int(tpct))) if int(tpct) < 100 else 0
+                detail['traffic_pct'] = f"{tpct}%  ({n_idles_per_req} idle(s) after each transaction)"
+        elif config == 'hotspot_random':
+            hrs = master_config.get('hot_regions', []) or []
+            for idx, reg in enumerate(hrs):
+                b = _parse_maybe_bin_int(reg.get('base'), 0)
+                s = _parse_maybe_bin_int(reg.get('size_bytes'), 0)
+                w = int(reg.get('weight', 1))
+                detail[f"hot_region_{idx}"] = f"0x{b:08x} - 0x{b + max(0, s) - 1:08x}  ({s} B, weight={w})"
+            if hrs:
+                first_addr = _parse_maybe_bin_int(hrs[0].get('base'), 0)
+                lb = _parse_maybe_bin_int(hrs[-1].get('base'), 0)
+                ls = _parse_maybe_bin_int(hrs[-1].get('size_bytes'), 0)
+                last_addr = lb + max(0, ls) - access_bytes
+            tpct = master_config.get('traffic_pct')
+            if tpct is not None:
+                rpct = master_config.get('traffic_read_pct', 50)
+                n_idles_per_req = max(0, round((100 - int(tpct)) / int(tpct))) if int(tpct) < 100 else 0
+                detail['traffic_pct'] = f"{tpct}%  ({n_idles_per_req} idle(s) after each transaction)"
+                detail['read_pct'] = f"{rpct}%"
         elif config == 'linear':
             base = int(start_address, 2) if set(start_address) <= {'0','1'} else int(start_address, 0)
             first_addr = base
@@ -295,8 +422,24 @@ def main(argv=None):
         return default_value
 
     def _normalize_mem_access_type(raw_value, master_name):
-        allowed = {"random", "linear", "2d", "3d", "idle", "matmul_phased"}
-        aliases = {"matmul": "matmul_phased"}
+        allowed = {
+            "random",
+            "linear",
+            "2d",
+            "3d",
+            "idle",
+            "matmul_phased",
+            "multi_linear",
+            "bank_group_linear",
+            "rw_rowwise",
+            "gather_scatter",
+            "matmul_tiled_interleave",
+            "hotspot_random",
+        }
+        aliases = {
+            "matmul": "matmul_phased",
+            "matmul_tiled": "matmul_tiled_interleave",
+        }
 
         if not isinstance(raw_value, str):
             print(
@@ -378,6 +521,60 @@ def main(argv=None):
             k = master_config.get('matrix_k')
             if m is not None and n is not None and k is not None:
                 return int(m) * int(k) + int(k) * int(n) + int(m) * int(n)
+        elif mem_access_type == 'multi_linear':
+            total = 0
+            for reg in master_config.get('regions', []) or []:
+                size_v = _parse_maybe_bin_int(reg.get('size_bytes'), 0)
+                total += max(0, int(size_v)) // access_bytes
+            if total > 0:
+                return total
+        elif mem_access_type == 'bank_group_linear':
+            print(
+                f"ERROR: {kind}_{local_idx} mem_access_type='bank_group_linear' "
+                "requires explicit 'n_transactions'."
+            )
+            sys.exit(1)
+        elif mem_access_type == 'rw_rowwise':
+            n_rows = master_config.get('n_rows')
+            rpr = master_config.get('reads_per_row')
+            wpr = master_config.get('writes_per_row')
+            if n_rows is not None and rpr is not None and wpr is not None:
+                return max(0, int(n_rows)) * (max(0, int(rpr)) + max(0, int(wpr)))
+        elif mem_access_type == 'gather_scatter':
+            chunk = _parse_maybe_bin_int(master_config.get('chunk_bytes'), access_bytes)
+            step = max(access_bytes, int(chunk) if chunk is not None else access_bytes)
+            total = 0
+            for reg in master_config.get('read_regions', []) or []:
+                total += max(0, int(_parse_maybe_bin_int(reg.get('size_bytes'), 0))) // step
+            wr = master_config.get('write_region', {}) or {}
+            total += max(0, int(_parse_maybe_bin_int(wr.get('size_bytes'), 0))) // step
+            if total > 0:
+                return total
+        elif mem_access_type == 'matmul_tiled_interleave':
+            tiles = max(1, int(master_config.get('tiles', 1)))
+            sched = str(master_config.get('ab_c_schedule', 'A_B_C')).upper().replace('-', '_')
+            toks = [t for t in sched.split('_') if t]
+            if not toks:
+                toks = ['A', 'B', 'C']
+            cnt_a = max(1, int(_parse_maybe_bin_int(master_config.get('tile_a_bytes'), access_bytes)) // access_bytes)
+            cnt_b = max(1, int(_parse_maybe_bin_int(master_config.get('tile_b_bytes'), access_bytes)) // access_bytes)
+            cnt_c = max(1, int(_parse_maybe_bin_int(master_config.get('tile_c_bytes'), access_bytes)) // access_bytes)
+            per_tile = 0
+            for t in toks:
+                if t == 'A':
+                    per_tile += cnt_a
+                elif t == 'B':
+                    per_tile += cnt_b
+                elif t == 'C':
+                    per_tile += cnt_c
+            if per_tile > 0:
+                return tiles * per_tile
+        elif mem_access_type == 'hotspot_random':
+            total = 0
+            for reg in master_config.get('hot_regions', []) or []:
+                total += max(0, int(_parse_maybe_bin_int(reg.get('size_bytes'), 0))) // access_bytes
+            if total > 0:
+                return total
         elif mem_access_type == 'idle':
             return 0
         print(f"ERROR: {kind}_{local_idx} has mem_access_type='{mem_access_type}' but no "
@@ -443,7 +640,7 @@ def main(argv=None):
         # hold all transactions once at the current transaction width.
         region_size_input = pattern_config.get('region_size_bytes')
         if (
-            config in {'linear', 'matmul_phased'}
+            config in {'linear', 'matmul_phased', 'matmul_tiled_interleave'}
             and region_size_input is None
             and 'n_transactions' in pattern_config
         ):
@@ -462,47 +659,74 @@ def main(argv=None):
 
         n_test = _resolve_n_transactions(pattern_config, config, data_width, kind, master_local_idx)
         master.N_TEST = n_test
-        # Keep forbidden-address filtering local to this pattern invocation.
-        # This allows intended buffer reuse across phases (e.g. double buffering)
-        # while still avoiding duplicates inside a single pattern generator call.
-        forbidden_read_local = list(LIST_OF_FORBIDDEN_ADDRESSES_READ)
-        forbidden_write_local = list(LIST_OF_FORBIDDEN_ADDRESSES_WRITE)
+        # Read/write blocked filtering is pattern-local only.
+        read_blocked_local = []
+        write_blocked_local = []
+        tpct_raw = pattern_config.get('traffic_pct', 100)
+        tpct = 100 if tpct_raw is None else int(tpct_raw)
+
+        multi_regions_cfg = []
+        for reg in pattern_config.get('regions', []) or []:
+            multi_regions_cfg.append({
+                'base': _parse_maybe_bin_int(reg.get('base'), 0),
+                'size_bytes': _parse_maybe_bin_int(reg.get('size_bytes'), 0),
+                'stride_words': int(reg.get('stride_words', 1)),
+                'read_pct': reg.get('read_pct'),
+            })
+
+        read_regions_cfg = []
+        for reg in pattern_config.get('read_regions', []) or []:
+            read_regions_cfg.append({
+                'base': _parse_maybe_bin_int(reg.get('base'), 0),
+                'size_bytes': _parse_maybe_bin_int(reg.get('size_bytes'), 0),
+            })
+        wr_cfg_raw = pattern_config.get('write_region', {}) or {}
+        write_region_cfg = {
+            'base': _parse_maybe_bin_int(wr_cfg_raw.get('base'), 0),
+            'size_bytes': _parse_maybe_bin_int(wr_cfg_raw.get('size_bytes'), 0),
+        }
+
+        hot_regions_cfg = []
+        for reg in pattern_config.get('hot_regions', []) or []:
+            hot_regions_cfg.append({
+                'base': _parse_maybe_bin_int(reg.get('base'), 0),
+                'size_bytes': _parse_maybe_bin_int(reg.get('size_bytes'), 0),
+                'weight': int(reg.get('weight', 1)),
+            })
 
         if config == 'random':
-            tpct = pattern_config.get('traffic_pct')
             next_start_id = master.random_gen(
                 next_start_id,
-                forbidden_read_local,
-                forbidden_write_local,
+                read_blocked_local,
+                write_blocked_local,
                 region_base=region_base,
                 region_size=region_size,
-                traffic_pct=int(tpct) if tpct is not None else 100,
+                traffic_pct=tpct,
                 traffic_read_pct=pattern_config.get('traffic_read_pct'),
                 append=append,
             )
         elif config == 'linear':
-            tpct = pattern_config.get('traffic_pct')
             next_start_id = master.linear_gen(
                 stride0, start_address, next_start_id,
-                forbidden_read_local,
-                forbidden_write_local,
-                traffic_pct=int(tpct) if tpct is not None else 100,
+                read_blocked_local,
+                write_blocked_local,
+                traffic_pct=tpct,
                 traffic_read_pct=pattern_config.get('traffic_read_pct'),
                 append=append,
             )
         elif config == '2d':
             next_start_id = master.gen_2d(
                 stride0, len_d0, stride1, start_address, next_start_id,
-                forbidden_read_local,
-                forbidden_write_local,
+                read_blocked_local,
+                write_blocked_local,
                 idle_cycles_between_phases=int(pattern_config.get('idle_cycles_between_phases', 0)),
                 append=append,
             )
         elif config == '3d':
             next_start_id = master.gen_3d(
                 stride0, len_d0, stride1, len_d1, stride2, start_address, next_start_id,
-                forbidden_read_local,
-                forbidden_write_local,
+                read_blocked_local,
+                write_blocked_local,
                 idle_cycles_between_phases=int(pattern_config.get('idle_cycles_between_phases', 0)),
                 append=append,
             )
@@ -523,8 +747,8 @@ def main(argv=None):
                 sys.exit(1)
             next_start_id = master.matmul_phased_gen(
                 next_start_id,
-                forbidden_read_local,
-                forbidden_write_local,
+                read_blocked_local,
+                write_blocked_local,
                 region_base,
                 region_size,
                 int(pattern_config.get('matmul_ratio_a', 1)),
@@ -538,6 +762,105 @@ def main(argv=None):
                 region_size_bytes_b=_parse_maybe_bin_int(pattern_config.get('region_size_bytes_b'), None),
                 region_base_address_c=_parse_maybe_bin_int(pattern_config.get('region_base_address_c'), None),
                 region_size_bytes_c=_parse_maybe_bin_int(pattern_config.get('region_size_bytes_c'), None),
+                append=append,
+            )
+        elif config == 'multi_linear':
+            next_start_id = master.multi_linear_gen(
+                next_start_id,
+                read_blocked_local,
+                write_blocked_local,
+                regions=multi_regions_cfg,
+                schedule=pattern_config.get('schedule', 'round_robin'),
+                burst_len=int(pattern_config.get('burst_len', 1)),
+                traffic_pct=tpct,
+                append=append,
+            )
+        elif config == 'bank_group_linear':
+            next_start_id = master.bank_group_linear_gen(
+                next_start_id,
+                read_blocked_local,
+                write_blocked_local,
+                start_bank=int(pattern_config.get('start_bank', 0)),
+                bank_group_span=int(pattern_config.get('bank_group_span', 1)),
+                stride_beats=int(pattern_config.get('stride_beats', 1)),
+                bank_group_hop=int(pattern_config.get('bank_group_hop', 0)),
+                wen=pattern_config.get('wen'),
+                traffic_pct=tpct,
+                append=append,
+            )
+        elif config == 'rw_rowwise':
+            next_start_id = master.rw_rowwise_gen(
+                next_start_id,
+                read_blocked_local,
+                write_blocked_local,
+                row_base_address=_parse_maybe_bin_int(pattern_config.get('row_base_address'), region_base),
+                row_size_bytes=_parse_maybe_bin_int(pattern_config.get('row_size_bytes'), access_bytes),
+                n_rows=int(pattern_config.get('n_rows', 1)),
+                row_stride_bytes=_parse_maybe_bin_int(pattern_config.get('row_stride_bytes'), access_bytes),
+                reads_per_row=int(pattern_config.get('reads_per_row', 0)),
+                writes_per_row=int(pattern_config.get('writes_per_row', 0)),
+                traffic_pct=tpct,
+                idle_cycles_between_rows=int(pattern_config.get('idle_cycles_between_rows', 0)),
+                append=append,
+            )
+        elif config == 'gather_scatter':
+            next_start_id = master.gather_scatter_gen(
+                next_start_id,
+                read_blocked_local,
+                write_blocked_local,
+                read_regions=read_regions_cfg,
+                write_region=write_region_cfg,
+                chunk_bytes=_parse_maybe_bin_int(pattern_config.get('chunk_bytes'), access_bytes),
+                schedule=pattern_config.get('schedule', '4read_1write'),
+                traffic_pct=tpct,
+                append=append,
+            )
+        elif config == 'matmul_tiled_interleave':
+            ra = _parse_maybe_bin_int(pattern_config.get('region_base_address_a'), None)
+            sa = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_a'), None)
+            rb = _parse_maybe_bin_int(pattern_config.get('region_base_address_b'), None)
+            sb = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_b'), None)
+            rc = _parse_maybe_bin_int(pattern_config.get('region_base_address_c'), None)
+            sc = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_c'), None)
+            if ra is None or sa is None or rb is None or sb is None or rc is None or sc is None:
+                # Fallback to split the combined region into A/B/C thirds.
+                n_words = max(3, region_size // access_bytes)
+                a_words = max(1, n_words // 3)
+                b_words = max(1, n_words // 3)
+                c_words = max(1, n_words - a_words - b_words)
+                ra = region_base
+                sa = a_words * access_bytes
+                rb = ra + sa
+                sb = b_words * access_bytes
+                rc = rb + sb
+                sc = c_words * access_bytes
+            next_start_id = master.matmul_tiled_interleave_gen(
+                next_start_id,
+                read_blocked_local,
+                write_blocked_local,
+                region_base_address_a=ra,
+                region_size_bytes_a=sa,
+                region_base_address_b=rb,
+                region_size_bytes_b=sb,
+                region_base_address_c=rc,
+                region_size_bytes_c=sc,
+                tile_a_bytes=_parse_maybe_bin_int(pattern_config.get('tile_a_bytes'), access_bytes),
+                tile_b_bytes=_parse_maybe_bin_int(pattern_config.get('tile_b_bytes'), access_bytes),
+                tile_c_bytes=_parse_maybe_bin_int(pattern_config.get('tile_c_bytes'), access_bytes),
+                tiles=int(pattern_config.get('tiles', 1)),
+                ab_c_schedule=pattern_config.get('ab_c_schedule', 'A_B_C'),
+                traffic_pct=tpct,
+                idle_cycles_between_tiles=int(pattern_config.get('idle_cycles_between_tiles', 0)),
+                append=append,
+            )
+        elif config == 'hotspot_random':
+            next_start_id = master.hotspot_random_gen(
+                next_start_id,
+                read_blocked_local,
+                write_blocked_local,
+                hot_regions=hot_regions_cfg,
+                traffic_pct=tpct,
+                traffic_read_pct=pattern_config.get('traffic_read_pct'),
                 append=append,
             )
 
@@ -841,6 +1164,162 @@ def main(argv=None):
 
         if mem_access_type == 'idle':
             return []
+        if mem_access_type == 'multi_linear':
+            regions = []
+            for idx, reg in enumerate(pattern_config.get('regions', []) or []):
+                base = _parse_maybe_bin_int(reg.get('base'), region_base)
+                size = _parse_maybe_bin_int(reg.get('size_bytes'), region_size)
+                base = (base // access_bytes) * access_bytes
+                if base >= total_mem_bytes:
+                    base = base % total_mem_bytes
+                size = (max(0, size) // access_bytes) * access_bytes
+                if base + size > total_mem_bytes:
+                    size = ((total_mem_bytes - base) // access_bytes) * access_bytes
+                if size <= 0:
+                    continue
+                rpct = reg.get('read_pct')
+                if rpct is None:
+                    lbl = f"R{idx}"
+                else:
+                    lbl = f"R{idx}({'read' if int(rpct) >= 50 else 'write'})"
+                regions.append({
+                    'label': lbl,
+                    'base': base,
+                    'size': size,
+                    'end': base + size - 1,
+                })
+            return regions
+        if mem_access_type == 'bank_group_linear':
+            span = max(1, int(pattern_config.get('bank_group_span', 1)))
+            start_bank = int(pattern_config.get('start_bank', 0)) % max(1, int(N_BANKS))
+            n_tx = _parse_maybe_bin_int(pattern_config.get('n_transactions'), 1)
+            n_tx = max(1, int(n_tx))
+            rows = max(1, math.ceil(n_tx / span))
+            size = min(total_mem_bytes, rows * span * access_bytes)
+            base = (start_bank * access_bytes) % max(1, total_mem_bytes)
+            if base + size > total_mem_bytes:
+                size = max(access_bytes, total_mem_bytes - base)
+            return [{
+                'label': 'bank_group',
+                'base': base,
+                'size': size,
+                'end': base + size - 1,
+            }]
+        if mem_access_type == 'rw_rowwise':
+            row_base = _parse_maybe_bin_int(pattern_config.get('row_base_address'), region_base)
+            row_size = _parse_maybe_bin_int(pattern_config.get('row_size_bytes'), access_bytes)
+            n_rows = max(1, int(pattern_config.get('n_rows', 1)))
+            row_stride = _parse_maybe_bin_int(pattern_config.get('row_stride_bytes'), row_size)
+            base = (row_base // access_bytes) * access_bytes
+            if base >= total_mem_bytes:
+                base = base % total_mem_bytes
+            size = ((max(0, row_stride) * max(0, n_rows - 1)) + max(0, row_size))
+            size = (size // access_bytes) * access_bytes
+            if base + size > total_mem_bytes:
+                size = ((total_mem_bytes - base) // access_bytes) * access_bytes
+            if size <= 0:
+                size = access_bytes
+            return [{
+                'label': 'rowwise',
+                'base': base,
+                'size': size,
+                'end': base + size - 1,
+            }]
+        if mem_access_type == 'gather_scatter':
+            regions = []
+            for idx, reg in enumerate(pattern_config.get('read_regions', []) or []):
+                base = _parse_maybe_bin_int(reg.get('base'), region_base)
+                size = _parse_maybe_bin_int(reg.get('size_bytes'), 0)
+                base = (base // access_bytes) * access_bytes
+                if base >= total_mem_bytes:
+                    base = base % total_mem_bytes
+                size = (max(0, size) // access_bytes) * access_bytes
+                if base + size > total_mem_bytes:
+                    size = ((total_mem_bytes - base) // access_bytes) * access_bytes
+                if size <= 0:
+                    continue
+                regions.append({
+                    'label': f"gather_{idx}(read)",
+                    'base': base,
+                    'size': size,
+                    'end': base + size - 1,
+                })
+            wr = pattern_config.get('write_region', {}) or {}
+            wb = _parse_maybe_bin_int(wr.get('base'), region_base)
+            ws = _parse_maybe_bin_int(wr.get('size_bytes'), 0)
+            wb = (wb // access_bytes) * access_bytes
+            if wb >= total_mem_bytes:
+                wb = wb % total_mem_bytes
+            ws = (max(0, ws) // access_bytes) * access_bytes
+            if wb + ws > total_mem_bytes:
+                ws = ((total_mem_bytes - wb) // access_bytes) * access_bytes
+            if ws > 0:
+                regions.append({
+                    'label': 'scatter(write)',
+                    'base': wb,
+                    'size': ws,
+                    'end': wb + ws - 1,
+                })
+            return regions
+        if mem_access_type == 'hotspot_random':
+            regions = []
+            for idx, reg in enumerate(pattern_config.get('hot_regions', []) or []):
+                base = _parse_maybe_bin_int(reg.get('base'), region_base)
+                size = _parse_maybe_bin_int(reg.get('size_bytes'), 0)
+                base = (base // access_bytes) * access_bytes
+                if base >= total_mem_bytes:
+                    base = base % total_mem_bytes
+                size = (max(0, size) // access_bytes) * access_bytes
+                if base + size > total_mem_bytes:
+                    size = ((total_mem_bytes - base) // access_bytes) * access_bytes
+                if size <= 0:
+                    continue
+                regions.append({
+                    'label': f"hot_{idx}",
+                    'base': base,
+                    'size': size,
+                    'end': base + size - 1,
+                })
+            return regions
+        if mem_access_type == 'matmul_tiled_interleave':
+            ra = _parse_maybe_bin_int(pattern_config.get('region_base_address_a'), None)
+            sa = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_a'), None)
+            rb = _parse_maybe_bin_int(pattern_config.get('region_base_address_b'), None)
+            sb = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_b'), None)
+            rc = _parse_maybe_bin_int(pattern_config.get('region_base_address_c'), None)
+            sc = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_c'), None)
+            regions = []
+            if ra is not None and sa is not None and rb is not None and sb is not None and rc is not None and sc is not None:
+                sub_defs = [
+                    ('A(read)', ra, sa),
+                    ('B(read)', rb, sb),
+                    ('C(write)', rc, sc),
+                ]
+            else:
+                n_words = max(3, region_size // access_bytes)
+                a_words = max(1, n_words // 3)
+                b_words = max(1, n_words // 3)
+                c_words = max(1, n_words - a_words - b_words)
+                sub_defs = [
+                    ('A(read)', region_base, a_words * access_bytes),
+                    ('B(read)', region_base + a_words * access_bytes, b_words * access_bytes),
+                    ('C(write)', region_base + (a_words + b_words) * access_bytes, c_words * access_bytes),
+                ]
+            for label, base_raw, size_raw in sub_defs:
+                base = (int(base_raw) // access_bytes) * access_bytes
+                if base >= total_mem_bytes:
+                    base = base % total_mem_bytes
+                size = (max(0, int(size_raw)) // access_bytes) * access_bytes
+                if base + size > total_mem_bytes:
+                    size = ((total_mem_bytes - base) // access_bytes) * access_bytes
+                if size > 0:
+                    regions.append({
+                        'label': label,
+                        'base': base,
+                        'size': size,
+                        'end': base + size - 1,
+                    })
+            return regions
 
         if mem_access_type != 'matmul_phased':
             return [{
@@ -907,38 +1386,17 @@ def main(argv=None):
             })
         return regions
 
-    def _estimate_pattern_cycles(pattern_config, mem_access_type, n_test):
-        # Intentionally simple temporal model:
-        # - one time unit per transaction, plus optional req=0 idles from traffic shaping
-        # - no interconnect stall/conflict modeling
-        # - explicit start_delay_cycles is still honored separately
+    def _estimate_pattern_cycles(pattern_config, _mem_access_type, n_test, _txn_bytes):
+        # Temporal model intentionally follows emitted traffic only:
+        # one unit per transaction plus req=0 idles from traffic_pct shaping.
+        # No absolute/phase/tile/row cycle estimation is applied here.
         base = max(0, int(n_test))
         tpct = pattern_config.get('traffic_pct')
         n_idles_per_req = 0
         if tpct is not None:
             tp = max(1, min(100, int(tpct)))
             n_idles_per_req = 0 if tp >= 100 else int(round((100 - tp) / tp))
-        cycles = base * (1 + n_idles_per_req)
-        # Keep explicit matmul phase-boundary idle modeling.
-        if mem_access_type == 'matmul_phased':
-            idle_between = int(pattern_config.get('idle_cycles_between_phases', 0))
-            if idle_between > 0:
-                ra = max(0, int(pattern_config.get('matmul_ratio_a', 1)))
-                rb = max(0, int(pattern_config.get('matmul_ratio_b', 1)))
-                rc = max(0, int(pattern_config.get('matmul_ratio_c', 1)))
-                if ra == 0 and rb == 0 and rc == 0:
-                    ra, rb, rc = 1, 1, 1
-                s = ra + rb + rc
-                ca = (base * ra) // s
-                cb = (base * rb) // s
-                cc = base - ca - cb
-                phase_gaps = 0
-                if ca > 0 and (cb > 0 or cc > 0):
-                    phase_gaps += 1
-                if cb > 0 and cc > 0:
-                    phase_gaps += 1
-                cycles += idle_between * phase_gaps
-        return int(cycles)
+        return int(base * (1 + n_idles_per_req))
 
     pattern_nodes = []
     node_idx_by_driver_pattern = {}
@@ -971,7 +1429,7 @@ def main(argv=None):
                 'wait_for_jobs_declared': declared_wait_for_jobs,
                 'wait_for_jobs_effective': effective_wait_for_jobs,
                 'n_transactions': int(n_test),
-                'cycles': int(_estimate_pattern_cycles(pat, mem_access_type, n_test)),
+                'cycles': int(_estimate_pattern_cycles(pat, mem_access_type, n_test, int(data_width // 8))),
                 'mem_access_type': mem_access_type,
                 'traffic_read_pct': pat.get('traffic_read_pct'),
                 'txn_bytes': int(data_width // 8),

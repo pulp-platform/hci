@@ -4,6 +4,8 @@
 
 The verification framework drives configurable memory traffic from multiple masters through the HCI interconnect and measures throughput and latency. It is fully driven by three JSON configuration files:
 
+For the up-to-date stimuli-generator pattern catalog and output format, see `target/verif/simvectors/README.md`.
+
 | File | Purpose |
 |------|---------|
 | `config/hardware.json` | Interconnect topology (number of masters, banks, data widths, ...) |
