@@ -4,7 +4,14 @@ This script is invoked by the top-level Makefile and expects three
 JSON config files: workload, testbench and hardware. It produces
 cycle-accurate stimuli in `verif/simvectors/generated/stimuli`.
 
-Each stimuli file has one line per simulation cycle:
+Each stimuli file encodes an offered per-cycle request stream plus PAUSE fence tokens.
+
+Idle lines (req=0) represent intended issue gaps in the absence of backpressure.
+The application driver may consume some idle entries while stalled on an earlier
+request grant, and hide some memory/interconnect latency. So the file is not a
+strict wall-clock replay under contention.
+
+Stimuli line format:
   req(1b) id(IWb) wen(1b) data(Nb) add(Ab)
 """
 
@@ -1089,6 +1096,19 @@ def main(argv=None):
     # FENCE_REQ_LEVELS[N_DRIVERS][MAX_FENCES][N_DRIVERS] — int unsigned
     # Pack FENCE_REQ_LEVELS as FENCE_REQ_LEVELS_PACKED[i][f] = N_DRIVERS*4-bit vector.
     # Bits [j*4+3:j*4] = required fence_idx[j] (4 bits, supports 0..15).
+    max_req_level = 0
+    for i in range(N_DRIVERS):
+        for f in range(max_fences):
+            for j in range(N_DRIVERS):
+                max_req_level = max(max_req_level, int(req_levels[i][f][j]))
+    if max_req_level > 15:
+        print(
+            "ERROR: Fence dependency level overflow: "
+            f"required fence_idx={max_req_level}, but packed format supports only 0..15. "
+            "Reduce the number of fence crossings per dependent job or widen LEVEL_BITS."
+        )
+        sys.exit(1)
+
     LEVEL_BITS = 4
     packed_width = N_DRIVERS * LEVEL_BITS
     packed_hex_digits = (packed_width + 3) // 4

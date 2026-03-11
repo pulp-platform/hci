@@ -280,10 +280,12 @@ module tb_hci
   assign s_hci_ctrl.priority_cnt_numerator = PRIORITY_CNT_NUMERATOR;
   assign s_hci_ctrl.priority_cnt_denominator = PRIORITY_CNT_DENOMINATOR;
 
-  // fence_idx[i]: number of fences driver i has fully passed (exited PAUSED state).
-  // Increments when the handshake fires: resume_i asserted while fence_reached_o is high.
-  // This is the same cycle the driver transitions out of PAUSED, so dependents see the
-  // updated count immediately on the next cycle (after the registered flip-flop updates).
+  // fence_idx[i] = number of PAUSE tokens driver i has passed.
+  // This counts all fences in file order, including synthetic blocking fences
+  // and trailing completion fences.
+  //
+  // fence_idx increments when resume_i is asserted while fence_reached_o is high,
+  // i.e. when the PAUSED-state handshake completes and the driver leaves that fence.
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       for (int i = 0; i < N_DRIVERS; i++) fence_idx[i] <= '0;
@@ -295,15 +297,13 @@ module tb_hci
     end
   end
 
-  // s_resume[i]: fire when for every set bit j in FENCE_MASKS[i][fence_idx[i]],
-  // fence_idx[j] >= FENCE_REQ_LEVELS[i][fence_idx[i]][j].
+  // s_resume[i] is asserted only while driver i is paused at its current fence.
+  // Driver i may pass that fence when, for every dependency bit j set in the
+  // current FENCE_MASKS entry, fence_idx[j] is at least the required level
+  // encoded in FENCE_REQ_LEVELS_PACKED.
   //
-  // fence_idx[j] >= p_j+1 means j has exited the trailing PAUSE after pattern p_j,
-  // i.e. j has completed pattern p_j. No s_fence_reached shortcut needed — the
-  // trailing PAUSE of a zero-mask fence is exited in one cycle, so fence_idx
-  // advances promptly and the check is unambiguous.
-  //
-  // In MUX mode bus serialization is handled by s_mux_sel independently.
+  // In other words: blocking fences wait for explicit dependency completion;
+  // trailing zero-mask fences are free passes.
   always_comb begin
     for (int i = 0; i < N_DRIVERS; i++) begin
       automatic logic [N_DRIVERS-1:0] cur_mask;
@@ -538,5 +538,18 @@ module tb_hci
       end
     end
   endgenerate
+
+  // Advisory check only. The hard overflow guard is in Python generation
+  // before packing FENCE_REQ_LEVELS into 4-bit fields.
+  // In case of failure due to this asser, modify tb_hci_pkg.sv and generation of fence_masks.mk
+  initial begin
+    if (MAX_FENCES > 16) begin
+      $warning(
+        "MAX_FENCES=%0d exceeds the nominal 4-bit fence-level range; "
+        "ensure no dependency requires a level > 15.",
+        MAX_FENCES
+      );
+    end
+  end
 
 endmodule

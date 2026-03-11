@@ -83,6 +83,8 @@ module tcdm_banks_wrap #(
       .rdata_o(tcdm_slave[i].r_data                     )  // read data
     );
 
+    //NOTE: Commented out. r_valid response is handled by interconnect
+
     //r_valid
     // always_ff @(posedge clk_i or negedge rst_ni) begin : rvalid_gen
     //   if(~rst_ni) begin
