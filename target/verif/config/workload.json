@@ -1,14 +1,374 @@
 {
-  "description": "Simple 4-tile double-buffer GEMM. DMA uses linear transfers sized only by region_size_bytes.",
+  "description": "Simple 4-tile double-buffer GEMM. DMA uses linear transfers sized only by region_size_bytes. Cores generate linear 50% traffic after each GEMM on dedicated non-overlapping regions.",
   "log_masters": [
-    { "id": 0, "description": "Core 0 (idle)", "mem_access_type": "idle" },
-    { "id": 1, "description": "Core 1 (idle)", "mem_access_type": "idle" },
-    { "id": 2, "description": "Core 2 (idle)", "mem_access_type": "idle" },
-    { "id": 3, "description": "Core 3 (idle)", "mem_access_type": "idle" },
-    { "id": 4, "description": "Core 4 (idle)", "mem_access_type": "idle" },
-    { "id": 5, "description": "Core 5 (idle)", "mem_access_type": "idle" },
-    { "id": 6, "description": "Core 6 (idle)", "mem_access_type": "idle" },
-    { "id": 7, "description": "Core 7 (idle)", "mem_access_type": "idle" },
+    {
+      "id": 0,
+      "description": "Core 0 post-GEMM background traffic",
+      "patterns": [
+        {
+          "description": "Core 0 traffic after gemm_A0",
+          "mem_access_type": "linear",
+          "job": "core0_after_gemm_A0",
+          "wait_for_jobs": ["gemm_A0"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x10000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 0 traffic after gemm_A1",
+          "mem_access_type": "linear",
+          "job": "core0_after_gemm_A1",
+          "wait_for_jobs": ["gemm_A1"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x10000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 0 traffic after gemm_A2",
+          "mem_access_type": "linear",
+          "job": "core0_after_gemm_A2",
+          "wait_for_jobs": ["gemm_A2"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x10000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 0 traffic after gemm_A3",
+          "mem_access_type": "linear",
+          "job": "core0_after_gemm_A3",
+          "wait_for_jobs": ["gemm_A3"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x10000",
+          "region_size_bytes": 1024
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "description": "Core 1 post-GEMM background traffic",
+      "patterns": [
+        {
+          "description": "Core 1 traffic after gemm_A0",
+          "mem_access_type": "linear",
+          "job": "core1_after_gemm_A0",
+          "wait_for_jobs": ["gemm_A0"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x11000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 1 traffic after gemm_A1",
+          "mem_access_type": "linear",
+          "job": "core1_after_gemm_A1",
+          "wait_for_jobs": ["gemm_A1"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x11000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 1 traffic after gemm_A2",
+          "mem_access_type": "linear",
+          "job": "core1_after_gemm_A2",
+          "wait_for_jobs": ["gemm_A2"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x11000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 1 traffic after gemm_A3",
+          "mem_access_type": "linear",
+          "job": "core1_after_gemm_A3",
+          "wait_for_jobs": ["gemm_A3"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x11000",
+          "region_size_bytes": 1024
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "description": "Core 2 post-GEMM background traffic",
+      "patterns": [
+        {
+          "description": "Core 2 traffic after gemm_A0",
+          "mem_access_type": "linear",
+          "job": "core2_after_gemm_A0",
+          "wait_for_jobs": ["gemm_A0"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x12000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 2 traffic after gemm_A1",
+          "mem_access_type": "linear",
+          "job": "core2_after_gemm_A1",
+          "wait_for_jobs": ["gemm_A1"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x12000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 2 traffic after gemm_A2",
+          "mem_access_type": "linear",
+          "job": "core2_after_gemm_A2",
+          "wait_for_jobs": ["gemm_A2"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x12000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 2 traffic after gemm_A3",
+          "mem_access_type": "linear",
+          "job": "core2_after_gemm_A3",
+          "wait_for_jobs": ["gemm_A3"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x12000",
+          "region_size_bytes": 1024
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "description": "Core 3 post-GEMM background traffic",
+      "patterns": [
+        {
+          "description": "Core 3 traffic after gemm_A0",
+          "mem_access_type": "linear",
+          "job": "core3_after_gemm_A0",
+          "wait_for_jobs": ["gemm_A0"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x13000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 3 traffic after gemm_A1",
+          "mem_access_type": "linear",
+          "job": "core3_after_gemm_A1",
+          "wait_for_jobs": ["gemm_A1"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x13000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 3 traffic after gemm_A2",
+          "mem_access_type": "linear",
+          "job": "core3_after_gemm_A2",
+          "wait_for_jobs": ["gemm_A2"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x13000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 3 traffic after gemm_A3",
+          "mem_access_type": "linear",
+          "job": "core3_after_gemm_A3",
+          "wait_for_jobs": ["gemm_A3"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x13000",
+          "region_size_bytes": 1024
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "description": "Core 4 post-GEMM background traffic",
+      "patterns": [
+        {
+          "description": "Core 4 traffic after gemm_A0",
+          "mem_access_type": "linear",
+          "job": "core4_after_gemm_A0",
+          "wait_for_jobs": ["gemm_A0"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x14000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 4 traffic after gemm_A1",
+          "mem_access_type": "linear",
+          "job": "core4_after_gemm_A1",
+          "wait_for_jobs": ["gemm_A1"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x14000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 4 traffic after gemm_A2",
+          "mem_access_type": "linear",
+          "job": "core4_after_gemm_A2",
+          "wait_for_jobs": ["gemm_A2"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x14000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 4 traffic after gemm_A3",
+          "mem_access_type": "linear",
+          "job": "core4_after_gemm_A3",
+          "wait_for_jobs": ["gemm_A3"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x14000",
+          "region_size_bytes": 1024
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "description": "Core 5 post-GEMM background traffic",
+      "patterns": [
+        {
+          "description": "Core 5 traffic after gemm_A0",
+          "mem_access_type": "linear",
+          "job": "core5_after_gemm_A0",
+          "wait_for_jobs": ["gemm_A0"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x15000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 5 traffic after gemm_A1",
+          "mem_access_type": "linear",
+          "job": "core5_after_gemm_A1",
+          "wait_for_jobs": ["gemm_A1"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x15000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 5 traffic after gemm_A2",
+          "mem_access_type": "linear",
+          "job": "core5_after_gemm_A2",
+          "wait_for_jobs": ["gemm_A2"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x15000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 5 traffic after gemm_A3",
+          "mem_access_type": "linear",
+          "job": "core5_after_gemm_A3",
+          "wait_for_jobs": ["gemm_A3"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x15000",
+          "region_size_bytes": 1024
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "description": "Core 6 post-GEMM background traffic",
+      "patterns": [
+        {
+          "description": "Core 6 traffic after gemm_A0",
+          "mem_access_type": "linear",
+          "job": "core6_after_gemm_A0",
+          "wait_for_jobs": ["gemm_A0"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x16000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 6 traffic after gemm_A1",
+          "mem_access_type": "linear",
+          "job": "core6_after_gemm_A1",
+          "wait_for_jobs": ["gemm_A1"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x16000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 6 traffic after gemm_A2",
+          "mem_access_type": "linear",
+          "job": "core6_after_gemm_A2",
+          "wait_for_jobs": ["gemm_A2"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x16000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 6 traffic after gemm_A3",
+          "mem_access_type": "linear",
+          "job": "core6_after_gemm_A3",
+          "wait_for_jobs": ["gemm_A3"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x16000",
+          "region_size_bytes": 1024
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "description": "Core 7 post-GEMM background traffic",
+      "patterns": [
+        {
+          "description": "Core 7 traffic after gemm_A0",
+          "mem_access_type": "linear",
+          "job": "core7_after_gemm_A0",
+          "wait_for_jobs": ["gemm_A0"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x17000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 7 traffic after gemm_A1",
+          "mem_access_type": "linear",
+          "job": "core7_after_gemm_A1",
+          "wait_for_jobs": ["gemm_A1"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x17000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 7 traffic after gemm_A2",
+          "mem_access_type": "linear",
+          "job": "core7_after_gemm_A2",
+          "wait_for_jobs": ["gemm_A2"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x17000",
+          "region_size_bytes": 1024
+        },
+        {
+          "description": "Core 7 traffic after gemm_A3",
+          "mem_access_type": "linear",
+          "job": "core7_after_gemm_A3",
+          "wait_for_jobs": ["gemm_A3"],
+          "traffic_pct": 50,
+          "traffic_read_pct": 50,
+          "region_base_address": "0x17000",
+          "region_size_bytes": 1024
+        }
+      ]
+    },
     { "id": 8, "description": "External 0 (idle)", "mem_access_type": "idle" }
   ],
 

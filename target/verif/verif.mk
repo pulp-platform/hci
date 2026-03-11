@@ -10,6 +10,9 @@ HCI_VERIF_DIR = $(HCI_ROOT)/target/verif
 HCI_VERIF_CFG_DIR = $(HCI_VERIF_DIR)/config
 HCI_VERIF_CFG_GEN_DIR = $(HCI_VERIF_CFG_DIR)/generated
 
+# Other Makefiles
+include $(HCI_VERIF_DIR)/exploration/exploration.mk
+
 # Include generated Makefiles
 include $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk
 include $(HCI_VERIF_CFG_GEN_DIR)/testbench.mk
@@ -156,13 +159,6 @@ clean-sim-verif:
 	rm -f $(HCI_VERIF_DIR)/vsim/modelsim.ini
 	rm -f $(HCI_VERIF_DIR)/vsim/transcript
 	rm -f $(HCI_VERIF_DIR)/vsim/vsim.wlf
-
-################
-# Benchmarking #
-################
-
-benchmarking-sweep:
-	. $(HCI_VERIF_DIR)/scripts/run_sweep.sh
 
 ###########
 # Helpers #
