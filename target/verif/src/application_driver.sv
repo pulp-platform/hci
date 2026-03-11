@@ -20,12 +20,20 @@
  *
  * Stimulus file format (one line per cycle):
  *   req(1b) id(IWb) wen(1b) data(Nb) add(Ab)   -- active transaction
- *   PAUSE                                        -- fence synchronization point
+ *   PAUSE                                      -- fence synchronization point
+ *
+ * Idle entries (req=0) are consumed as issue gaps when the driver is free to
+ * advance. While stalled waiting for a grant, the driver may advance over later
+ * idle entries, so the stimuli file represents offered traffic order and fence
+ * structure rather than an exact wall-clock replay under backpressure.
  *
  * When a PAUSE token is encountered the driver drains all in-flight reads
  * (waits in DRAIN_FOR_PAUSE), then enters PAUSED and holds fence_reached_o=1
  * until resume_i is asserted. This allows multi-phase execution on a single
  * driver without resetting counters between phases.
+ * Multiple consecutive PAUSE tokens are legal and represent multiple fence slots
+ * with no intervening traffic (e.g. free-pass completion fence followed by a
+ * synthetic blocking fence for the next pattern).
  */
 
 module application_driver #(
@@ -213,7 +221,9 @@ module application_driver #(
         hci_if.data = transactions[last_op_issued_q].data;
         hci_if.add  = transactions[last_op_issued_q].add;
         if (tr_idx_q < transactions.size()) begin
-          // Advance over any idle (req=0, not-pause) entries to hide memory latency
+          // Consume later idle entries while stalled so the driver can hide memory
+          // latency/backpressure when the workload permits it. This makes req=0 tokens
+          // issue-gap hints, not strict simulation-time no-op cycles.
           if (!transactions[tr_idx_q].req && !transactions[tr_idx_q].is_pause) begin
             tr_idx_d = tr_idx_q + 1;
           end
