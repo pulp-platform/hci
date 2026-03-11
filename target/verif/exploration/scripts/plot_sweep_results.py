@@ -18,7 +18,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 # Cycles of ideal workload runtime
-IDEAL_WORKLOAD_DURATION = 3866.0
+IDEAL_WORKLOAD_RUNTIME = 4121.0
 
 INTERCO_ORDER = {"LOG": 0, "MUX": 1, "HCI": 2}
 INTERCO_COLORS = {"LOG": "#1f77b4", "MUX": "#9467bd", "HCI": "#ff7f0e"}
@@ -176,7 +176,7 @@ def _plot_total_sim_time(entries: List[Dict[str, object]], out_path: Path) -> No
     for bar, val in zip(bars, values):
         if math.isnan(val):
             continue
-        mult_of_ideal = (val / IDEAL_WORKLOAD_DURATION) if val > 0 and IDEAL_WORKLOAD_DURATION > 0 else float("nan")
+        mult_of_ideal = (val / IDEAL_WORKLOAD_RUNTIME) if val > 0 and IDEAL_WORKLOAD_RUNTIME > 0 else float("nan")
         pct_txt = "n/a" if math.isnan(mult_of_ideal) else f"{mult_of_ideal:.2f}X of ideal runtime"
         ax.text(
             bar.get_x() + bar.get_width() / 2.0,
@@ -188,11 +188,11 @@ def _plot_total_sim_time(entries: List[Dict[str, object]], out_path: Path) -> No
         )
 
     ax.axhline(
-        y=IDEAL_WORKLOAD_DURATION,
+        y=IDEAL_WORKLOAD_RUNTIME,
         color="red",
         linestyle="--",
         linewidth=1.6,
-        label=f"Ideal workload runtime ({IDEAL_WORKLOAD_DURATION:.0f} cycles)",
+        label=f"Ideal workload runtime ({IDEAL_WORKLOAD_RUNTIME:.0f} cycles)",
     )
 
     legend = [Patch(facecolor=INTERCO_COLORS[k], label=k) for k in ("LOG", "MUX", "HCI")]
@@ -273,10 +273,10 @@ def _plot_bandwidth(entries: List[Dict[str, object]], out_path: Path) -> None:
     sim_cycles_vals = [e["total_sim_cycles"] for e in entries]
     ideal_app_vals = []
     for actual_bw, sim_cycles in zip(actual_vals, sim_cycles_vals):
-        if math.isnan(actual_bw) or math.isnan(sim_cycles) or IDEAL_WORKLOAD_DURATION <= 0.0:
+        if math.isnan(actual_bw) or math.isnan(sim_cycles) or IDEAL_WORKLOAD_RUNTIME <= 0.0:
             ideal_app_vals.append(float("nan"))
         else:
-            ideal_app_vals.append(actual_bw * sim_cycles / IDEAL_WORKLOAD_DURATION)
+            ideal_app_vals.append(actual_bw * sim_cycles / IDEAL_WORKLOAD_RUNTIME)
     actual_colors = [INTERCO_COLORS.get(e["interco_type"], "#333333") for e in entries]
     x = np.arange(len(entries), dtype=float)
     width = 0.34
@@ -323,7 +323,7 @@ def _plot_bandwidth(entries: List[Dict[str, object]], out_path: Path) -> None:
         )
 
     # Ideal app BW computed from moved data and ideal application duration:
-    # ideal_app_bw = effective_bw * total_real_sim_time / IDEAL_WORKLOAD_DURATION
+    # ideal_app_bw = effective_bw * total_real_sim_time / IDEAL_WORKLOAD_RUNTIME
     valid_ideal_app_vals = [v for v in ideal_app_vals if not math.isnan(v)]
     if valid_ideal_app_vals:
         ideal_workload_bw = sum(valid_ideal_app_vals) / len(valid_ideal_app_vals)

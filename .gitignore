@@ -9,4 +9,4 @@ target/verif/vsim/compile.tcl
 target/verif/vsim/modelsim.ini
 target/verif/vsim/transcript
 target/verif/vsim/vsim.wlf
-target/verif/results
+target/verif/exploration/results

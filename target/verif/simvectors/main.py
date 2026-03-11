@@ -1132,7 +1132,7 @@ def main(argv=None):
     # Build memory_map.txt
     # -----------------------------------------------------------------------
     memory_map_path = generated_dir / 'memory_map.txt'
-    report_text = write_memory_map_txt(
+    write_memory_map_txt(
         memory_map_path=memory_map_path,
         total_mem_size_kib=TOT_MEM_SIZE,
         n_banks=N_BANKS,
@@ -1161,15 +1161,14 @@ def main(argv=None):
         pattern_nodes=pattern_nodes,
         regions_timeline=regions_timeline,
     )
-    print("\n" + report_text)
     print(f"Memory map written: {memory_map_path}")
 
     # -----------------------------------------------------------------------
-    # Build memory_lifetime.html (simple SVG timeline view)
+    # Build dataflow.html (simple SVG timeline view)
     # -----------------------------------------------------------------------
-    memory_lifetime_path = generated_dir / 'memory_lifetime.html'
+    dataflow_path = generated_dir / 'dataflow.html'
     write_memory_lifetime_html(
-        memory_lifetime_path=memory_lifetime_path,
+        memory_lifetime_path=dataflow_path,
         pattern_nodes=pattern_nodes,
         driver_windows=driver_windows,
         regions_timeline=regions_timeline,
@@ -1189,7 +1188,7 @@ def main(argv=None):
         n_wide_hci_cfg=N_WIDE_HCI_CFG,
         n_banks=N_BANKS,
     )
-    print(f"Memory lifetime plot written: {memory_lifetime_path}")
+    print(f"Dataflow plot written: {dataflow_path}")
 
     # -----------------------------------------------------------------------
     # Apply per-master start delays
