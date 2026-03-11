@@ -38,8 +38,23 @@
         },
         "mem_access_type": {
           "type": "string",
-          "enum": ["idle", "random", "linear", "2d", "3d", "matmul_phased", "matmul"],
-          "description": "Access pattern selector. 'matmul' is an alias for 'matmul_phased'."
+          "enum": [
+            "idle",
+            "random",
+            "linear",
+            "2d",
+            "3d",
+            "matmul_phased",
+            "matmul",
+            "multi_linear",
+            "bank_group_linear",
+            "rw_rowwise",
+            "gather_scatter",
+            "matmul_tiled_interleave",
+            "matmul_tiled",
+            "hotspot_random"
+          ],
+          "description": "Access pattern selector. Aliases: 'matmul' -> 'matmul_phased', 'matmul_tiled' -> 'matmul_tiled_interleave'."
         },
         "job": {
           "type": "string",
@@ -157,6 +172,160 @@
           "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }],
           "description": "[matmul_phased] Size in bytes of the write-C region."
         },
+        "regions": {
+          "type": "array",
+          "description": "[multi_linear] Subregions to stream in schedule order.",
+          "items": {
+            "type": "object",
+            "required": ["base", "size_bytes"],
+            "additionalProperties": false,
+            "properties": {
+              "base": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] },
+              "size_bytes": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] },
+              "stride_words": { "type": "integer", "minimum": 1, "default": 1 },
+              "read_pct": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          }
+        },
+        "schedule": {
+          "type": "string",
+          "description": "[multi_linear, gather_scatter] Access schedule selector (e.g. round_robin, 4read_1write)."
+        },
+        "burst_len": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "[multi_linear] Number of consecutive accesses per selected region before switching."
+        },
+        "start_bank": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "[bank_group_linear] Starting bank index."
+        },
+        "bank_group_span": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "[bank_group_linear] Number of banks in the active group."
+        },
+        "stride_beats": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "[bank_group_linear] Stride in beats through the bank-group phase."
+        },
+        "bank_group_hop": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "[bank_group_linear] Optional phase hop applied when advancing to the next group window."
+        },
+        "wen": {
+          "type": "integer",
+          "enum": [0, 1],
+          "description": "[bank_group_linear] Fixed direction: 1=read, 0=write. If omitted, reads/writes are mixed."
+        },
+        "row_base_address": {
+          "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }],
+          "description": "[rw_rowwise] Base address of row 0."
+        },
+        "row_size_bytes": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }],
+          "description": "[rw_rowwise] Bytes touched inside each row."
+        },
+        "n_rows": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "[rw_rowwise] Number of rows."
+        },
+        "row_stride_bytes": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }],
+          "description": "[rw_rowwise] Byte stride between consecutive row bases."
+        },
+        "reads_per_row": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "[rw_rowwise] Number of reads emitted per row."
+        },
+        "writes_per_row": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "[rw_rowwise] Number of writes emitted per row."
+        },
+        "idle_cycles_between_rows": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "[rw_rowwise] Idle cycles inserted between rows."
+        },
+        "read_regions": {
+          "type": "array",
+          "description": "[gather_scatter] Source regions for gather reads.",
+          "items": {
+            "type": "object",
+            "required": ["base", "size_bytes"],
+            "additionalProperties": false,
+            "properties": {
+              "base": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] },
+              "size_bytes": { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }] }
+            }
+          }
+        },
+        "write_region": {
+          "type": "object",
+          "description": "[gather_scatter] Destination region for scatter writes.",
+          "required": ["base", "size_bytes"],
+          "additionalProperties": false,
+          "properties": {
+            "base": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] },
+            "size_bytes": { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }] }
+          }
+        },
+        "chunk_bytes": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }],
+          "description": "[gather_scatter] Address increment size in bytes for gather/scatter stepping."
+        },
+        "tile_a_bytes": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }],
+          "description": "[matmul_tiled_interleave] Bytes read from A per tile schedule step."
+        },
+        "tile_b_bytes": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }],
+          "description": "[matmul_tiled_interleave] Bytes read from B per tile schedule step."
+        },
+        "tile_c_bytes": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }],
+          "description": "[matmul_tiled_interleave] Bytes written to C per tile schedule step."
+        },
+        "tiles": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "[matmul_tiled_interleave] Number of tile iterations before the pattern repeats."
+        },
+        "ab_c_schedule": {
+          "type": "string",
+          "description": "[matmul_tiled_interleave] Tile phase order string, e.g. A_B_B_C."
+        },
+        "idle_cycles_between_tiles": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "[matmul_tiled_interleave] Idle cycles inserted between tile iterations."
+        },
+        "hot_regions": {
+          "type": "array",
+          "description": "[hotspot_random] Weighted hot regions used for random accesses.",
+          "items": {
+            "type": "object",
+            "required": ["base", "size_bytes"],
+            "additionalProperties": false,
+            "properties": {
+              "base": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] },
+              "size_bytes": { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }] },
+              "weight": { "type": "integer", "minimum": 1, "default": 1 }
+            }
+          }
+        },
         "matmul_ratio_a": {
           "type": "integer",
           "minimum": 0,
@@ -181,13 +350,13 @@
           "minimum": 1,
           "maximum": 100,
           "default": 100,
-          "description": "[random, linear, matmul_phased] Modeled request utilization percentage (adds req=0 idles after each request when <100)."
+          "description": "[random, linear, matmul_phased, multi_linear, bank_group_linear, rw_rowwise, gather_scatter, matmul_tiled_interleave, hotspot_random] Modeled request utilization percentage (adds req=0 idles after each request when <100)."
         },
         "traffic_read_pct": {
           "type": "integer",
           "minimum": 0,
           "maximum": 100,
-          "description": "[random, linear] Percentage of accesses that are reads (wen=1)."
+          "description": "[random, linear, hotspot_random] Percentage of accesses that are reads (wen=1)."
         },
         "idle_cycles_between_phases": {
           "type": "integer",
@@ -232,6 +401,38 @@
               { "required": ["matrix_m", "matrix_n", "matrix_k"] }
             ]
           }
+        },
+        {
+          "if": { "properties": { "mem_access_type": { "const": "multi_linear" } }, "required": ["mem_access_type"] },
+          "then": { "required": ["regions"] }
+        },
+        {
+          "if": { "properties": { "mem_access_type": { "const": "bank_group_linear" } }, "required": ["mem_access_type"] },
+          "then": { "required": ["start_bank", "bank_group_span", "n_transactions"] }
+        },
+        {
+          "if": { "properties": { "mem_access_type": { "const": "rw_rowwise" } }, "required": ["mem_access_type"] },
+          "then": { "required": ["row_base_address", "row_size_bytes", "n_rows", "row_stride_bytes", "reads_per_row", "writes_per_row"] }
+        },
+        {
+          "if": { "properties": { "mem_access_type": { "const": "gather_scatter" } }, "required": ["mem_access_type"] },
+          "then": { "required": ["read_regions", "write_region"] }
+        },
+        {
+          "if": {
+            "properties": { "mem_access_type": { "enum": ["matmul_tiled_interleave", "matmul_tiled"] } },
+            "required": ["mem_access_type"]
+          },
+          "then": {
+            "anyOf": [
+              { "required": ["n_transactions"] },
+              { "required": ["region_base_address_a", "region_size_bytes_a", "region_base_address_b", "region_size_bytes_b", "region_base_address_c", "region_size_bytes_c"] }
+            ]
+          }
+        },
+        {
+          "if": { "properties": { "mem_access_type": { "const": "hotspot_random" } }, "required": ["mem_access_type"] },
+          "then": { "required": ["hot_regions"] }
         }
       ]
     },

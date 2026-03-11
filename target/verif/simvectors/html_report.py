@@ -106,7 +106,7 @@ def build_memory_lifetime_html(
         regs = list(node.get('regions', []))
         label_map = {str(r.get('label', '')): r for r in regs}
         has_matmul_regs = any(k in label_map for k in ('A(read)', 'B(read)', 'C(write)'))
-        is_matmul = node.get('mem_access_type') in {'matmul', 'matmul_phased'} or has_matmul_regs
+        is_matmul = node.get('mem_access_type') in {'matmul', 'matmul_phased', 'matmul_tiled_interleave'} or has_matmul_regs
 
         if is_matmul:
             mat_lines = []
