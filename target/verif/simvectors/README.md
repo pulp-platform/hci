@@ -219,8 +219,8 @@ Weighted random traffic across hot regions.
 
 4. Dependency gate for `wait_for_jobs`
 - For each dependent pattern, generator inserts a synthetic idle+`PAUSE` gate before real traffic.
-- Each gate crossing increments the driver's `fence_idx` counter. The required `fence_idx` values are packed into `LEVEL_BITS`-bit fields in `FENCE_REQ_LEVELS_PACKED`, so the maximum supported `fence_idx` value is `2^LEVEL_BITS - 1`.
-- `LEVEL_BITS` is configured in `testbench.json` (default: 4, i.e. max 15 fence crossings per driver). Increase it if generation fails with a fence level overflow error.
+- Each gate crossing increments the driver's `fence_idx` counter. The required `fence_idx` values are packed into `LEVEL_BITS`-bit fields in `FENCE_REQ_LEVELS_PACKED`.
+- `LEVEL_BITS` is auto-derived by main.py as the minimum bits to represent the maximum required `fence_idx` in the workload (`max_req_level.bit_length()`), and emitted to `fence_masks.mk`. Both the packed field width and the fence array depth (`2^LEVEL_BITS`) are derived from it, so they always match the workload with no manual configuration.
 
 5. `idle` pattern
 - Explicitly emits idle and `PAUSE`.

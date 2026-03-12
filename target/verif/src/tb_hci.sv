@@ -542,17 +542,5 @@ module tb_hci
     end
   endgenerate
 
-  // Advisory check only. The hard overflow guard is in Python generation
-  // before packing FENCE_REQ_LEVELS into 4-bit fields.
-  // In case of failure due to this asser, modify tb_hci_pkg.sv and generation of fence_masks.mk
-  initial begin
-    if (MAX_FENCES > 16) begin
-      $warning(
-        "MAX_FENCES=%0d exceeds the nominal 4-bit fence-level range; "
-        "ensure no dependency requires a level > 15.",
-        MAX_FENCES
-      );
-    end
-  end
 
 endmodule
