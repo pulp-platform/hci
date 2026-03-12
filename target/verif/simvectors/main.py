@@ -72,6 +72,10 @@ def main(argv=None):
     testbench_config = load_config(args.testbench_config, "Testbench configuration")
     workload_config = load_config(args.workload_config, "Workload configuration")
 
+    # Testbench parameters
+    tb_params = testbench_config['parameters']
+    LEVEL_BITS = int(tb_params.get('LEVEL_BITS', 4))
+
     # Hardware parameters
     hw_params = hardware_config['parameters']
     N_BANKS = hw_params['N_BANKS']
@@ -1101,15 +1105,16 @@ def main(argv=None):
         for f in range(max_fences):
             for j in range(N_DRIVERS):
                 max_req_level = max(max_req_level, int(req_levels[i][f][j]))
-    if max_req_level > 15:
+    max_level_val = (1 << LEVEL_BITS) - 1
+    if max_req_level > max_level_val:
         print(
             "ERROR: Fence dependency level overflow: "
-            f"required fence_idx={max_req_level}, but packed format supports only 0..15. "
-            "Reduce the number of fence crossings per dependent job or widen LEVEL_BITS."
+            f"required fence_idx={max_req_level}, but packed format supports only 0..{max_level_val} "
+            f"(LEVEL_BITS={LEVEL_BITS}). "
+            f"Reduce the number of fence crossings per dependent job or increase LEVEL_BITS in testbench.json."
         )
         sys.exit(1)
 
-    LEVEL_BITS = 4
     packed_width = N_DRIVERS * LEVEL_BITS
     packed_hex_digits = (packed_width + 3) // 4
     req_driver_literals = []
@@ -1118,7 +1123,7 @@ def main(argv=None):
         for f in range(max_fences):
             val = 0
             for j in range(N_DRIVERS):
-                val |= (req_levels[i][f][j] & 0xF) << (j * LEVEL_BITS)
+                val |= (req_levels[i][f][j] & max_level_val) << (j * LEVEL_BITS)
             fence_literals.append(f"{packed_width}'h{val:0{packed_hex_digits}x}")
         req_driver_literals.append("'{" + ", ".join(fence_literals) + "}")
     fence_req_levels_packed_param = "'{" + ", ".join(req_driver_literals) + "}"
@@ -1132,8 +1137,7 @@ def main(argv=None):
             f"# Drivers 0..{N_LOG-1} = narrow masters (core/dma/ext), {N_LOG}..{N_DRIVERS-1} = HWPE masters.\n"
             f"# fence f = PAUSE after pattern f; fence_idx[i]==k means i completed k patterns.\n"
             f"# FENCE_MASKS[i][f][j]=1: j is a dependency of i at fence f.\n"
-            f"# FENCE_REQ_LEVELS_PACKED[i][f]: packed {N_DRIVERS*4}-bit vector, bits [j*4+3:j*4] = min fence_idx[j].\n"
-            f"MAX_FENCES_PARAM := {max_fences}\n"
+            f"# FENCE_REQ_LEVELS_PACKED[i][f]: packed {packed_width}-bit vector, bits [j*LEVEL_BITS+LEVEL_BITS-1:j*LEVEL_BITS] = min fence_idx[j].\n"
             f"FENCE_MASKS_PARAM := {fence_masks_param}\n"
             f"FENCE_REQ_LEVELS_PACKED_PARAM := {fence_req_levels_packed_param}\n",
             encoding='utf-8',

@@ -557,7 +557,10 @@ class PatternsMixin:
                     data = "0" * self.DATA_WIDTH
                     if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set):
                         continue
-                    self._record_access(add, wen, read_blocked_set, write_blocked_set)
+                    # Don't record reads: rw_rowwise is an RMW pattern where writes
+                    # intentionally target the same addresses as the preceding reads.
+                    # Recording reads would populate write_blocked_set and block all writes.
+                    # self._record_access(add, wen, read_blocked_set, write_blocked_set)
                     self._write_req(f, id_value, wen, data, add)
                     id_value += 1
                     for _ in range(n_idles):
