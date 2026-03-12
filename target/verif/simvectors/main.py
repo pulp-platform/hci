@@ -72,10 +72,6 @@ def main(argv=None):
     testbench_config = load_config(args.testbench_config, "Testbench configuration")
     workload_config = load_config(args.workload_config, "Workload configuration")
 
-    # Testbench parameters
-    tb_params = testbench_config['parameters']
-    LEVEL_BITS = int(tb_params.get('LEVEL_BITS', 4))
-
     # Hardware parameters
     hw_params = hardware_config['parameters']
     N_BANKS = hw_params['N_BANKS']
@@ -1105,15 +1101,9 @@ def main(argv=None):
         for f in range(max_fences):
             for j in range(N_DRIVERS):
                 max_req_level = max(max_req_level, int(req_levels[i][f][j]))
+    # Derive minimum LEVEL_BITS to represent max_req_level (at least 1 bit).
+    LEVEL_BITS = max(1, max_req_level.bit_length())
     max_level_val = (1 << LEVEL_BITS) - 1
-    if max_req_level > max_level_val:
-        print(
-            "ERROR: Fence dependency level overflow: "
-            f"required fence_idx={max_req_level}, but packed format supports only 0..{max_level_val} "
-            f"(LEVEL_BITS={LEVEL_BITS}). "
-            f"Reduce the number of fence crossings per dependent job or increase LEVEL_BITS in testbench.json."
-        )
-        sys.exit(1)
 
     packed_width = N_DRIVERS * LEVEL_BITS
     packed_hex_digits = (packed_width + 3) // 4
@@ -1138,6 +1128,9 @@ def main(argv=None):
             f"# fence f = PAUSE after pattern f; fence_idx[i]==k means i completed k patterns.\n"
             f"# FENCE_MASKS[i][f][j]=1: j is a dependency of i at fence f.\n"
             f"# FENCE_REQ_LEVELS_PACKED[i][f]: packed {packed_width}-bit vector, bits [j*LEVEL_BITS+LEVEL_BITS-1:j*LEVEL_BITS] = min fence_idx[j].\n"
+            f"# LEVEL_BITS: minimum bits to encode the max required fence_idx ({max_req_level}) for this workload.\n"
+            f"# Array depth and packed field width are both derived as 2^LEVEL_BITS.\n"
+            f"LEVEL_BITS := {LEVEL_BITS}\n"
             f"FENCE_MASKS_PARAM := {fence_masks_param}\n"
             f"FENCE_REQ_LEVELS_PACKED_PARAM := {fence_req_levels_packed_param}\n",
             encoding='utf-8',
