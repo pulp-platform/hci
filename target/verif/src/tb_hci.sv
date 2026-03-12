@@ -312,9 +312,9 @@ module tb_hci
       all_satisfied = 1'b1;
       for (int j = 0; j < N_DRIVERS; j++) begin
         if (cur_mask[j]) begin
-          automatic logic [3:0] req;
+          automatic logic [LEVEL_BITS-1:0] req;
           req = (fence_idx[i] < MAX_FENCES) ?
-                FENCE_REQ_LEVELS_PACKED[i][fence_idx[i]][j*4+3 -: 4] : 4'h0;
+                FENCE_REQ_LEVELS_PACKED[i][fence_idx[i]][j*LEVEL_BITS+LEVEL_BITS-1 -: LEVEL_BITS] : '0;
           if (fence_idx[j] < req)
             all_satisfied = 1'b0;
         end

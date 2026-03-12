@@ -219,6 +219,8 @@ Weighted random traffic across hot regions.
 
 4. Dependency gate for `wait_for_jobs`
 - For each dependent pattern, generator inserts a synthetic idle+`PAUSE` gate before real traffic.
+- Each gate crossing increments the driver's `fence_idx` counter. The required `fence_idx` values are packed into `LEVEL_BITS`-bit fields in `FENCE_REQ_LEVELS_PACKED`, so the maximum supported `fence_idx` value is `2^LEVEL_BITS - 1`.
+- `LEVEL_BITS` is configured in `testbench.json` (default: 4, i.e. max 15 fence crossings per driver). Increase it if generation fails with a fence level overflow error.
 
 5. `idle` pattern
 - Explicitly emits idle and `PAUSE`.
@@ -236,7 +238,7 @@ Behavior (within one pattern invocation):
 
 Effective policy:
 - read after read: allowed
-- write after read: blocked
+- write after read: blocked (exception: `rw_rowwise`, see below)
 - read after write: blocked
 - write after write: blocked
 
@@ -244,6 +246,7 @@ Notes:
 - Blocking state is pattern-local (it does not persist across patterns).
 - Generators are strict about transaction count: each non-idle pattern must emit exactly `n_transactions` (`N_TEST`).
 - If blocking rules make the requested count unreachable for a pattern, generation fails with an explicit error instead of silently under-emitting.
+- **`rw_rowwise` exception**: the reads phase does not call `_record_access`, so subsequent writes to the same addresses are not blocked. This is intentional — `rw_rowwise` is an explicit read-modify-write pattern where reads and writes target the same address range by design.
 
 ## Outputs
 
