@@ -1,7 +1,7 @@
 """Access-pattern generators for StimuliGenerator.
 
 Each method writes a cycle-accurate stimuli file directly (one line per cycle):
-  req(1b) id(IWb) wen(1b) data(Nb) add(Ab)
+  req(1b) id(IWb) wen(1b) be(BEWb) data(Nb) add(Ab)
 
 req=0 lines are idle cycles. req=1 lines are active transactions.
 
@@ -81,6 +81,18 @@ class PatternsMixin:
     def _commit_blocked_sets(self, read_blocked, write_blocked, read_blocked_set, write_blocked_set):
         self._extend_unique_sorted(read_blocked, read_blocked_set)
         self._extend_unique_sorted(write_blocked, write_blocked_set)
+
+    def _be_for(self, tx_index, n_total, trailing_bytes):
+        """Return the byte-enable string for transaction tx_index (0-based) in a sequence of n_total.
+
+        All beats use full be (all-ones) except the last beat when trailing_bytes > 0,
+        which gets a partial be with bits [trailing_bytes-1:0] set.
+
+        trailing_bytes=0 (default) means all transactions are full beats.
+        """
+        if trailing_bytes > 0 and tx_index == n_total - 1:
+            return self._partial_be(trailing_bytes)
+        return self._full_be()
 
     def _require_exact_emits(self, pattern_name, id_start, id_value):
         emitted = int(id_value - id_start)
@@ -178,7 +190,7 @@ class PatternsMixin:
 
     def random_gen(self, id_start, read_blocked, write_blocked,
                    region_base=0, region_size=None, traffic_pct=100,
-                   traffic_read_pct=None, append=False):
+                   traffic_read_pct=None, trailing_bytes=0, append=False):
         total = int(self.TOT_MEM_SIZE * 1024)
         if region_size is None: region_size = total
         region_size = min(region_size, total - region_base)
@@ -193,6 +205,7 @@ class PatternsMixin:
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
         max_attempts = max(1, n_words * 4)
+        tx_idx = 0
         with self._open(append) as f:
             for i in range(self.N_TEST):
                 wen = wen_seq[i] if wen_seq is not None else None
@@ -208,7 +221,8 @@ class PatternsMixin:
                         break
                 if not placed:
                     continue
-                self._write_req(f, id_value, wen, data, add); id_value += 1
+                be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                self._write_req(f, id_value, wen, data, add, be=be); id_value += 1; tx_idx += 1
                 for _ in range(n_idles): self._write_idle(f)
             self._write_pause(f)
         self._commit_blocked_sets(read_blocked, write_blocked, read_blocked_set, write_blocked_set)
@@ -216,7 +230,7 @@ class PatternsMixin:
         return id_value
 
     def linear_gen(self, stride0, start_address, id_start, read_blocked, write_blocked,
-                   traffic_pct=100, traffic_read_pct=None, append=False):
+                   traffic_pct=100, traffic_read_pct=None, trailing_bytes=0, append=False):
         n_idles = self._idles_per_req(traffic_pct)
         if traffic_read_pct is not None:
             rpct = max(0, min(100, int(traffic_read_pct)))
@@ -226,6 +240,7 @@ class PatternsMixin:
             wen_seq = None
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
+        tx_idx = 0
         with self._open(append) as f:
             addr = self._parse_address(start_address)
             if addr > self.TOT_MEM_SIZE*1024 - self.WIDTH_OF_MEMORY_BYTE:
@@ -240,7 +255,8 @@ class PatternsMixin:
                     addr -= self.TOT_MEM_SIZE*1024
                 if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set): continue
                 self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                self._write_req(f, id_value, wen, data, add); id_value += 1
+                be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                self._write_req(f, id_value, wen, data, add, be=be); id_value += 1; tx_idx += 1
                 for _ in range(n_idles): self._write_idle(f)
             self._write_pause(f)
         self._commit_blocked_sets(read_blocked, write_blocked, read_blocked_set, write_blocked_set)
@@ -248,9 +264,11 @@ class PatternsMixin:
         return id_value
 
     def gen_2d(self, stride0, len_d0, stride1, start_address, id_start,
-               read_blocked, write_blocked, idle_cycles_between_phases=0, append=False):
+               read_blocked, write_blocked, idle_cycles_between_phases=0,
+               trailing_bytes=0, append=False):
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
+        tx_idx = 0
         with self._open(append) as f:
             base = self._parse_address(start_address); j = 0
             while id_value - id_start < self.N_TEST:
@@ -263,7 +281,8 @@ class PatternsMixin:
                     add = bin(addr)[2:].zfill(self.ADD_WIDTH)
                     if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set): continue
                     self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                    self._write_req(f, id_value, wen, data, add); id_value += 1
+                    be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                    self._write_req(f, id_value, wen, data, add, be=be); id_value += 1; tx_idx += 1
                     if id_value - id_start >= self.N_TEST: break
                 for _ in range(idle_cycles_between_phases): self._write_idle(f)
                 if id_value == emitted_before:
@@ -275,9 +294,11 @@ class PatternsMixin:
         return id_value
 
     def gen_3d(self, stride0, len_d0, stride1, len_d1, stride2, start_address, id_start,
-               read_blocked, write_blocked, idle_cycles_between_phases=0, append=False):
+               read_blocked, write_blocked, idle_cycles_between_phases=0,
+               trailing_bytes=0, append=False):
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
+        tx_idx = 0
         with self._open(append) as f:
             base = self._parse_address(start_address); k = 0
             while id_value - id_start < self.N_TEST:
@@ -291,7 +312,8 @@ class PatternsMixin:
                         add = bin(addr)[2:].zfill(self.ADD_WIDTH)
                         if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set): continue
                         self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                        self._write_req(f, id_value, wen, data, add); id_value += 1
+                        be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                        self._write_req(f, id_value, wen, data, add, be=be); id_value += 1; tx_idx += 1
                         if id_value - id_start >= self.N_TEST: break
                     if id_value - id_start >= self.N_TEST: break
                     for _ in range(idle_cycles_between_phases): self._write_idle(f)
@@ -317,7 +339,18 @@ class PatternsMixin:
                           region_base_address_a=None, region_size_bytes_a=None,
                           region_base_address_b=None, region_size_bytes_b=None,
                           region_base_address_c=None, region_size_bytes_c=None,
+                          trailing_bytes_a=0, trailing_bytes_b=0, trailing_bytes_c=0,
                           append=False):
+        """Phased A-read / B-read / C-write traffic.
+
+        trailing_bytes_a/b/c: if > 0, the last transaction of that phase uses a
+        partial byte-enable covering only the specified number of valid bytes.
+        This models a transfer whose total byte size is not a multiple of the bus
+        width (e.g. an int8 matrix whose element count does not divide evenly into
+        32-byte bus beats). When n_transactions is derived from matrix dims via
+        matrix_m/n/k, main.py computes these automatically. When n_transactions is
+        set explicitly, all beats are assumed full (trailing_bytes=0).
+        """
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
         ab = max(1, self.DATA_WIDTH // 8); tm = int(self.TOT_MEM_SIZE * 1024)
@@ -348,9 +381,10 @@ class PatternsMixin:
 
         ca, cb, cc = self._phase_counts(self.N_TEST, matmul_ratio_a, matmul_ratio_b, matmul_ratio_c)
 
-        def _emit(fobj, count, wen, pb, pe):
+        def _emit(fobj, count, wen, pb, pe, trailing_bytes):
             nonlocal id_value
             addr = pb
+            tx_idx = 0
             for _ in range(count):
                 data = "0"*self.DATA_WIDTH if wen else self.random_data()
                 add = bin(addr)[2:].zfill(self.ADD_WIDTH)
@@ -359,20 +393,21 @@ class PatternsMixin:
                     if addr >= pe:
                         addr = pb
                     continue
-                self._write_req(fobj, id_value, wen, data, add)
+                be = self._be_for(tx_idx, count, trailing_bytes)
+                self._write_req(fobj, id_value, wen, data, add, be=be)
                 self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                id_value += 1; addr += ab
+                id_value += 1; tx_idx += 1; addr += ab
                 if addr >= pe: addr = pb
                 for _ in range(n_idles): self._write_idle(fobj)
 
         with self._open(append) as f:
-            _emit(f, ca, 1, a_base, a_base+a_size)
+            _emit(f, ca, 1, a_base, a_base+a_size, trailing_bytes_a)
             if ca > 0 and (cb > 0 or cc > 0):
                 for _ in range(idle_cycles_between_phases): self._write_idle(f)
-            _emit(f, cb, 1, b_base, b_base+b_size)
+            _emit(f, cb, 1, b_base, b_base+b_size, trailing_bytes_b)
             if cb > 0 and cc > 0:
                 for _ in range(idle_cycles_between_phases): self._write_idle(f)
-            _emit(f, cc, 0, c_base, c_base+c_size)
+            _emit(f, cc, 0, c_base, c_base+c_size, trailing_bytes_c)
             self._write_pause(f)
 
         self._commit_blocked_sets(read_blocked, write_blocked, read_blocked_set, write_blocked_set)
@@ -388,6 +423,7 @@ class PatternsMixin:
         schedule="round_robin",
         burst_len=1,
         traffic_pct=100,
+        trailing_bytes=0,
         append=False,
     ):
         id_value = id_start
@@ -430,6 +466,7 @@ class PatternsMixin:
 
         rr = 0
         stalled_rounds = 0
+        tx_idx = 0
         with self._open(append) as f:
             while id_value - id_start < self.N_TEST:
                 emitted_before = id_value
@@ -448,8 +485,9 @@ class PatternsMixin:
                         data = "0" * self.DATA_WIDTH if wen else self.random_data()
                     if self._is_allowed(add, wen, read_blocked_set, write_blocked_set):
                         self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                        self._write_req(f, id_value, wen, data, add)
-                        id_value += 1
+                        be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                        self._write_req(f, id_value, wen, data, add, be=be)
+                        id_value += 1; tx_idx += 1
                         for _ in range(n_idles):
                             self._write_idle(f)
                     step = reg["stride_words"] * ab
@@ -477,6 +515,7 @@ class PatternsMixin:
         bank_group_hop=0,
         wen=None,
         traffic_pct=100,
+        trailing_bytes=0,
         append=False,
     ):
         id_value = id_start
@@ -489,6 +528,7 @@ class PatternsMixin:
         stride = max(1, int(stride_beats))
         hop = max(0, int(bank_group_hop))
 
+        tx_idx = 0
         with self._open(append) as f:
             for tx in range(self.N_TEST):
                 phase = tx * stride
@@ -507,8 +547,9 @@ class PatternsMixin:
                 if not self._is_allowed(add, wen_cur, read_blocked_set, write_blocked_set):
                     continue
                 self._record_access(add, wen_cur, read_blocked_set, write_blocked_set)
-                self._write_req(f, id_value, wen_cur, data, add)
-                id_value += 1
+                be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                self._write_req(f, id_value, wen_cur, data, add, be=be)
+                id_value += 1; tx_idx += 1
                 for _ in range(n_idles):
                     self._write_idle(f)
             self._write_pause(f)
@@ -530,6 +571,7 @@ class PatternsMixin:
         writes_per_row,
         traffic_pct=100,
         idle_cycles_between_rows=0,
+        trailing_bytes=0,
         append=False,
     ):
         id_value = id_start
@@ -543,6 +585,7 @@ class PatternsMixin:
         reads_per_row = max(0, int(reads_per_row))
         writes_per_row = max(0, int(writes_per_row))
 
+        tx_idx = 0
         with self._open(append) as f:
             for r in range(n_rows):
                 if id_value - id_start >= self.N_TEST:
@@ -561,8 +604,9 @@ class PatternsMixin:
                     # intentionally target the same addresses as the preceding reads.
                     # Recording reads would populate write_blocked_set and block all writes.
                     # self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                    self._write_req(f, id_value, wen, data, add)
-                    id_value += 1
+                    be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                    self._write_req(f, id_value, wen, data, add, be=be)
+                    id_value += 1; tx_idx += 1
                     for _ in range(n_idles):
                         self._write_idle(f)
                 for i in range(writes_per_row):
@@ -575,8 +619,9 @@ class PatternsMixin:
                     if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set):
                         continue
                     self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                    self._write_req(f, id_value, wen, data, add)
-                    id_value += 1
+                    be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                    self._write_req(f, id_value, wen, data, add, be=be)
+                    id_value += 1; tx_idx += 1
                     for _ in range(n_idles):
                         self._write_idle(f)
                 if r < n_rows - 1:
@@ -598,6 +643,7 @@ class PatternsMixin:
         chunk_bytes=0,
         schedule="4read_1write",
         traffic_pct=100,
+        trailing_bytes=0,
         append=False,
     ):
         id_value = id_start
@@ -642,6 +688,7 @@ class PatternsMixin:
         write_offset = 0
         max_no_progress = max(32, len(tokens) * max(1, len(reads) + (1 if ws > 0 else 0)))
         no_progress_iters = 0
+        tx_idx = 0
         with self._open(append) as f:
             while id_value - id_start < self.N_TEST:
                 token = tokens[token_idx % len(tokens)]
@@ -672,8 +719,9 @@ class PatternsMixin:
                     continue
                 self._record_access(add, wen, read_blocked_set, write_blocked_set)
                 no_progress_iters = 0
-                self._write_req(f, id_value, wen, data, add)
-                id_value += 1
+                be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                self._write_req(f, id_value, wen, data, add, be=be)
+                id_value += 1; tx_idx += 1
                 for _ in range(n_idles):
                     self._write_idle(f)
             self._write_pause(f)
@@ -700,6 +748,7 @@ class PatternsMixin:
         ab_c_schedule="A_B_C",
         traffic_pct=100,
         idle_cycles_between_tiles=0,
+        trailing_bytes=0,
         append=False,
     ):
         id_value = id_start
@@ -741,6 +790,7 @@ class PatternsMixin:
         size = {"A": a_size, "B": b_size, "C": c_size}
         max_tiles = max(1, int(tiles))
 
+        tx_idx = 0
         with self._open(append) as f:
             tile_idx = 0
             stalled_tiles = 0
@@ -758,8 +808,9 @@ class PatternsMixin:
                         if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set):
                             continue
                         self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                        self._write_req(f, id_value, wen, data, add)
-                        id_value += 1
+                        be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                        self._write_req(f, id_value, wen, data, add, be=be)
+                        id_value += 1; tx_idx += 1
                         for _ in range(n_idles):
                             self._write_idle(f)
                 tile_idx += 1
@@ -788,6 +839,7 @@ class PatternsMixin:
         hot_regions,
         traffic_pct=100,
         traffic_read_pct=None,
+        trailing_bytes=0,
         append=False,
     ):
         id_value = id_start
@@ -827,6 +879,7 @@ class PatternsMixin:
         else:
             wen_seq = None
 
+        tx_idx = 0
         with self._open(append) as f:
             for i in range(self.N_TEST):
                 reg = random.choices(regions, weights=weights, k=1)[0]
@@ -842,8 +895,9 @@ class PatternsMixin:
                 if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set):
                     continue
                 self._record_access(add, wen, read_blocked_set, write_blocked_set)
-                self._write_req(f, id_value, wen, data, add)
-                id_value += 1
+                be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+                self._write_req(f, id_value, wen, data, add, be=be)
+                id_value += 1; tx_idx += 1
                 for _ in range(n_idles):
                     self._write_idle(f)
             self._write_pause(f)

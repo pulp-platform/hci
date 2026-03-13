@@ -28,6 +28,7 @@ Top-level:
 | Counters (`n_transactions`, `len_*`, `tiles`, `reads_per_row`, `writes_per_row`) | integer | count |
 | Percentages (`traffic_pct`, `traffic_read_pct`, `read_pct`) | integer | percent |
 | `wen` | `0` or `1` | `0`=write, `1`=read |
+| `trailing_bytes` / `trailing_bytes_a/b/c` | integer | Partial-beat byte count for last transaction. `0` = full beat (default). Only `matmul_phased` auto-derives this from matrix dims; other patterns use `0` unless explicitly passed. |
 
 ### Master-Level Fields
 | Field | Required | Default | Notes |
@@ -119,15 +120,22 @@ Phased A-read / B-read / C-write traffic.
 
 | Field | Required | Default | Format / unit | Notes |
 |---|---|---|---|---|
-| `n_transactions` | conditional | derived | int | Derivable from region size or matrix dims. |
+| `n_transactions` | conditional | derived | int | Derivable from region size or matrix dims. When set explicitly, all beats are assumed full-width (no trailing partial beat). |
 | `region_base_address`, `region_size_bytes` | conditional | evenly partitioned | bytes | Combined region (auto A/B/C split). |
-| `matrix_m`, `matrix_n`, `matrix_k` | no | none | int | Alternative source for derived `n_transactions`. |
+| `matrix_m`, `matrix_n`, `matrix_k` | no | none | int | Derive `n_transactions` in bus beats. Requires `matrix_elem_bytes_a/b/c` when element size ≠ 1 byte. |
+| `matrix_elem_bytes_a/b/c` | no | `1` | bytes | Tensor element byte width per phase (1=int8, 2=int16, 4=int32). Used with `matrix_m/n/k`. |
 | `region_base_address_a/b/c`, `region_size_bytes_a/b/c` | no | none | bytes | Explicit per-phase regions. |
-| `matmul_ratio_a/b/c` | no | `1/1/1` | relative weights | |
+| `matmul_ratio_a/b/c` | no | `1/1/1` | relative weights (bus beats) | Ignored when `matrix_m/n/k` are present (ratios are auto-derived in beat units). |
 | `idle_cycles_between_phases` | no | `0` | cycles | Inserts explicit phase-boundary idles. |
 
 Mutual exclusivity / precedence:
 - If explicit `*_a/b/c` regions are provided, they take precedence over combined-region auto-split.
+- If `matrix_m/n/k` are present: `n_transactions` and `matmul_ratio_a/b/c` are both derived automatically in bus-beat units, and trailing partial beats are computed and emitted. JSON-provided `matmul_ratio_a/b/c` are ignored.
+- If `n_transactions` is explicit (no matrix dims): all beats are full-width (`be` all-ones). This is correct when region sizes were already specified in bus-beat units.
+
+**Bus-beat unit requirement**: `n_transactions`, `matmul_ratio_a/b/c`, and `region_size_bytes_a/b/c` must all be expressed in bus beats (one beat = `DATA_WIDTH/8` bytes for the master). For int8 tensors on a 256-bit (32-byte) HWPE, one beat covers 32 elements. Mixing element-count units and beat-count units causes wrap-around errors.
+
+**Preflight check**: main.py verifies that each phase's transaction count fits within its region (no wrap-around). If not, generation fails with an explicit error.
 
 ### `multi_linear`
 Multiple subregions, schedule-driven interleave.
@@ -256,12 +264,15 @@ Path:
 - `target/verif/simvectors/generated/stimuli/master_hwpe_<i>.txt`
 
 Per-cycle vector line format:
-- `req id wen data add`
+- `req id wen be data add`
 - `req`: `1` active request, `0` idle
 - `id`: request ID (`IW` bits)
 - `wen`: `1` read, `0` write
+- `be`: byte-enable mask (`DATA_WIDTH/8` bits, one bit per byte lane). All-ones for full beats. For the trailing beat of a transfer whose total size is not a multiple of `DATA_WIDTH/8`, bits `[valid_bytes-1:0]` are set and the rest are zero. On reads (`wen=1`) `be` is driven for documentation/tracing; the memory subsystem typically ignores `be` on reads.
 - `data`: payload (`DATA_WIDTH` bits for narrow, `HWPE_WIDTH_FACT*DATA_WIDTH` for wide)
 - `add`: byte address (`ADD_WIDTH` bits)
+
+**Trailing beat support**: patterns accept a `trailing_bytes` parameter (per-phase `trailing_bytes_a/b/c` for `matmul_phased`). When `>0`, the last emitted transaction of that phase/pattern carries a partial `be`. For all patterns other than `matmul_phased`, `trailing_bytes` defaults to `0` (all beats full). For `matmul_phased` with `matrix_m/n/k`, trailing bytes are computed automatically from `(M*K*elem_bytes_a) % access_bytes` etc.
 
 Fence token:
 - A standalone line `PAUSE` is emitted at end of each pattern segment.
