@@ -120,13 +120,14 @@ ifeq ($(GUI),0)
 endif
 
 FENCE_MASKS_MK := $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
+LEVEL_BITS             = $(shell grep '^LEVEL_BITS'             $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
 FENCE_MASKS_PARAM      = $(shell grep '^FENCE_MASKS_PARAM'      $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
 FENCE_REQ_LEVELS_PARAM = $(shell grep '^FENCE_REQ_LEVELS_PACKED_PARAM' $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
 
 $(HCI_VERIF_DIR)/vsim/compile.tcl: $(HCI_ROOT)/Bender.lock $(HCI_ROOT)/Bender.yml $(HCI_ROOT)/bender.mk $(HCI_VERIF_DIR)/bender.mk $(SIM_SRC_FILES) $(VERIF_CFG_MK) $(SIMVECTORS_GEN_DIR)/.stim_stamp
 	mkdir -p $(HCI_VERIF_DIR)/vsim
 	$(BENDER) script vsim $(COMMON_DEFS) $(VERIF_DEFS) $(COMMON_TARGS) $(VERIF_TARGS) \
-		--vlog-arg="$(SIM_HCI_VLOG_ARGS) \"+define+FENCE_MASKS_PARAM=$(FENCE_MASKS_PARAM) +define+FENCE_REQ_LEVELS_PARAM=$(FENCE_REQ_LEVELS_PARAM)\"" > $@
+		--vlog-arg="$(SIM_HCI_VLOG_ARGS) \"+define+LEVEL_BITS=$(LEVEL_BITS) +define+FENCE_MASKS_PARAM=$(FENCE_MASKS_PARAM) +define+FENCE_REQ_LEVELS_PARAM=$(FENCE_REQ_LEVELS_PARAM)\"" > $@
 
 .PHONY: compile-verif
 compile-verif: $(sim_vsim_lib)/.hw_compiled
