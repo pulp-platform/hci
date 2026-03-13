@@ -1085,17 +1085,9 @@ def main(argv=None):
         while len(req_levels[i]) < max_fences:
             req_levels[i].append([0] * N_DRIVERS)
 
-    # Emit SV literals
-    hex_width = max(1, (N_DRIVERS + 3) // 4)
-    per_driver_literals = []
-    for i in range(N_DRIVERS):
-        slot_literals = [f"{N_DRIVERS}'h{fence_masks[i][f]:0{hex_width}x}" for f in range(max_fences)]
-        per_driver_literals.append("'{" + ", ".join(slot_literals) + "}")
-    fence_masks_param = "'{" + ", ".join(per_driver_literals) + "}"
-
     # FENCE_REQ_LEVELS[N_DRIVERS][MAX_FENCES][N_DRIVERS] — int unsigned
-    # Pack FENCE_REQ_LEVELS as FENCE_REQ_LEVELS_PACKED[i][f] = N_DRIVERS*4-bit vector.
-    # Bits [j*4+3:j*4] = required fence_idx[j] (4 bits, supports 0..15).
+    # Pack FENCE_REQ_LEVELS as FENCE_REQ_LEVELS_PACKED[i][f] = N_DRIVERS*LEVEL_BITS-bit vector.
+    # Bits [j*LEVEL_BITS+LEVEL_BITS-1:j*LEVEL_BITS] = required fence_idx[j].
     max_req_level = 0
     for i in range(N_DRIVERS):
         for f in range(max_fences):
@@ -1105,12 +1097,28 @@ def main(argv=None):
     LEVEL_BITS = max(1, max_req_level.bit_length())
     max_level_val = (1 << LEVEL_BITS) - 1
 
+    # SV array depth is MAX_FENCES = 2^LEVEL_BITS; pad to this depth.
+    array_depth = 2 ** LEVEL_BITS
+    for i in range(N_DRIVERS):
+        while len(fence_masks[i]) < array_depth:
+            fence_masks[i].append(0)
+        while len(req_levels[i]) < array_depth:
+            req_levels[i].append([0] * N_DRIVERS)
+
+    # Emit SV literals
+    hex_width = max(1, (N_DRIVERS + 3) // 4)
+    per_driver_literals = []
+    for i in range(N_DRIVERS):
+        slot_literals = [f"{N_DRIVERS}'h{fence_masks[i][f]:0{hex_width}x}" for f in range(array_depth)]
+        per_driver_literals.append("'{" + ", ".join(slot_literals) + "}")
+    fence_masks_param = "'{" + ", ".join(per_driver_literals) + "}"
+
     packed_width = N_DRIVERS * LEVEL_BITS
     packed_hex_digits = (packed_width + 3) // 4
     req_driver_literals = []
     for i in range(N_DRIVERS):
         fence_literals = []
-        for f in range(max_fences):
+        for f in range(array_depth):
             val = 0
             for j in range(N_DRIVERS):
                 val |= (req_levels[i][f][j] & max_level_val) << (j * LEVEL_BITS)
