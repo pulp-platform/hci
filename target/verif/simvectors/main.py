@@ -527,7 +527,15 @@ def main(argv=None):
             n = master_config.get('matrix_n')
             k = master_config.get('matrix_k')
             if m is not None and n is not None and k is not None:
-                return int(m) * int(k) + int(k) * int(n) + int(m) * int(n)
+                # Derive transaction counts in bus beats, not tensor elements.
+                # matrix_elem_bytes_a/b/c default to 1 (int8). Set to 2 for int16, 4 for int32, etc.
+                ea = int(master_config.get('matrix_elem_bytes_a', 1))
+                eb = int(master_config.get('matrix_elem_bytes_b', 1))
+                ec = int(master_config.get('matrix_elem_bytes_c', 1))
+                a_tx = math.ceil(int(m) * int(k) * ea / access_bytes)
+                b_tx = math.ceil(int(k) * int(n) * eb / access_bytes)
+                c_tx = math.ceil(int(m) * int(n) * ec / access_bytes)
+                return a_tx + b_tx + c_tx
         elif mem_access_type == 'multi_linear':
             total = 0
             for reg in master_config.get('regions', []) or []:
@@ -752,15 +760,58 @@ def main(argv=None):
                     f"{region_size} is too small for matmul_phased (minimum {min_region_size})."
                 )
                 sys.exit(1)
+            _mp_m = pattern_config.get('matrix_m')
+            _mp_n = pattern_config.get('matrix_n')
+            _mp_k = pattern_config.get('matrix_k')
+            if _mp_m is not None and _mp_n is not None and _mp_k is not None:
+                _ea = int(pattern_config.get('matrix_elem_bytes_a', 1))
+                _eb = int(pattern_config.get('matrix_elem_bytes_b', 1))
+                _ec = int(pattern_config.get('matrix_elem_bytes_c', 1))
+                _ratio_a = math.ceil(int(_mp_m) * int(_mp_k) * _ea / access_bytes)
+                _ratio_b = math.ceil(int(_mp_k) * int(_mp_n) * _eb / access_bytes)
+                _ratio_c = math.ceil(int(_mp_m) * int(_mp_n) * _ec / access_bytes)
+                # Trailing bytes: remainder of total tensor bytes that does not fill a full beat.
+                # The last transaction of each phase carries only these many valid bytes.
+                _trailing_a = (int(_mp_m) * int(_mp_k) * _ea) % access_bytes
+                _trailing_b = (int(_mp_k) * int(_mp_n) * _eb) % access_bytes
+                _trailing_c = (int(_mp_m) * int(_mp_n) * _ec) % access_bytes
+            else:
+                _ratio_a = int(pattern_config.get('matmul_ratio_a', 1))
+                _ratio_b = int(pattern_config.get('matmul_ratio_b', 1))
+                _ratio_c = int(pattern_config.get('matmul_ratio_c', 1))
+                # When n_transactions is set explicitly, all beats are assumed full.
+                _trailing_a = 0
+                _trailing_b = 0
+                _trailing_c = 0
+            # Preflight: verify each phase fits in its region without wrap-around.
+            # Phase counts mirror _phase_counts() in patterns.py.
+            _n_test = master.N_TEST
+            _rs = _ratio_a + _ratio_b + _ratio_c
+            if _rs > 0 and _n_test >= 3:
+                _ca = (_n_test * _ratio_a) // _rs
+                _cb = (_n_test * _ratio_b) // _rs
+                _cc = _n_test - _ca - _cb
+                _sa = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_a'), None)
+                _sb = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_b'), None)
+                _sc = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_c'), None)
+                for _phase, _count, _sz in (('A', _ca, _sa), ('B', _cb, _sb), ('C', _cc, _sc)):
+                    if _sz is not None and _count > _sz // access_bytes:
+                        print(
+                            f"ERROR: {kind}_{master_local_idx} matmul_phased phase {_phase}: "
+                            f"requires {_count} transaction(s) but region only holds "
+                            f"{_sz // access_bytes} ({_sz} B / {access_bytes} B). "
+                            f"Increase region_size_bytes_{_phase.lower()} or reduce n_transactions."
+                        )
+                        sys.exit(1)
             next_start_id = master.matmul_phased_gen(
                 next_start_id,
                 read_blocked_local,
                 write_blocked_local,
                 region_base,
                 region_size,
-                int(pattern_config.get('matmul_ratio_a', 1)),
-                int(pattern_config.get('matmul_ratio_b', 1)),
-                int(pattern_config.get('matmul_ratio_c', 1)),
+                _ratio_a,
+                _ratio_b,
+                _ratio_c,
                 traffic_pct=int(pattern_config.get('traffic_pct', 100)),
                 idle_cycles_between_phases=int(pattern_config.get('idle_cycles_between_phases', 0)),
                 region_base_address_a=_parse_maybe_bin_int(pattern_config.get('region_base_address_a'), None),
@@ -769,6 +820,9 @@ def main(argv=None):
                 region_size_bytes_b=_parse_maybe_bin_int(pattern_config.get('region_size_bytes_b'), None),
                 region_base_address_c=_parse_maybe_bin_int(pattern_config.get('region_base_address_c'), None),
                 region_size_bytes_c=_parse_maybe_bin_int(pattern_config.get('region_size_bytes_c'), None),
+                trailing_bytes_a=_trailing_a,
+                trailing_bytes_b=_trailing_b,
+                trailing_bytes_c=_trailing_c,
                 append=append,
             )
         elif config == 'multi_linear':

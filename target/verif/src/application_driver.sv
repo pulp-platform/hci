@@ -19,8 +19,12 @@
  * Reads stimuli from file and drives transactions on HCI interface.
  *
  * Stimulus file format (one line per cycle):
- *   req(1b) id(IWb) wen(1b) data(Nb) add(Ab)   -- active transaction
- *   PAUSE                                      -- fence synchronization point
+ *   req(1b) id(IWb) wen(1b) be(DW/8 b) data(Nb) add(Ab)   -- active transaction
+ *   PAUSE                                                  -- fence synchronization point
+ *
+ * be is the byte-enable mask: one bit per byte lane of DATA_WIDTH.
+ * All-ones means all lanes active (full beat). Partial be is used for the
+ * trailing beat of a transfer whose total size is not a multiple of DATA_WIDTH/8.
  *
  * Idle entries (req=0) are consumed as issue gaps when the driver is free to
  * advance. While stalled waiting for a grant, the driver may advance over later
@@ -60,12 +64,13 @@ module application_driver #(
 
   // Transaction queue from file. is_pause=1 entries are fence tokens, not real transactions.
   typedef struct {
-    logic                  is_pause;
-    logic                  req;
-    logic [IW-1:0]         id;
-    logic                  wen;
-    logic [DATA_WIDTH-1:0] data;
-    logic [ADDR_WIDTH-1:0] add;
+    logic                      is_pause;
+    logic                      req;
+    logic [IW-1:0]             id;
+    logic                      wen;
+    logic [DATA_WIDTH/8-1:0]   be;
+    logic [DATA_WIDTH-1:0]     data;
+    logic [ADDR_WIDTH-1:0]     add;
   } transaction_t;
   transaction_t transactions[$];
 
@@ -99,14 +104,15 @@ module application_driver #(
         t.req      = 1'b0;
         t.id       = '0;
         t.wen      = 1'b0;
+        t.be       = '0;
         t.data     = '0;
         t.add      = '0;
         transactions.push_back(t);
       end else if (line.len() > 0) begin
         t.is_pause = 1'b0;
-        scan_status = $sscanf(line, "%b %b %b %b %b",
-            t.req, t.id, t.wen, t.data, t.add);
-        if (scan_status != 5) begin
+        scan_status = $sscanf(line, "%b %b %b %b %b %b",
+            t.req, t.id, t.wen, t.be, t.data, t.add);
+        if (scan_status != 6) begin
           if (!$feof(stim)) begin
             $fatal(1, "ERROR: malformed stimuli line in %s: '%s'", file_path, line);
           end
@@ -170,7 +176,7 @@ module application_driver #(
     hci_if.ecc      = '0;
     hci_if.ereq     = '0;
     hci_if.r_eready = '0;
-    hci_if.be       = '1;
+    hci_if.be       = '0;
     hci_if.r_ready  = 1'b1;
     hci_if.user     = '0;
     // Output defaults
@@ -194,6 +200,7 @@ module application_driver #(
               hci_if.req  = 1'b1;
               hci_if.id   = transactions[tr_idx_q].id;
               hci_if.wen  = transactions[tr_idx_q].wen;
+              hci_if.be   = transactions[tr_idx_q].be;
               hci_if.data = transactions[tr_idx_q].data;
               hci_if.add  = transactions[tr_idx_q].add;
               n_req_issued_d = n_req_issued_q + 1;
@@ -218,6 +225,7 @@ module application_driver #(
         hci_if.req  = 1'b1;
         hci_if.id   = transactions[last_op_issued_q].id;
         hci_if.wen  = transactions[last_op_issued_q].wen;
+        hci_if.be   = transactions[last_op_issued_q].be;
         hci_if.data = transactions[last_op_issued_q].data;
         hci_if.add  = transactions[last_op_issued_q].add;
         if (tr_idx_q < transactions.size()) begin
