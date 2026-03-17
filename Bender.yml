@@ -36,6 +36,7 @@ sources:
       # Level 2
       - rtl/core/hci_core_assign.sv
       - rtl/core/hci_core_assign_expand.sv
+      - rtl/core/hci_core_cut.sv
       - rtl/core/hci_core_fifo.sv
       - rtl/core/hci_core_mux_dynamic.sv
       - rtl/core/hci_core_mux_static.sv

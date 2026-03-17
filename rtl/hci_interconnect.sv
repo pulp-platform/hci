@@ -62,6 +62,7 @@ module hci_interconnect
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
+  parameter int unsigned HCI_CUT = 0                        , //
   parameter int unsigned FILTER_WRITE_R_VALID[0:N_HWPE-1] = '{default: 0},
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(mems)  = '0,
@@ -324,10 +325,22 @@ module hci_interconnect
 
   generate
     for(genvar ii=0; ii<N_CORE; ii++) begin: cores_binding
-      hci_core_assign i_cores_assign (
-        .tcdm_target    ( cores           [ii] ),
-        .tcdm_initiator ( all_except_hwpe [ii] )
-      );
+      if (HCI_CUT) begin : hci_cut
+        hci_core_cut #(
+        .`HCI_SIZE_PARAM(in)(`HCI_SIZE_PARAM(cores))
+        ) i_hci_cut (
+            .clk_i  ( clk_i                ),
+            .rst_ni ( rst_ni               ),
+            .in     ( cores           [ii] ),
+            .out    ( all_except_hwpe [ii] )
+        );
+      end
+      else begin : no_hci_cut
+        hci_core_assign i_cores_assign (
+          .tcdm_target    ( cores           [ii] ),
+          .tcdm_initiator ( all_except_hwpe [ii] )
+        );
+      end
     end : cores_binding
     for(genvar ii=0; ii<N_EXT; ii++) begin: ext_binding
       hci_core_assign i_ext_assign (
