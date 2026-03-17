@@ -65,6 +65,8 @@ sources:
       - rtl/hci_interconnect.sv
 
       - target: hci_verif
+        include_dirs:
+          - target/verif/simvectors/generated
         files:
           # Level 0
           - target/verif/src/tb_hci_pkg.sv
