@@ -16,9 +16,6 @@ include $(HCI_VERIF_DIR)/exploration/exploration.mk
 # Include generated Makefiles
 include $(HCI_VERIF_CFG_GEN_DIR)/hardware.mk
 include $(HCI_VERIF_CFG_GEN_DIR)/testbench.mk
-ifeq (,$(filter clean%,$(MAKECMDGOALS)))
--include $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
-endif
 
 # Bender targets and defines
 include $(HCI_VERIF_DIR)/bender.mk
@@ -45,16 +42,16 @@ STIM_SRC_FILES := $(shell find $(HCI_VERIF_DIR)/config -type f -not -path '$(HCI
                   $(shell find $(HCI_VERIF_DIR)/simvectors -type f -not -path '$(HCI_VERIF_DIR)/simvectors/generated/*')
 SIMVECTORS_GEN_DIR := $(HCI_VERIF_DIR)/simvectors/generated
 
+FENCE_PARAMS_SVH := $(SIMVECTORS_GEN_DIR)/fence_params.svh
+
 .PHONY: stim-verif
-stim-verif: $(SIMVECTORS_GEN_DIR)/.stim_stamp
-$(SIMVECTORS_GEN_DIR)/.stim_stamp: $(VERIF_CFG_JSON) $(VERIF_CFG_MK) $(STIM_SRC_FILES) $(GEN_STIM_SCRIPT) | $(HCI_VERIF_CFG_GEN_DIR)
+stim-verif: $(FENCE_PARAMS_SVH)
+$(FENCE_PARAMS_SVH): $(VERIF_CFG_JSON) $(VERIF_CFG_MK) $(STIM_SRC_FILES) $(GEN_STIM_SCRIPT)
 	mkdir -p $(SIMVECTORS_GEN_DIR)
 	$(PYTHON) $(GEN_STIM_SCRIPT) \
 		--workload_config $(WORKLOAD_JSON) \
 		--testbench_config $(TESTBENCH_JSON) \
-		--hardware_config $(HARDWARE_JSON) \
-		--emit_phases_mk $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
-	date > $@
+		--hardware_config $(HARDWARE_JSON)
 
 .PHONY: clean-stim-verif
 clean-stim-verif:
@@ -90,7 +87,7 @@ $(HCI_VERIF_CFG_GEN_DIR):
 
 .PHONY: clean-config-verif
 clean-config-verif:
-	rm -f $(VERIF_CFG_MK) $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
+	rm -f $(VERIF_CFG_MK)
 
 ##############
 # Simulation #
@@ -102,7 +99,7 @@ GUI ?= $(if $(gui),$(gui),0)
 sim_top_level ?= tb_hci
 sim_vsim_lib ?= $(HCI_VERIF_DIR)/vsim/work
 
-SIM_SRC_FILES = $(shell find {$(HCI_RTL_DIR),$(HCI_VERIF_DIR)/src} -type f)
+SIM_SRC_FILES = $(shell find {$(HCI_RTL_DIR),$(HCI_VERIF_DIR)/src} -type f) $(FENCE_PARAMS_SVH)
 SIM_QUESTA_SUPPRESS ?= -suppress 3009 -suppress 3053 -suppress 8885 -suppress 12003
 
 # vlog compilation arguments
@@ -119,15 +116,10 @@ ifeq ($(GUI),0)
 	SIM_HCI_VSIM_ARGS += -c
 endif
 
-FENCE_MASKS_MK := $(HCI_VERIF_CFG_GEN_DIR)/fence_masks.mk
-LEVEL_BITS             = $(shell grep '^LEVEL_BITS'             $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
-FENCE_MASKS_PARAM      = $(shell grep '^FENCE_MASKS_PARAM'      $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
-FENCE_REQ_LEVELS_PARAM = $(shell grep '^FENCE_REQ_LEVELS_PACKED_PARAM' $(FENCE_MASKS_MK) 2>/dev/null | cut -d' ' -f3-)
-
-$(HCI_VERIF_DIR)/vsim/compile.tcl: $(HCI_ROOT)/Bender.lock $(HCI_ROOT)/Bender.yml $(HCI_ROOT)/bender.mk $(HCI_VERIF_DIR)/bender.mk $(SIM_SRC_FILES) $(VERIF_CFG_MK) $(SIMVECTORS_GEN_DIR)/.stim_stamp
+$(HCI_VERIF_DIR)/vsim/compile.tcl: $(HCI_ROOT)/Bender.lock $(HCI_ROOT)/Bender.yml $(HCI_ROOT)/bender.mk $(HCI_VERIF_DIR)/bender.mk $(SIM_SRC_FILES) $(VERIF_CFG_MK)
 	mkdir -p $(HCI_VERIF_DIR)/vsim
 	$(BENDER) script vsim $(COMMON_DEFS) $(VERIF_DEFS) $(COMMON_TARGS) $(VERIF_TARGS) \
-		--vlog-arg="$(SIM_HCI_VLOG_ARGS) \"+define+LEVEL_BITS=$(LEVEL_BITS) +define+FENCE_MASKS_PARAM=$(FENCE_MASKS_PARAM) +define+FENCE_REQ_LEVELS_PARAM=$(FENCE_REQ_LEVELS_PARAM)\"" > $@
+		--vlog-arg="$(SIM_HCI_VLOG_ARGS)" > $@
 
 .PHONY: compile-verif
 compile-verif: $(sim_vsim_lib)/.hw_compiled
@@ -145,7 +137,7 @@ $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled: $(sim_vsim_lib)/.hw
 	date > $@
 
 .PHONY: run-verif
-run-verif: $(HCI_VERIF_DIR)/vsim/$(sim_top_level).tcl $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled $(SIMVECTORS_GEN_DIR)/.stim_stamp
+run-verif: $(HCI_VERIF_DIR)/vsim/$(sim_top_level).tcl $(sim_vsim_lib)/$(sim_top_level)_optimized/.tb_opt_compiled $(FENCE_PARAMS_SVH)
 	cd $(HCI_VERIF_DIR)/vsim && \
 	$(SIM_VSIM) $(SIM_HCI_VSIM_ARGS) \
 	$(sim_top_level)_optimized \

@@ -172,7 +172,7 @@ This allows verifying that regions are correctly partitioned and identifying any
 | Target | Action |
 |--------|--------|
 | `make config-verif` | Generate `hardware.mk`, `testbench.mk` from JSON |
-| `make stim-verif` | Generate stimuli and `fence_masks.mk` from workload/hardware/testbench JSON |
+| `make stim-verif` | Generate stimuli and `fence_params.svh` from workload/hardware/testbench JSON |
 | `make compile-verif` | Compile RTL and testbench with QuestaSim |
 | `make opt-verif` | Optimize compiled design |
 | `make run-verif` | Run simulation |
