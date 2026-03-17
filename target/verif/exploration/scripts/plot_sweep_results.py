@@ -17,10 +17,7 @@ from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-# Cycles of ideal workload runtime
-IDEAL_WORKLOAD_RUNTIME = 4121.0
-
-INTERCO_ORDER = {"LOG": 0, "MUX": 1, "HCI": 2}
+INTERCO_ORDER = {"LOG": 0, "HCI": 1, "MUX": 2}
 INTERCO_COLORS = {"LOG": "#1f77b4", "MUX": "#9467bd", "HCI": "#ff7f0e"}
 IDEAL_COLOR = "#7f7f7f"
 
@@ -119,6 +116,7 @@ def _load_results(results_dir: Path) -> List[Dict[str, object]]:
             interco_type = interco_from_name
 
         n_hwpe = _to_int(masters.get("hwpe"), n_hwpe_name)
+        n_core = _to_int(masters.get("core"))
         hwpe_wf = _to_int(memory.get("hwpe_width_lanes"), wf_name)
         cfg_label = f"{interco_type}_{n_hwpe}x{hwpe_wf}"
 
@@ -150,6 +148,7 @@ def _load_results(results_dir: Path) -> List[Dict[str, object]]:
                 "ideal_bottleneck_bw": ideal_bottleneck,
                 "actual_bw": actual_bw,
                 "utilization_pct": util_pct,
+                "n_core": n_core,
             }
         )
 
@@ -157,8 +156,49 @@ def _load_results(results_dir: Path) -> List[Dict[str, object]]:
     return entries
 
 
-def _plot_total_sim_time(entries: List[Dict[str, object]], out_path: Path) -> None:
-    labels = [e["label"] for e in entries]
+def _parse_ideal_runtime(ideal_json_path: Path) -> float:
+    if not ideal_json_path:
+        return None
+    if not ideal_json_path.is_file():
+        print(f"Warning: Ideal run JSON file not found at: {ideal_json_path}. Skipping ideal runtime comparison.")
+        raise SystemExit(f"Ideal run JSON file not found: {ideal_json_path}")
+    try:
+        data = json.loads(ideal_json_path.read_text(encoding="utf-8"))
+        ideal_runtime = _to_float(data.get("simulation_time", {}).get("total_cycles"))
+        if math.isnan(ideal_runtime) or ideal_runtime <= 0.0:
+            print(f"Error: Invalid ideal runtime value in JSON file: {ideal_json_path}. Value: {ideal_runtime}.")
+            raise ValueError(f"Invalid ideal runtime value: {ideal_runtime}")
+        return ideal_runtime
+    except Exception as e:
+        print(f"Error: Failed to parse ideal runtime from JSON file: {ideal_json_path}. Exception: {e}")
+        raise SystemExit(f"Failed to parse ideal runtime from JSON file: {ideal_json_path}")
+
+def _apply_interco_tick_labels(ax, x_positions, entries) -> None:
+    """Replace x-tick labels with three-line labels: INTERCO_TYPE / N cores / M HWPEs."""
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([""] * len(entries))
+    for xi, entry in zip(x_positions, entries):
+        ax.annotate(
+            entry["interco_type"],
+            xy=(xi, 0), xycoords=("data", "axes fraction"),
+            xytext=(0, -5), textcoords="offset points",
+            ha="center", va="top", fontsize=10,
+        )
+        ax.annotate(
+            f"{entry['n_core']} cores",
+            xy=(xi, 0), xycoords=("data", "axes fraction"),
+            xytext=(0, -18), textcoords="offset points",
+            ha="center", va="top", fontsize=8,
+        )
+        ax.annotate(
+            f"{entry['n_hwpe']} HWPEs",
+            xy=(xi, 0), xycoords=("data", "axes fraction"),
+            xytext=(0, -29), textcoords="offset points",
+            ha="center", va="top", fontsize=8,
+        )
+
+
+def _plot_total_sim_time(entries: List[Dict[str, object]], ideal_runtime: float, out_path: Path) -> None:
     values = [e["total_sim_cycles"] for e in entries]
     colors = [INTERCO_COLORS.get(e["interco_type"], "#333333") for e in entries]
     x = np.arange(len(entries), dtype=float)
@@ -167,45 +207,47 @@ def _plot_total_sim_time(entries: List[Dict[str, object]], out_path: Path) -> No
     bars = ax.bar(x, values, color=colors, width=0.68)
     ax.set_title("Total simulation time vs ideal workload runtime")
     ax.set_ylabel("cycles")
-    ax.set_xlabel("Configuration")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=20, ha="right")
+    ax.set_xlabel("Configuration", labelpad=50)
+    _apply_interco_tick_labels(ax, x, entries)
     ax.set_axisbelow(True)
     ax.grid(axis="y", alpha=0.25)
 
     for bar, val in zip(bars, values):
         if math.isnan(val):
             continue
-        mult_of_ideal = (val / IDEAL_WORKLOAD_RUNTIME) if val > 0 and IDEAL_WORKLOAD_RUNTIME > 0 else float("nan")
-        pct_txt = "n/a" if math.isnan(mult_of_ideal) else f"{mult_of_ideal:.2f}X of ideal runtime"
+        if ideal_runtime is not None:
+            mult_of_ideal = (val / ideal_runtime) if val > 0 and ideal_runtime > 0 else float("nan")
+            pct_txt = "n/a" if math.isnan(mult_of_ideal) else f"{mult_of_ideal:.2f}X of ideal runtime"
+            label_txt = f"{val:.0f}\n({pct_txt})"
+        else:
+            label_txt = f"{val:.0f}"
         ax.text(
             bar.get_x() + bar.get_width() / 2.0,
             val,
-            f"{val:.0f}\n({pct_txt})",
+            label_txt,
             ha="center",
             va="bottom",
             fontsize=8,
         )
 
-    ax.axhline(
-        y=IDEAL_WORKLOAD_RUNTIME,
-        color="red",
-        linestyle="--",
-        linewidth=1.6,
-        label=f"Ideal workload runtime ({IDEAL_WORKLOAD_RUNTIME:.0f} cycles)",
-    )
-
-    legend = [Patch(facecolor=INTERCO_COLORS[k], label=k) for k in ("LOG", "MUX", "HCI")]
-    legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.6, label="Ideal workload runtime"))
+    legend = [Patch(facecolor=INTERCO_COLORS[k], label=k) for k in ("LOG", "HCI", "MUX")]
+    if ideal_runtime is not None:
+        ax.axhline(
+            y=ideal_runtime,
+            color="red",
+            linestyle="--",
+            linewidth=1.6,
+            label=f"Ideal workload runtime ({ideal_runtime:.0f} cycles)",
+        )
+        legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.6, label="Ideal workload runtime"))
     ax.legend(handles=legend, loc="lower left")
     ax.margins(y=0.24)
-    fig.tight_layout(rect=(0.0, 0.02, 1.0, 0.98))
+    fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
 def _plot_per_master_avg_req_to_gnt(entries: List[Dict[str, object]], out_path: Path) -> None:
-    labels = [e["label"] for e in entries]
     masters = sorted(
         {
             row.get("master_name", "")
@@ -242,10 +284,9 @@ def _plot_per_master_avg_req_to_gnt(entries: List[Dict[str, object]], out_path: 
     fig, ax = plt.subplots(figsize=(max(10, 1.2 * len(entries)), max(4, 0.35 * len(masters))))
     im = ax.imshow(np.ma.masked_invalid(matrix), aspect="auto", cmap=cmap, interpolation="nearest")
     ax.set_title("Avg req->gnt stall latency per master")
-    ax.set_xlabel("Configuration")
+    ax.set_xlabel("Configuration", labelpad=50)
     ax.set_ylabel("Master")
-    ax.set_xticks(np.arange(len(entries)))
-    ax.set_xticklabels(labels, rotation=20, ha="right")
+    _apply_interco_tick_labels(ax, np.arange(len(entries), dtype=float), entries)
     ax.set_yticks(np.arange(len(masters)))
     ax.set_yticklabels(masters)
 
@@ -265,36 +306,35 @@ def _plot_per_master_avg_req_to_gnt(entries: List[Dict[str, object]], out_path: 
     plt.close(fig)
 
 
-def _plot_bandwidth(entries: List[Dict[str, object]], out_path: Path) -> None:
-    labels = [e["label"] for e in entries]
+def _plot_bandwidth(entries: List[Dict[str, object]], ideal_runtime: float, out_path: Path) -> None:
     ideal_vals = [e["ideal_bottleneck_bw"] for e in entries]
     actual_vals = [e["actual_bw"] for e in entries]
     util_vals = [e["utilization_pct"] for e in entries]
     sim_cycles_vals = [e["total_sim_cycles"] for e in entries]
     ideal_app_vals = []
     for actual_bw, sim_cycles in zip(actual_vals, sim_cycles_vals):
-        if math.isnan(actual_bw) or math.isnan(sim_cycles) or IDEAL_WORKLOAD_RUNTIME <= 0.0:
+        if ideal_runtime is None or math.isnan(actual_bw) or math.isnan(sim_cycles) or ideal_runtime <= 0.0:
             ideal_app_vals.append(float("nan"))
         else:
-            ideal_app_vals.append(actual_bw * sim_cycles / IDEAL_WORKLOAD_RUNTIME)
+            ideal_app_vals.append(actual_bw * sim_cycles / ideal_runtime)
     actual_colors = [INTERCO_COLORS.get(e["interco_type"], "#333333") for e in entries]
     x = np.arange(len(entries), dtype=float)
-    width = 0.34
+    ideal_width = 0.20
+    actual_width = 0.34
 
     fig, ax = plt.subplots(figsize=(max(9, 1.25 * len(entries)), 5.0))
     ideal_bars = ax.bar(
-        x - width / 2.0,
+        x - actual_width / 2.0,
         ideal_vals,
-        width=width,
+        width=ideal_width,
         color=IDEAL_COLOR,
         label="Max interco bandwidth",
     )
-    actual_bars = ax.bar(x + width / 2.0, actual_vals, width=width, color=actual_colors, label="Actual BW (completion)")
+    actual_bars = ax.bar(x + ideal_width / 2.0, actual_vals, width=actual_width, color=actual_colors, label="Actual BW (completion)")
     ax.set_title("Bandwidth: interconnect-side ideal vs actual")
     ax.set_ylabel("bit/cycle")
-    ax.set_xlabel("Configuration")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=20, ha="right")
+    ax.set_xlabel("Configuration", labelpad=50)
+    _apply_interco_tick_labels(ax, x, entries)
     ax.set_axisbelow(True)
     ax.grid(axis="y", alpha=0.25)
 
@@ -323,7 +363,7 @@ def _plot_bandwidth(entries: List[Dict[str, object]], out_path: Path) -> None:
         )
 
     # Ideal app BW computed from moved data and ideal application duration:
-    # ideal_app_bw = effective_bw * total_real_sim_time / IDEAL_WORKLOAD_RUNTIME
+    # ideal_app_bw = effective_bw * total_real_sim_time / ideal_runtime
     valid_ideal_app_vals = [v for v in ideal_app_vals if not math.isnan(v)]
     if valid_ideal_app_vals:
         ideal_workload_bw = sum(valid_ideal_app_vals) / len(valid_ideal_app_vals)
@@ -346,7 +386,7 @@ def _plot_bandwidth(entries: List[Dict[str, object]], out_path: Path) -> None:
             zorder=8,
         )
 
-    interco_legend = [Patch(facecolor=INTERCO_COLORS[k], label=f"Actual {k}") for k in ("LOG", "MUX", "HCI")]
+    interco_legend = [Patch(facecolor=INTERCO_COLORS[k], label=f"Actual {k}") for k in ("LOG", "HCI", "MUX")]
     base_legend = [Patch(facecolor=IDEAL_COLOR, label="Max interco bandwidth")]
     extra_legend = [Line2D([0], [0], color="red", linestyle="--", linewidth=1.8, label="Ideal workload bandwidth")]
     ax.legend(handles=base_legend + interco_legend + extra_legend, loc="best")
@@ -367,19 +407,28 @@ def main() -> int:
         default="target/verif/results/plots",
         help="Output directory for generated plots.",
     )
+    parser.add_argument(
+        "--ideal-run",
+        default=None,
+        help="Path to the ideal run JSON file for comparison.",
+    )
     args = parser.parse_args()
 
     results_dir = Path(args.results_dir)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    ideal_json_path = Path(args.ideal_run) if args.ideal_run else None
 
+    # Parse results
     entries = _load_results(results_dir)
     if not entries:
         raise SystemExit(f"No sweep JSON files found in: {results_dir}")
+    ideal_runtime = _parse_ideal_runtime(ideal_json_path)
 
-    _plot_total_sim_time(entries, out_dir / "total_simulation_time.png")
+    # Plot
+    _plot_total_sim_time(entries, ideal_runtime, out_dir / "total_simulation_time.png")
     _plot_per_master_avg_req_to_gnt(entries, out_dir / "avg_req_to_gnt_per_master.png")
-    _plot_bandwidth(entries, out_dir / "bandwidth_ideal_vs_actual.png")
+    _plot_bandwidth(entries, ideal_runtime, out_dir / "bandwidth_ideal_vs_actual.png")
 
     print(f"Plots written to: {out_dir}")
     return 0
