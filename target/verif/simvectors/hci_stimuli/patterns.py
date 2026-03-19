@@ -112,12 +112,13 @@ class PatternsMixin:
 
     def _normalize_addr(self, addr):
         total = self._total_mem_bytes()
-        if total <= self.WIDTH_OF_MEMORY_BYTE:
-            return 0
-        max_addr = total - self.WIDTH_OF_MEMORY_BYTE
-        a = int(addr) % total
-        if a > max_addr:
-            a = max_addr
+        a = int(addr)
+        end = a + self.WIDTH_OF_MEMORY_BYTE
+        if a < 0 or end > total:
+            raise ValueError(
+                f"address 0x{a:X} (end 0x{end:X}) exceeds total memory "
+                f"0x{total:X} ({self.TOT_MEM_SIZE} KiB)"
+            )
         return a
 
     @staticmethod
@@ -193,7 +194,14 @@ class PatternsMixin:
                    traffic_read_pct=None, trailing_bytes=0, append=False):
         total = int(self.TOT_MEM_SIZE * 1024)
         if region_size is None: region_size = total
-        region_size = min(region_size, total - region_base)
+        if region_base < 0 or region_base >= total:
+            raise ValueError(
+                f"random: region_base 0x{region_base:X} is out of range [0, 0x{total:X})"
+            )
+        if region_base + region_size > total:
+            raise ValueError(
+                f"random: region end 0x{region_base + region_size:X} exceeds total memory 0x{total:X}"
+            )
         n_words = max(1, region_size // self.WIDTH_OF_MEMORY_BYTE)
         n_idles = self._idles_per_req(traffic_pct)
         if traffic_read_pct is not None:
@@ -241,18 +249,25 @@ class PatternsMixin:
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
         tx_idx = 0
+        total = self._total_mem_bytes()
         with self._open(append) as f:
             addr = self._parse_address(start_address)
-            if addr > self.TOT_MEM_SIZE*1024 - self.WIDTH_OF_MEMORY_BYTE:
-                addr -= self.TOT_MEM_SIZE*1024
+            if addr < 0 or addr + self.WIDTH_OF_MEMORY_BYTE > total:
+                raise ValueError(
+                    f"linear: start_address 0x{addr:X} (end 0x{addr + self.WIDTH_OF_MEMORY_BYTE:X}) "
+                    f"exceeds total memory 0x{total:X}"
+                )
             for i in range(self.N_TEST):
                 wen = wen_seq[i] if wen_seq is not None else None
                 if wen is None: data, wen = self.data_wen()
                 else: data = "0"*self.DATA_WIDTH if wen else self.random_data()
+                if addr < 0 or addr + self.WIDTH_OF_MEMORY_BYTE > total:
+                    raise ValueError(
+                        f"linear: address 0x{addr:X} (end 0x{addr + self.WIDTH_OF_MEMORY_BYTE:X}) "
+                        f"exceeds total memory 0x{total:X} at transaction {i}"
+                    )
                 add = bin(addr)[2:].zfill(self.ADD_WIDTH)
                 addr += self.WIDTH_OF_MEMORY_BYTE * stride0
-                if addr > self.TOT_MEM_SIZE*1024 - self.WIDTH_OF_MEMORY_BYTE:
-                    addr -= self.TOT_MEM_SIZE*1024
                 if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set): continue
                 self._record_access(add, wen, read_blocked_set, write_blocked_set)
                 be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
@@ -269,6 +284,7 @@ class PatternsMixin:
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
         tx_idx = 0
+        total = self._total_mem_bytes()
         with self._open(append) as f:
             base = self._parse_address(start_address); j = 0
             while id_value - id_start < self.N_TEST:
@@ -276,8 +292,11 @@ class PatternsMixin:
                 for i in range(len_d0):
                     data, wen = self.data_wen()
                     addr = base + i*self.WIDTH_OF_MEMORY_BYTE*stride0 + j*self.WIDTH_OF_MEMORY_BYTE*stride1
-                    if addr > self.TOT_MEM_SIZE*1024 - self.WIDTH_OF_MEMORY_BYTE:
-                        addr -= self.TOT_MEM_SIZE*1024
+                    if addr < 0 or addr + self.WIDTH_OF_MEMORY_BYTE > total:
+                        raise ValueError(
+                            f"2d: address 0x{addr:X} (end 0x{addr + self.WIDTH_OF_MEMORY_BYTE:X}) "
+                            f"exceeds total memory 0x{total:X} at i={i}, j={j}"
+                        )
                     add = bin(addr)[2:].zfill(self.ADD_WIDTH)
                     if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set): continue
                     self._record_access(add, wen, read_blocked_set, write_blocked_set)
@@ -299,6 +318,7 @@ class PatternsMixin:
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
         tx_idx = 0
+        total = self._total_mem_bytes()
         with self._open(append) as f:
             base = self._parse_address(start_address); k = 0
             while id_value - id_start < self.N_TEST:
@@ -307,8 +327,11 @@ class PatternsMixin:
                     for i in range(len_d0):
                         data, wen = self.data_wen()
                         addr = base + i*self.WIDTH_OF_MEMORY_BYTE*stride0 + j*self.WIDTH_OF_MEMORY_BYTE*stride1 + k*self.WIDTH_OF_MEMORY_BYTE*stride2
-                        if addr > self.TOT_MEM_SIZE*1024 - self.WIDTH_OF_MEMORY_BYTE:
-                            addr -= self.TOT_MEM_SIZE*1024
+                        if addr < 0 or addr + self.WIDTH_OF_MEMORY_BYTE > total:
+                            raise ValueError(
+                                f"3d: address 0x{addr:X} (end 0x{addr + self.WIDTH_OF_MEMORY_BYTE:X}) "
+                                f"exceeds total memory 0x{total:X} at i={i}, j={j}, k={k}"
+                            )
                         add = bin(addr)[2:].zfill(self.ADD_WIDTH)
                         if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set): continue
                         self._record_access(add, wen, read_blocked_set, write_blocked_set)
@@ -356,20 +379,32 @@ class PatternsMixin:
         ab = max(1, self.DATA_WIDTH // 8); tm = int(self.TOT_MEM_SIZE * 1024)
         n_idles = self._idles_per_req(traffic_pct)
 
-        def _res(bo, so, fb, fs):
+        def _res(bo, so, fb, fs, label="region"):
             b = self._align_down(int(bo if bo is not None else fb), ab)
             s = self._align_down(int(so if so is not None else fs), ab)
-            if b+s > tm: s = self._align_down(tm-b, ab)
+            if b < 0 or b >= tm:
+                raise ValueError(f"matmul_phased: {label} base 0x{b:X} is out of range [0, 0x{tm:X})")
+            if s <= 0:
+                raise ValueError(f"matmul_phased: {label} size {s} <= 0")
+            if b + s > tm:
+                raise ValueError(
+                    f"matmul_phased: {label} end 0x{b+s:X} exceeds total memory 0x{tm:X}"
+                )
             return b, s
 
         if region_base_address_a is not None and region_size_bytes_a is not None:
-            a_base, a_size = _res(region_base_address_a, region_size_bytes_a, 0, 0)
-            b_base, b_size = _res(region_base_address_b, region_size_bytes_b, a_base, a_size)
-            c_base, c_size = _res(region_base_address_c, region_size_bytes_c, a_base, a_size)
+            a_base, a_size = _res(region_base_address_a, region_size_bytes_a, 0, 0, "A")
+            b_base, b_size = _res(region_base_address_b, region_size_bytes_b, a_base, a_size, "B")
+            c_base, c_size = _res(region_base_address_c, region_size_bytes_c, a_base, a_size, "C")
         else:
             base = self._align_down(int(region_base_address), ab)
             size = self._align_down(int(region_size_bytes), ab)
-            if base+size > tm: size = self._align_down(tm-base, ab)
+            if base < 0 or base >= tm:
+                raise ValueError(f"matmul_phased: base 0x{base:X} is out of range [0, 0x{tm:X})")
+            if size <= 0:
+                raise ValueError(f"matmul_phased: size {size} <= 0")
+            if base + size > tm:
+                raise ValueError(f"matmul_phased: end 0x{base+size:X} exceeds total memory 0x{tm:X}")
             rw = size // ab
             if rw < 3:
                 with self._open(append) as f: self._write_idle(f); self._write_pause(f)
@@ -439,12 +474,14 @@ class PatternsMixin:
             size = self._align_down(int(reg.get("size_bytes", 0)), ab)
             if size <= 0:
                 continue
-            if base >= tm:
-                base %= tm
+            if base < 0 or base >= tm:
+                raise ValueError(
+                    f"multi_linear: region base 0x{base:X} is out of range [0, 0x{tm:X})"
+                )
             if base + size > tm:
-                size = self._align_down(tm - base, ab)
-            if size <= 0:
-                continue
+                raise ValueError(
+                    f"multi_linear: region end 0x{base+size:X} exceeds total memory 0x{tm:X}"
+                )
             stride_words = max(1, int(reg.get("stride_words", 1)))
             read_pct = reg.get("read_pct")
             if read_pct is not None:
@@ -661,20 +698,27 @@ class PatternsMixin:
             size = self._align_down(int(reg.get("size_bytes", 0)), ab)
             if size <= 0:
                 continue
-            if base >= tm:
-                base %= tm
+            if base < 0 or base >= tm:
+                raise ValueError(
+                    f"gather_scatter: read region base 0x{base:X} is out of range [0, 0x{tm:X})"
+                )
             if base + size > tm:
-                size = self._align_down(tm - base, ab)
-            if size <= 0:
-                continue
+                raise ValueError(
+                    f"gather_scatter: read region end 0x{base+size:X} exceeds total memory 0x{tm:X}"
+                )
             reads.append({"base": base, "size": size, "offset": 0})
 
         wb = self._align_down(int((write_region or {}).get("base", 0)), ab)
         ws = self._align_down(int((write_region or {}).get("size_bytes", 0)), ab)
-        if wb >= tm:
-            wb %= tm
-        if wb + ws > tm:
-            ws = self._align_down(tm - wb, ab)
+        if ws > 0:
+            if wb < 0 or wb >= tm:
+                raise ValueError(
+                    f"gather_scatter: write region base 0x{wb:X} is out of range [0, 0x{tm:X})"
+                )
+            if wb + ws > tm:
+                raise ValueError(
+                    f"gather_scatter: write region end 0x{wb+ws:X} exceeds total memory 0x{tm:X}"
+                )
 
         if not reads and ws <= 0:
             with self._open(append) as f:
@@ -759,18 +803,24 @@ class PatternsMixin:
         tile_idle = max(0, int(idle_cycles_between_tiles))
         tokens = self._parse_abc_schedule(ab_c_schedule)
 
-        def _res(base_raw, size_raw):
+        def _res(base_raw, size_raw, label="region"):
             base = self._align_down(int(base_raw), ab)
             size = self._align_down(int(size_raw), ab)
-            if base >= tm:
-                base %= tm
+            if base < 0 or base >= tm:
+                raise ValueError(
+                    f"matmul_tiled_interleave: {label} base 0x{base:X} is out of range [0, 0x{tm:X})"
+                )
+            if size <= 0:
+                raise ValueError(f"matmul_tiled_interleave: {label} size {size} <= 0")
             if base + size > tm:
-                size = self._align_down(tm - base, ab)
+                raise ValueError(
+                    f"matmul_tiled_interleave: {label} end 0x{base+size:X} exceeds total memory 0x{tm:X}"
+                )
             return base, size
 
-        a_base, a_size = _res(region_base_address_a, region_size_bytes_a)
-        b_base, b_size = _res(region_base_address_b, region_size_bytes_b)
-        c_base, c_size = _res(region_base_address_c, region_size_bytes_c)
+        a_base, a_size = _res(region_base_address_a, region_size_bytes_a, "A")
+        b_base, b_size = _res(region_base_address_b, region_size_bytes_b, "B")
+        c_base, c_size = _res(region_base_address_c, region_size_bytes_c, "C")
         if a_size <= 0 or b_size <= 0 or c_size <= 0:
             with self._open(append) as f:
                 self._write_idle(f)
@@ -856,12 +906,14 @@ class PatternsMixin:
             weight = max(1, int(reg.get("weight", 1)))
             if size <= 0:
                 continue
-            if base >= tm:
-                base %= tm
+            if base < 0 or base >= tm:
+                raise ValueError(
+                    f"hotspot_random: region base 0x{base:X} is out of range [0, 0x{tm:X})"
+                )
             if base + size > tm:
-                size = self._align_down(tm - base, ab)
-            if size <= 0:
-                continue
+                raise ValueError(
+                    f"hotspot_random: region end 0x{base+size:X} exceeds total memory 0x{tm:X}"
+                )
             regions.append({"base": base, "size": size})
             weights.append(weight)
 
