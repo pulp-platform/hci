@@ -5,6 +5,178 @@ import html
 import math
 
 
+def build_schedule(pattern_nodes, node_idx_by_driver_pattern, job_to_nodes, interco_type):
+    """Build the temporal model: dependency graph, topo-sort, timing assignment.
+
+    Mutates pattern_nodes in-place (adds 'start_cycle' and 'end_cycle' to each node).
+    Returns (driver_windows, regions_timeline, total_cycles,
+             schedule_has_cycle, mux_serialization_applied, mux_phase_order).
+    """
+    n_nodes = len(pattern_nodes)
+    preds = [set() for _ in range(n_nodes)]
+    succs = [set() for _ in range(n_nodes)]
+    mux_serialization_applied = False
+    mux_phase_order = []
+
+    def _add_edge(src, dst):
+        if src == dst or src < 0 or dst < 0:
+            return
+        if src not in preds[dst]:
+            preds[dst].add(src)
+            succs[src].add(dst)
+
+    for node in pattern_nodes:
+        n_idx = node['node_idx']
+        drv_idx = node['driver_idx']
+        p_idx = node['pattern_idx']
+        if p_idx > 0:
+            prev_idx = node_idx_by_driver_pattern[(drv_idx, p_idx - 1)]
+            if pattern_nodes[prev_idx]['job'] == node['job']:
+                # Same-job consecutive patterns: add a hard dependency edge.
+                # Different-job patterns on the same driver are serialized by
+                # the timing model below (not as graph edges) to avoid creating
+                # spurious cross-job cycles.
+                _add_edge(prev_idx, n_idx)
+        for dep_job in node['wait_for_jobs_effective']:
+            for dep_idx in job_to_nodes.get(dep_job, []):
+                _add_edge(dep_idx, n_idx)
+
+    if interco_type == "MUX":
+        # Match tb_hci MUX semantics in the temporal model:
+        # serialize HWPE execution by job order, and by HWPE ID within a job.
+        hwpe_nodes = [n for n in pattern_nodes if n['is_hwpe']]
+        if hwpe_nodes:
+            job_first_seen = {}
+            for n in sorted(hwpe_nodes, key=lambda x: (x['pattern_idx'], x['local_idx'], x['node_idx'])):
+                job_first_seen.setdefault(n['job'], len(job_first_seen))
+
+            job_preds = {jb: set() for jb in job_first_seen}
+            job_succs = {jb: set() for jb in job_first_seen}
+            for n in hwpe_nodes:
+                cur = n['job']
+                for dep_job in n['wait_for_jobs_effective']:
+                    dep = str(dep_job)
+                    if dep in job_first_seen and dep != cur:
+                        job_preds[cur].add(dep)
+                        job_succs[dep].add(cur)
+
+            phase_indeg = {jb: len(job_preds[jb]) for jb in job_first_seen}
+            phase_ready = sorted([jb for jb, deg in phase_indeg.items() if deg == 0],
+                                 key=lambda jb: job_first_seen[jb])
+            mux_phase_order = []
+            while phase_ready:
+                cur = phase_ready.pop(0)
+                mux_phase_order.append(cur)
+                for nxt in sorted(job_succs[cur], key=lambda jb: job_first_seen[jb]):
+                    phase_indeg[nxt] -= 1
+                    if phase_indeg[nxt] == 0:
+                        phase_ready.append(nxt)
+                phase_ready.sort(key=lambda jb: job_first_seen[jb])
+            if len(mux_phase_order) != len(job_first_seen):
+                mux_phase_order = sorted(job_first_seen.keys(), key=lambda jb: job_first_seen[jb])
+
+            phase_rank = {ph: i for i, ph in enumerate(mux_phase_order)}
+            hwpe_sorted = sorted(
+                hwpe_nodes,
+                key=lambda n: (
+                    phase_rank.get(n['job'], 10 ** 9),
+                    n['local_idx'],
+                    n['pattern_idx'],
+                    n['node_idx'],
+                ),
+            )
+            for i in range(1, len(hwpe_sorted)):
+                _add_edge(hwpe_sorted[i - 1]['node_idx'], hwpe_sorted[i]['node_idx'])
+            mux_serialization_applied = True
+
+    indeg = [len(preds[i]) for i in range(n_nodes)]
+    ready = [i for i, d in enumerate(indeg) if d == 0]
+    ready.sort(key=lambda i: (pattern_nodes[i]['driver_idx'], pattern_nodes[i]['pattern_idx']))
+    topo_order = []
+    while ready:
+        cur = ready.pop(0)
+        topo_order.append(cur)
+        for nxt in sorted(succs[cur]):
+            indeg[nxt] -= 1
+            if indeg[nxt] == 0:
+                ready.append(nxt)
+        ready.sort(key=lambda i: (pattern_nodes[i]['driver_idx'], pattern_nodes[i]['pattern_idx']))
+
+    schedule_has_cycle = len(topo_order) != n_nodes
+    if schedule_has_cycle:
+        topo_order = list(range(n_nodes))
+
+    node_start = [0 for _ in range(n_nodes)]
+    node_end = [0 for _ in range(n_nodes)]
+    for _ in range(max(1, n_nodes + 1)):
+        changed = False
+        for n_idx in topo_order:
+            node = pattern_nodes[n_idx]
+            dep_end = max((node_end[p] for p in preds[n_idx]), default=0)
+            # Driver serialization: a pattern can only start after the previous
+            # pattern on the same driver finishes, regardless of job name.
+            # Enforced here (not as a graph edge) to avoid cross-job cycle risk.
+            # Skip HWPE patterns in MUX mode: their ordering is already fully
+            # encoded by the explicit MUX graph edges above.
+            if node['pattern_idx'] > 0 and not (mux_serialization_applied and node['is_hwpe']):
+                prev_drv_idx = node_idx_by_driver_pattern[
+                    (node['driver_idx'], node['pattern_idx'] - 1)]
+                dep_end = max(dep_end, node_end[prev_drv_idx])
+            start_time = max(int(node['start_delay']), dep_end)
+            end_time = start_time + max(0, int(node['cycles']))
+            if start_time != node_start[n_idx] or end_time != node_end[n_idx]:
+                node_start[n_idx] = start_time
+                node_end[n_idx] = end_time
+                changed = True
+        if not changed:
+            break
+
+    for n_idx, node in enumerate(pattern_nodes):
+        node['start_cycle'] = int(node_start[n_idx])
+        node['end_cycle'] = int(node_end[n_idx])
+
+    total_cycles = max((n['end_cycle'] for n in pattern_nodes), default=0)
+
+    driver_windows = {}
+    for node in pattern_nodes:
+        w = driver_windows.setdefault(node['driver_idx'], {
+            'driver_idx': node['driver_idx'],
+            'name': node['driver_name'],
+            'is_hwpe': node['is_hwpe'],
+            'start': node['start_cycle'],
+            'end': node['end_cycle'],
+        })
+        w['start'] = min(w['start'], node['start_cycle'])
+        w['end'] = max(w['end'], node['end_cycle'])
+
+    regions_timeline = {}
+    for node in pattern_nodes:
+        for reg in node['regions']:
+            reg_key = (reg['base'], reg['size'], reg['label'])
+            entry = regions_timeline.setdefault(reg_key, {
+                'base': reg['base'],
+                'size': reg['size'],
+                'end': reg['end'],
+                'label': reg['label'],
+                'accesses': [],
+            })
+            entry['accesses'].append({
+                'driver_idx': node['driver_idx'],
+                'driver_name': node['driver_name'],
+                'job': node['job'],
+                'start': node['start_cycle'],
+                'end': node['end_cycle'],
+                'pattern_idx': node['pattern_idx'],
+                'description': node['description'],
+            })
+    for reg in regions_timeline.values():
+        reg['lifetime_start'] = min((a['start'] for a in reg['accesses']), default=0)
+        reg['lifetime_end'] = max((a['end'] for a in reg['accesses']), default=0)
+
+    return (driver_windows, regions_timeline, total_cycles,
+            schedule_has_cycle, mux_serialization_applied, mux_phase_order)
+
+
 def build_memory_lifetime_html(
     *,
     pattern_nodes,
@@ -208,51 +380,159 @@ def build_memory_lifetime_html(
         used_max = used_min
     used_span = max(1, used_max - used_min + 1)
 
-    map_left = 170
-    map_right = 24
-    map_plot_w = chart_width - map_left - map_right
-    map_h = 124
-    bar_y = 56
-    bar_h = 24
-    region_map_svg = []
-    region_map_svg.append(f'<svg width="{chart_width}" height="{map_h}" viewBox="0 0 {chart_width} {map_h}" xmlns="http://www.w3.org/2000/svg">')
-    region_map_svg.append('<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>')
-    region_map_svg.append(
-        f'<text x="{map_left}" y="20" font-family="Arial, sans-serif" font-size="14" font-weight="700">'
-        f"Memory Region Blocks (used range 0x{used_min:08x} - 0x{used_max:08x})"
-        f"</text>"
+    # ---- Memory Address Timeline (2-D: address × time) ----
+    _mat_addr_max = (((used_max + 1) + 4095) // 4096) * 4096
+    _mat_addr_span = max(1, _mat_addr_max)
+    _mat_xl = 110
+    _mat_xr = 24
+    _mat_pw = chart_width - _mat_xl - _mat_xr
+    _mat_h = 560
+    _mat_yt = 36
+    _mat_yb_mg = 52
+    _mat_ph = _mat_h - _mat_yt - _mat_yb_mg
+    _mat_ybot = _mat_yt + _mat_ph
+    _RC = "#2980b9"   # read  → blue
+    _WC = "#c0392b"   # write → red
+    _MC = "#8e44ad"   # mixed → purple
+
+    def _mat_ay(addr):
+        return _mat_yt + (int(addr) / _mat_addr_span) * _mat_ph
+
+    def _mat_ah(size):
+        return max(1.5, (int(size) / _mat_addr_span) * _mat_ph)
+
+    mat_svg = []
+    mat_svg.append(
+        f'<svg width="{chart_width}" height="{_mat_h}" viewBox="0 0 {chart_width} {_mat_h}" '
+        f'xmlns="http://www.w3.org/2000/svg">'
     )
-    region_map_svg.append(
-        f'<rect x="{map_left}" y="{bar_y}" width="{map_plot_w}" height="{bar_h}" '
-        f'fill="#f6f6f6" stroke="#cfcfcf" stroke-width="1"/>'
+    mat_svg.append('<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>')
+    mat_svg.append(
+        f'<text x="{_mat_xl}" y="22" font-family="Arial, sans-serif" font-size="14" font-weight="700">'
+        f'Memory Address Timeline</text>'
     )
-    for pct in [0, 25, 50, 75, 100]:
-        x = map_left + (pct / 100.0) * map_plot_w
-        addr = used_min + int(((used_span - 1) * pct) / 100.0)
-        region_map_svg.append(f'<line x1="{x:.2f}" y1="{bar_y - 8}" x2="{x:.2f}" y2="{bar_y + bar_h + 8}" stroke="#d7d7d7" stroke-width="1"/>')
-        region_map_svg.append(
-            f'<text x="{x:.2f}" y="{bar_y + bar_h + 22}" text-anchor="middle" '
-            f'font-family="Arial, sans-serif" font-size="11" fill="#555">0x{addr:08x}</text>'
+
+    # Background bands for each named region (alternating shades)
+    _sregs = sorted(region_rows, key=lambda r: r['base'])
+    for _i, _reg in enumerate(_sregs):
+        _ry = _mat_ay(_reg['base'])
+        _rh = _mat_ah(_reg['size'])
+        mat_svg.append(
+            f'<rect x="{_mat_xl}" y="{_ry:.2f}" width="{_mat_pw}" height="{_rh:.2f}" '
+            f'fill="{"#f5f5f5" if _i % 2 == 0 else "#ebebeb"}" stroke="#ddd" stroke-width="0.5"/>'
         )
-    for reg in region_rows:
-        x = map_left + ((reg['base'] - used_min) / used_span) * map_plot_w
-        w = max(1.0, (reg['size'] / used_span) * map_plot_w)
-        color = _color_for_driver(reg['accesses'][0]['driver_idx']) if reg['accesses'] else "#888888"
-        title = (
-            f"{reg['label']} 0x{reg['base']:08x}-0x{reg['end']:08x} "
-            f"size={reg['size']}B accesses={len(reg['accesses'])}"
+        _lcy = max(_mat_yt + 5.0, min(_mat_ybot - 2.0, _ry + _rh / 2))
+        mat_svg.append(
+            f'<text x="{_mat_xl - 4}" y="{_lcy:.2f}" text-anchor="end" '
+            f'font-family="Arial, sans-serif" font-size="8" fill="#444">'
+            f'{html.escape(_reg["label"])}</text>'
         )
-        region_map_svg.append(
-            f'<rect x="{x:.2f}" y="{bar_y + 2}" width="{w:.2f}" height="{bar_h - 4}" '
-            f'rx="2" ry="2" fill="{color}" fill-opacity="0.62" stroke="#222" stroke-width="0.35">'
-            f'<title>{html.escape(title)}</title></rect>'
+
+    # Address-axis tick lines and hex labels at every region boundary
+    _tick_addrs = {0, _mat_addr_max}
+    for _reg in _sregs:
+        _tick_addrs.add(_reg['base'])
+        _tick_addrs.add(_reg['end'] + 1)
+    _prev_ty = -999.0
+    for _addr in sorted(_tick_addrs):
+        _ty = _mat_ay(_addr)
+        if _ty < _mat_yt - 1 or _ty > _mat_ybot + 1:
+            continue
+        mat_svg.append(
+            f'<line x1="{_mat_xl - 3}" y1="{_ty:.2f}" x2="{_mat_xl + _mat_pw}" y2="{_ty:.2f}" '
+            f'stroke="#d0d0d0" stroke-width="0.5"/>'
         )
-        if w >= 92:
-            region_map_svg.append(
-                f'<text x="{x + 4:.2f}" y="{bar_y + 16}" font-family="Arial, sans-serif" '
-                f'font-size="10" fill="#111">{html.escape(reg["label"])}</text>'
+        if abs(_ty - _prev_ty) >= 9:
+            mat_svg.append(
+                f'<text x="{_mat_xl - 5}" y="{_ty - 1:.2f}" text-anchor="end" '
+                f'font-family="monospace" font-size="7.5" fill="#777">0x{_addr:05X}</text>'
             )
-    region_map_svg.append('</svg>')
+            _prev_ty = _ty
+
+    # Time-axis grid (same tick positions as Gantt chart)
+    for _t in ticks:
+        _tx = _mat_xl + (_t / total_for_plot) * _mat_pw
+        mat_svg.append(
+            f'<line x1="{_tx:.2f}" y1="{_mat_yt}" x2="{_tx:.2f}" y2="{_mat_ybot}" '
+            f'stroke="#e8e8e8" stroke-width="1"/>'
+        )
+        mat_svg.append(
+            f'<text x="{_tx:.2f}" y="{_mat_ybot + 13}" text-anchor="middle" '
+            f'font-family="Arial, sans-serif" font-size="10" fill="#555">{_t}</text>'
+        )
+
+    mat_svg.append(
+        f'<rect x="{_mat_xl}" y="{_mat_yt}" width="{_mat_pw}" height="{_mat_ph}" '
+        f'fill="none" stroke="#999" stroke-width="1"/>'
+    )
+    mat_svg.append(
+        f'<text x="{_mat_xl + _mat_pw / 2:.2f}" y="{_mat_h - 4}" text-anchor="middle" '
+        f'font-family="Arial, sans-serif" font-size="11" fill="#333">'
+        f'Transaction number (same axis as Execution Timeline)</text>'
+    )
+
+    # One colored rectangle per (pattern_node, memory region)
+    for _node in pattern_nodes:
+        if _node['end_cycle'] <= _node['start_cycle']:
+            continue
+        _nx = _mat_xl + (_node['start_cycle'] / total_for_plot) * _mat_pw
+        _nw = max(1.5, ((_node['end_cycle'] - _node['start_cycle']) / total_for_plot) * _mat_pw)
+        for _reg in _node.get('regions', []):
+            _base = int(_reg.get('base', 0))
+            _size = int(_reg.get('size', 0))
+            if _size <= 0 or _base >= _mat_addr_max:
+                continue
+            _lbl = str(_reg.get('label', '')).lower()
+            if 'write' in _lbl and 'read' not in _lbl:
+                _color = _WC; _rws = "W"
+            elif 'read' in _lbl and 'write' not in _lbl:
+                _color = _RC; _rws = "R"
+            else:
+                _rpct = _node.get('traffic_read_pct')
+                if _rpct is not None:
+                    _rpi = int(_rpct)
+                    _color, _rws = (_RC, "R") if _rpi >= 70 else ((_WC, "W") if _rpi <= 30 else (_MC, "R/W"))
+                else:
+                    _color = _MC; _rws = "R/W"
+            _ry = _mat_ay(_base)
+            _rh = _mat_ah(_size)
+            _ry0 = max(float(_mat_yt), _ry)
+            _ry1 = min(float(_mat_ybot), _ry + _rh)
+            _rhc = _ry1 - _ry0
+            if _rhc <= 0:
+                continue
+            _ttl = (
+                f"{_node['job']} [{_node['start_cycle']}, {_node['end_cycle']}) "
+                f"0x{_base:05X}+{_size}B {_rws}"
+            )
+            mat_svg.append('<g style="cursor:help;">')
+            mat_svg.append(f'<title>{html.escape(_ttl)}</title>')
+            mat_svg.append(
+                f'<rect x="{_nx:.2f}" y="{_ry0:.2f}" width="{_nw:.2f}" height="{_rhc:.2f}" '
+                f'fill="{_color}" fill-opacity="0.45" stroke="{_color}" stroke-width="0.7" rx="1.5"/>'
+            )
+            if _nw >= 28 and _rhc >= 9:
+                mat_svg.append(
+                    f'<text x="{_nx + 2:.2f}" y="{_ry0 + min(_rhc - 1, 8):.2f}" '
+                    f'font-family="Arial, sans-serif" font-size="7" fill="#111" '
+                    f'style="pointer-events:none;">{html.escape(_node["job"])}</text>'
+                )
+            mat_svg.append('</g>')
+
+    # Legend
+    for _li, (_lc, _ll) in enumerate([(_RC, "Read from TCDM"), (_WC, "Write to TCDM"), (_MC, "Read + Write")]):
+        _lx = _mat_xl + _li * 200
+        _ly = _mat_ybot + 26
+        mat_svg.append(
+            f'<rect x="{_lx:.2f}" y="{_ly}" width="10" height="10" '
+            f'fill="{_lc}" fill-opacity="0.6" stroke="{_lc}" rx="1"/>'
+        )
+        mat_svg.append(
+            f'<text x="{_lx + 14:.2f}" y="{_ly + 9}" '
+            f'font-family="Arial, sans-serif" font-size="10" fill="#333">'
+            f'{html.escape(_ll)}</text>'
+        )
+    mat_svg.append('</svg>')
 
     legend_items = []
     for d in sorted(driver_windows.keys()):
@@ -379,7 +659,7 @@ def build_memory_lifetime_html(
         f"{''.join(exec_svg)}"
         "</div>"
         "<div class='panel'>"
-        f"{''.join(region_map_svg)}"
+        f"{''.join(mat_svg)}"
         "</div>"
         "<h2>Region Usage Blocks</h2>"
         f"{''.join(region_cards)}"

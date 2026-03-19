@@ -26,12 +26,12 @@ code_directory = Path(__file__).resolve().parent
 try:
     from hci_stimuli import StimuliGenerator
     from memory_report import write_memory_map_txt
-    from html_report import write_memory_lifetime_html
+    from html_report import write_memory_lifetime_html, build_schedule
 except Exception:
     sys.path.insert(0, str(code_directory))
     from hci_stimuli import StimuliGenerator
     from memory_report import write_memory_map_txt
-    from html_report import write_memory_lifetime_html
+    from html_report import write_memory_lifetime_html, build_schedule
 
 
 def parse_args(argv=None):
@@ -1579,150 +1579,10 @@ def main(argv=None):
             job_to_nodes.setdefault(node['job'], []).append(node['node_idx'])
             driver_last_node[drv_idx] = node['node_idx']
 
-    n_nodes = len(pattern_nodes)
-    preds = [set() for _ in range(n_nodes)]
-    succs = [set() for _ in range(n_nodes)]
-    mux_serialization_applied = False
-    mux_phase_order = []
-
-    def _add_edge(src, dst):
-        if src == dst or src < 0 or dst < 0:
-            return
-        if src not in preds[dst]:
-            preds[dst].add(src)
-            succs[src].add(dst)
-
-    for node in pattern_nodes:
-        n_idx = node['node_idx']
-        drv_idx = node['driver_idx']
-        p_idx = node['pattern_idx']
-        if p_idx > 0:
-            _add_edge(node_idx_by_driver_pattern[(drv_idx, p_idx - 1)], n_idx)
-        for dep_job in node['wait_for_jobs_effective']:
-            for dep_idx in job_to_nodes.get(dep_job, []):
-                _add_edge(dep_idx, n_idx)
-
-    if INTERCO_TYPE == "MUX":
-        # Match tb_hci MUX semantics in the temporal model:
-        # serialize HWPE execution by job order, and by HWPE ID within a job.
-        hwpe_nodes = [n for n in pattern_nodes if n['is_hwpe']]
-        if hwpe_nodes:
-            job_first_seen = {}
-            for n in sorted(hwpe_nodes, key=lambda x: (x['pattern_idx'], x['local_idx'], x['node_idx'])):
-                job_first_seen.setdefault(n['job'], len(job_first_seen))
-
-            job_preds = {jb: set() for jb in job_first_seen}
-            job_succs = {jb: set() for jb in job_first_seen}
-            for n in hwpe_nodes:
-                cur = n['job']
-                for dep_job in n['wait_for_jobs_effective']:
-                    dep = str(dep_job)
-                    if dep in job_first_seen and dep != cur:
-                        job_preds[cur].add(dep)
-                        job_succs[dep].add(cur)
-
-            phase_indeg = {jb: len(job_preds[jb]) for jb in job_first_seen}
-            phase_ready = sorted([jb for jb, deg in phase_indeg.items() if deg == 0],
-                                 key=lambda jb: job_first_seen[jb])
-            mux_phase_order = []
-            while phase_ready:
-                cur = phase_ready.pop(0)
-                mux_phase_order.append(cur)
-                for nxt in sorted(job_succs[cur], key=lambda jb: job_first_seen[jb]):
-                    phase_indeg[nxt] -= 1
-                    if phase_indeg[nxt] == 0:
-                        phase_ready.append(nxt)
-                phase_ready.sort(key=lambda jb: job_first_seen[jb])
-            if len(mux_phase_order) != len(job_first_seen):
-                mux_phase_order = sorted(job_first_seen.keys(), key=lambda jb: job_first_seen[jb])
-
-            phase_rank = {ph: i for i, ph in enumerate(mux_phase_order)}
-            hwpe_sorted = sorted(
-                hwpe_nodes,
-                key=lambda n: (
-                    phase_rank.get(n['job'], 10 ** 9),
-                    n['local_idx'],
-                    n['pattern_idx'],
-                    n['node_idx'],
-                ),
-            )
-            for i in range(1, len(hwpe_sorted)):
-                _add_edge(hwpe_sorted[i - 1]['node_idx'], hwpe_sorted[i]['node_idx'])
-            mux_serialization_applied = True
-
-    indeg = [len(preds[i]) for i in range(n_nodes)]
-    ready = [i for i, d in enumerate(indeg) if d == 0]
-    ready.sort(key=lambda i: (pattern_nodes[i]['driver_idx'], pattern_nodes[i]['pattern_idx']))
-    topo_order = []
-    while ready:
-        cur = ready.pop(0)
-        topo_order.append(cur)
-        for nxt in sorted(succs[cur]):
-            indeg[nxt] -= 1
-            if indeg[nxt] == 0:
-                ready.append(nxt)
-        ready.sort(key=lambda i: (pattern_nodes[i]['driver_idx'], pattern_nodes[i]['pattern_idx']))
-
-    schedule_has_cycle = len(topo_order) != n_nodes
-    if schedule_has_cycle:
-        topo_order = list(range(n_nodes))
-
-    node_start = [0 for _ in range(n_nodes)]
-    node_end = [0 for _ in range(n_nodes)]
-    for _ in range(max(1, n_nodes + 1)):
-        changed = False
-        for n_idx in topo_order:
-            dep_end = max((node_end[p] for p in preds[n_idx]), default=0)
-            start_time = max(int(pattern_nodes[n_idx]['start_delay']), dep_end)
-            end_time = start_time + max(0, int(pattern_nodes[n_idx]['cycles']))
-            if start_time != node_start[n_idx] or end_time != node_end[n_idx]:
-                node_start[n_idx] = start_time
-                node_end[n_idx] = end_time
-                changed = True
-        if not changed:
-            break
-
-    for n_idx, node in enumerate(pattern_nodes):
-        node['start_cycle'] = int(node_start[n_idx])
-        node['end_cycle'] = int(node_end[n_idx])
-
-    total_cycles = max((n['end_cycle'] for n in pattern_nodes), default=0)
-
-    driver_windows = {}
-    for node in pattern_nodes:
-        w = driver_windows.setdefault(node['driver_idx'], {
-            'driver_idx': node['driver_idx'],
-            'name': node['driver_name'],
-            'is_hwpe': node['is_hwpe'],
-            'start': node['start_cycle'],
-            'end': node['end_cycle'],
-        })
-        w['start'] = min(w['start'], node['start_cycle'])
-        w['end'] = max(w['end'], node['end_cycle'])
-
-    regions_timeline = {}
-    for node in pattern_nodes:
-        for reg in node['regions']:
-            reg_key = (reg['base'], reg['size'], reg['label'])
-            entry = regions_timeline.setdefault(reg_key, {
-                'base': reg['base'],
-                'size': reg['size'],
-                'end': reg['end'],
-                'label': reg['label'],
-                'accesses': [],
-            })
-            entry['accesses'].append({
-                'driver_idx': node['driver_idx'],
-                'driver_name': node['driver_name'],
-                'job': node['job'],
-                'start': node['start_cycle'],
-                'end': node['end_cycle'],
-                'pattern_idx': node['pattern_idx'],
-                'description': node['description'],
-            })
-    for reg in regions_timeline.values():
-        reg['lifetime_start'] = min((a['start'] for a in reg['accesses']), default=0)
-        reg['lifetime_end'] = max((a['end'] for a in reg['accesses']), default=0)
+    (driver_windows, regions_timeline, total_cycles,
+     schedule_has_cycle, mux_serialization_applied, mux_phase_order) = build_schedule(
+        pattern_nodes, node_idx_by_driver_pattern, job_to_nodes, INTERCO_TYPE
+    )
 
     # -----------------------------------------------------------------------
     # Build memory_map.txt
