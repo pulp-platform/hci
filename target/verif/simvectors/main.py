@@ -444,11 +444,6 @@ def main(argv=None):
             "matmul_tiled_interleave",
             "hotspot_random",
         }
-        aliases = {
-            "matmul": "matmul_phased",
-            "matmul_tiled": "matmul_tiled_interleave",
-        }
-
         if not isinstance(raw_value, str):
             print(
                 f"ERROR: {master_name} has invalid mem_access_type={raw_value} "
@@ -456,7 +451,7 @@ def main(argv=None):
             )
             sys.exit(1)
 
-        key = aliases.get(raw_value.strip().lower(), raw_value.strip().lower())
+        key = raw_value.strip().lower()
         if key not in allowed:
             print(
                 f"ERROR: {master_name} has invalid mem_access_type='{raw_value}'. "
@@ -529,10 +524,19 @@ def main(argv=None):
             k = master_config.get('matrix_k')
             if m is not None and n is not None and k is not None:
                 # Derive transaction counts in bus beats, not tensor elements.
-                # matrix_elem_bytes_a/b/c default to 1 (int8). Set to 2 for int16, 4 for int32, etc.
-                ea = int(master_config.get('matrix_elem_bytes_a', 1))
-                eb = int(master_config.get('matrix_elem_bytes_b', 1))
-                ec = int(master_config.get('matrix_elem_bytes_c', 1))
+                # matrix_elem_bytes is required (e.g. 1=int8, 2=fp16/bf16, 4=fp32/int32).
+                # Per-operand matrix_elem_bytes_a/b/c override the unified field.
+                default_eb = master_config.get('matrix_elem_bytes')
+                if default_eb is None:
+                    print(
+                        f"ERROR: {kind}_{local_idx} matmul_phased with matrix_m/n/k requires "
+                        "'matrix_elem_bytes' (element size in bytes: 1=int8, 2=fp16/bf16, 4=fp32/int32). "
+                        "Use matrix_elem_bytes_a/b/c to override per operand."
+                    )
+                    sys.exit(1)
+                ea = int(master_config.get('matrix_elem_bytes_a', default_eb))
+                eb = int(master_config.get('matrix_elem_bytes_b', default_eb))
+                ec = int(master_config.get('matrix_elem_bytes_c', default_eb))
                 a_tx = math.ceil(int(m) * int(k) * ea / access_bytes)
                 b_tx = math.ceil(int(k) * int(n) * eb / access_bytes)
                 c_tx = math.ceil(int(m) * int(n) * ec / access_bytes)
@@ -765,9 +769,17 @@ def main(argv=None):
             _mp_n = pattern_config.get('matrix_n')
             _mp_k = pattern_config.get('matrix_k')
             if _mp_m is not None and _mp_n is not None and _mp_k is not None:
-                _ea = int(pattern_config.get('matrix_elem_bytes_a', 1))
-                _eb = int(pattern_config.get('matrix_elem_bytes_b', 1))
-                _ec = int(pattern_config.get('matrix_elem_bytes_c', 1))
+                _default_eb = pattern_config.get('matrix_elem_bytes')
+                if _default_eb is None:
+                    print(
+                        f"ERROR: {kind}_{master_local_idx} matmul_phased with matrix_m/n/k requires "
+                        "'matrix_elem_bytes' (element size in bytes: 1=int8, 2=fp16/bf16, 4=fp32/int32). "
+                        "Use matrix_elem_bytes_a/b/c to override per operand."
+                    )
+                    sys.exit(1)
+                _ea = int(pattern_config.get('matrix_elem_bytes_a', _default_eb))
+                _eb = int(pattern_config.get('matrix_elem_bytes_b', _default_eb))
+                _ec = int(pattern_config.get('matrix_elem_bytes_c', _default_eb))
                 _ratio_a = math.ceil(int(_mp_m) * int(_mp_k) * _ea / access_bytes)
                 _ratio_b = math.ceil(int(_mp_k) * int(_mp_n) * _eb / access_bytes)
                 _ratio_c = math.ceil(int(_mp_m) * int(_mp_n) * _ec / access_bytes)
@@ -1472,17 +1484,50 @@ def main(argv=None):
             })
         return regions
 
-    def _estimate_pattern_cycles(pattern_config, _mem_access_type, n_test, _txn_bytes):
-        # Temporal model intentionally follows emitted traffic only:
-        # one unit per transaction plus req=0 idles from traffic_pct shaping.
-        # No absolute/phase/tile/row cycle estimation is applied here.
+    def _estimate_pattern_cycles(pattern_config, mem_access_type, n_test, txn_bytes):
+        # Temporal model: one unit per transaction plus req=0 idles from traffic_pct
+        # shaping, plus inter-phase/tile/row boundary idles where applicable.
         base = max(0, int(n_test))
         tpct = pattern_config.get('traffic_pct')
         n_idles_per_req = 0
         if tpct is not None:
             tp = max(1, min(100, int(tpct)))
             n_idles_per_req = 0 if tp >= 100 else int(round((100 - tp) / tp))
-        return int(base * (1 + n_idles_per_req))
+
+        boundary_idles = 0
+        if mem_access_type == '2d':
+            idle_between = int(pattern_config.get('idle_cycles_between_phases', 0))
+            if idle_between > 0 and n_test > 0:
+                len_d0 = max(1, int(pattern_config.get('len_d0', 1)))
+                boundary_idles = math.ceil(n_test / len_d0) * idle_between
+        elif mem_access_type == '3d':
+            idle_between = int(pattern_config.get('idle_cycles_between_phases', 0))
+            if idle_between > 0 and n_test > 0:
+                len_d0 = max(1, int(pattern_config.get('len_d0', 1)))
+                len_d1 = max(1, int(pattern_config.get('len_d1', 1)))
+                boundary_idles = math.ceil(n_test / (len_d0 * len_d1)) * len_d1 * idle_between
+        elif mem_access_type == 'matmul_phased':
+            idle_between = int(pattern_config.get('idle_cycles_between_phases', 0))
+            boundary_idles = 2 * idle_between
+        elif mem_access_type == 'rw_rowwise':
+            idle_between = int(pattern_config.get('idle_cycles_between_rows', 0))
+            if idle_between > 0:
+                n_rows = max(0, int(pattern_config.get('n_rows', 0)))
+                boundary_idles = max(0, n_rows - 1) * idle_between
+        elif mem_access_type == 'matmul_tiled_interleave':
+            tile_idle = int(pattern_config.get('idle_cycles_between_tiles', 0))
+            if tile_idle > 0 and n_test > 0:
+                ab = max(1, txn_bytes)
+                sched = str(pattern_config.get('ab_c_schedule', 'A_B_C')).upper().replace('-', '_')
+                toks = [t for t in sched.split('_') if t]
+                cnt_a = max(1, int(_parse_maybe_bin_int(pattern_config.get('tile_a_bytes'), ab)) // ab)
+                cnt_b = max(1, int(_parse_maybe_bin_int(pattern_config.get('tile_b_bytes'), ab)) // ab)
+                cnt_c = max(1, int(_parse_maybe_bin_int(pattern_config.get('tile_c_bytes'), ab)) // ab)
+                per_tile = sum({'A': cnt_a, 'B': cnt_b, 'C': cnt_c}.get(t, 0) for t in toks)
+                if per_tile > 0:
+                    boundary_idles = max(0, math.ceil(n_test / per_tile) - 1) * tile_idle
+
+        return int(base * (1 + n_idles_per_req) + boundary_idles)
 
     pattern_nodes = []
     node_idx_by_driver_pattern = {}
@@ -1517,7 +1562,14 @@ def main(argv=None):
                 'n_transactions': int(n_test),
                 'cycles': int(_estimate_pattern_cycles(pat, mem_access_type, n_test, int(data_width // 8))),
                 'mem_access_type': mem_access_type,
-                'traffic_read_pct': pat.get('traffic_read_pct'),
+                'traffic_read_pct': (
+                    pat.get('traffic_read_pct')
+                    if mem_access_type != 'rw_rowwise'
+                    else (lambda r, w: round(100 * r / (r + w)) if (r + w) > 0 else 50)(
+                        int(pat.get('reads_per_row', 0)),
+                        int(pat.get('writes_per_row', 0)),
+                    )
+                ),
                 'txn_bytes': int(data_width // 8),
                 'start_delay': start_delay if p_idx == 0 else 0,
                 'regions': _resolve_regions(pat, mem_access_type, is_hwpe, local_idx, n_peers),
