@@ -1,0 +1,132 @@
+{
+  "description": "Transformer block working on int8 data, 256 tokens (1 batch at a time), 4 heads with d_h=36 (embedding length d=144). Double buffering is used.",
+  "log_masters": [
+    {
+      "id": 0,
+      "description": "Core 0",
+      "patterns": [
+        {
+          "job": "softmax_h0_c0",
+          "wait_for_jobs": ["gemm_qk_h0"],
+          "description": "head0 softmax rows 0-31 of S_A [32 rows, 256] int8 (64 32-bit transfers per row); 3-read-pass softmax, then write results; all rows contiguous",
+          "mem_access_type": "rw_rowwise", "row_base_address": "0x0D800",
+          "row_size_bytes": 256, "n_rows": 32, "row_stride_bytes": 256,
+          "reads_per_row": 192, "writes_per_row": 64, "traffic_pct": 90
+        },
+        {
+          "job": "softmax_h1_c0",
+          "wait_for_jobs": ["softmax_h0_c0"],
+          "description": "head1 softmax rows 0-31 of S_A [32 rows, 256] int8 (64 32-bit transfers per row); 3-read-pass softmax, then write results; all rows contiguous",
+          "mem_access_type": "rw_rowwise", "row_base_address": "0x1FC00",
+          "row_size_bytes": 256, "n_rows": 32, "row_stride_bytes": 256,
+          "reads_per_row": 192, "writes_per_row": 64, "traffic_pct": 90
+        },
+        {
+          "job": "softmax_h2_c0",
+          "wait_for_jobs": ["softmax_h1_c0"],
+          "description": "head2 softmax rows 0-31 of S_A [32 rows, 256] int8 (64 32-bit transfers per row); 3-read-pass softmax, then write results; all rows contiguous",
+          "mem_access_type": "rw_rowwise", "row_base_address": "0x0D800",
+          "row_size_bytes": 256, "n_rows": 32, "row_stride_bytes": 256,
+          "reads_per_row": 192, "writes_per_row": 64, "traffic_pct": 90
+        },
+        {
+          "job": "softmax_h3_c0",
+          "wait_for_jobs": ["softmax_h2_c0"],
+          "description": "head3 softmax rows 0-31 of S_A [32 rows, 256] int8 (64 32-bit transfers per row); 3-read-pass softmax, then write results; all rows contiguous",
+          "mem_access_type": "rw_rowwise", "row_base_address": "0x1FC00",
+          "row_size_bytes": 256, "n_rows": 32, "row_stride_bytes": 256,
+          "reads_per_row": 192, "writes_per_row": 64, "traffic_pct": 90
+        }
+      ]
+    },
+    {"id": 1, "description": "External 0", "mem_access_type": "idle"},
+    {"id": 2, "description": "External 0", "mem_access_type": "idle"},
+    {"id": 3, "description": "External 0", "mem_access_type": "idle"},
+    {"id": 4, "description": "External 0", "mem_access_type": "idle"},
+    {"id": 5, "description": "External 0", "mem_access_type": "idle"},
+    {"id": 6, "description": "External 0", "mem_access_type": "idle"},
+    {"id": 7, "description": "External 0", "mem_access_type": "idle"},
+    {"id": 8, "description": "External 0", "mem_access_type": "idle"}
+  ],
+  "hwpe_masters": [
+    {
+      "id": 0,
+      "description": "Wide DMA engine (256-bit interface)",
+      "patterns": [
+        {
+          "job": "dma_load_q0",
+          "wait_for_jobs": [],
+          "description": "load head0 Q ([256,36] int8) into BUF0_Q (9216 bytes)",
+          "mem_access_type": "linear",
+          "n_transactions": 288,
+          "start_address": "0x00000",
+          "stride0": 1,
+          "traffic_read_pct": 0,
+          "traffic_pct": 100
+        },
+        {
+          "job": "dma_load_k0_T",
+          "wait_for_jobs": [],
+          "description": "load head0 K^T ([36,256] int8, already transposed) into BUF0_K (9216 bytes)",
+          "mem_access_type": "linear",
+          "n_transactions": 288,
+          "start_address": "0x02400",
+          "stride0": 1,
+          "traffic_read_pct": 0,
+          "traffic_pct": 100
+        },
+        {
+          "job": "dma_store_o3",
+          "wait_for_jobs": ["gemm_av_h3"],
+          "description": "store head3 output ([256,36] int8) from O_BUF (9216 bytes)",
+          "mem_access_type": "linear",
+          "n_transactions": 288,
+          "start_address": "0x3B000",
+          "stride0": 1,
+          "traffic_read_pct": 100,
+          "traffic_pct": 100
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "description": "GEMM engine",
+      "patterns": [
+        {
+          "job": "gemm_qk_h0",
+          "wait_for_jobs": ["dma_load_q0", "dma_load_k0_T"],
+          "description": "head0 Q*K^T ([256,36]*[36,256]) into S_A: [256,256] int8 (65536 bytes)",
+          "mem_access_type": "matmul_phased",
+          "matrix_m": 256,
+          "matrix_n": 256,
+          "matrix_k": 36,
+          "matrix_elem_bytes": 1,
+          "region_base_address_a": "0x00000",
+          "region_size_bytes_a": 9216,
+          "region_base_address_b": "0x02400",
+          "region_size_bytes_b": 9216,
+          "region_base_address_c": "0x0D800",
+          "region_size_bytes_c": 65536,
+          "traffic_pct": 90
+        },
+        {
+          "job": "gemm_av_h3",
+          "wait_for_jobs": ["softmax_h3_c0"],
+          "description": "head3 A*V ([256,256]*[256,36]) into O_BUF: [256,36] int8 (9216 bytes)",
+          "mem_access_type": "matmul_phased",
+          "matrix_m": 256,
+          "matrix_n": 36,
+          "matrix_k": 256,
+          "matrix_elem_bytes": 1,
+          "region_base_address_a": "0x1FC00",
+          "region_size_bytes_a": 65536,
+          "region_base_address_b": "0x04800",
+          "region_size_bytes_b": 9216,
+          "region_base_address_c": "0x3B000",
+          "region_size_bytes_c": 9216,
+          "traffic_pct": 90
+        }
+      ]
+    }
+  ]
+}

@@ -15,11 +15,11 @@ VERIF_EXPL_DIR=$VERIF_DIR/exploration
 RESULTS_DIR=$VERIF_EXPL_DIR/results
 PLOTS_DIR=$RESULTS_DIR/plots
 
-RUN_NAME=mobilevit_attention
+RUN_NAME=transformer_block
 
 # Makefile settings (verif.mk)
 export GUI=0
-export WORKLOAD_JSON=$VERIF_EXPL_DIR/config/workloads/workload_mobilevit_attention.json
+export WORKLOAD_JSON=$VERIF_EXPL_DIR/config/workloads/workload_transformer_block.json
 export TESTBENCH_JSON=$VERIF_DIR/config/testbench.json
 # HARDWARE_JSON is swept in the loop below
 
