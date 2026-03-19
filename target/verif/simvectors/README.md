@@ -115,22 +115,23 @@ Uniform random over a region.
 | `len_d2` | conditional | none | int | |
 | `idle_cycles_between_phases` | no | `0` | cycles | Inserts explicit boundary idles. |
 
-### `matmul_phased` (alias: `matmul`)
+### `matmul_phased`
 Phased A-read / B-read / C-write traffic.
 
 | Field | Required | Default | Format / unit | Notes |
 |---|---|---|---|---|
 | `n_transactions` | conditional | derived | int | Derivable from region size or matrix dims. When set explicitly, all beats are assumed full-width (no trailing partial beat). |
 | `region_base_address`, `region_size_bytes` | conditional | evenly partitioned | bytes | Combined region (auto A/B/C split). |
-| `matrix_m`, `matrix_n`, `matrix_k` | no | none | int | Derive `n_transactions` in bus beats. Requires `matrix_elem_bytes_a/b/c` when element size ≠ 1 byte. |
-| `matrix_elem_bytes_a/b/c` | no | `1` | bytes | Tensor element byte width per phase (1=int8, 2=int16, 4=int32). Used with `matrix_m/n/k`. |
+| `matrix_m`, `matrix_n`, `matrix_k` | conditional | none | int | Derive `n_transactions` in bus beats. Requires `matrix_elem_bytes`. |
+| `matrix_elem_bytes` | conditional | — | bytes | Element size in bytes for all operands (1=int8, 2=fp16/bf16, 4=fp32/int32). **Required** when deriving `n_transactions` from `matrix_m/n/k`. Overridden per-operand by `matrix_elem_bytes_a/b/c`. |
+| `matrix_elem_bytes_a/b/c` | no | `matrix_elem_bytes` | bytes | Per-operand element size override. Useful for mixed-precision (e.g. A/B=fp8, C=fp32). |
 | `region_base_address_a/b/c`, `region_size_bytes_a/b/c` | no | none | bytes | Explicit per-phase regions. |
 | `matmul_ratio_a/b/c` | no | `1/1/1` | relative weights (bus beats) | Ignored when `matrix_m/n/k` are present (ratios are auto-derived in beat units). |
 | `idle_cycles_between_phases` | no | `0` | cycles | Inserts explicit phase-boundary idles. |
 
 Mutual exclusivity / precedence:
 - If explicit `*_a/b/c` regions are provided, they take precedence over combined-region auto-split.
-- If `matrix_m/n/k` are present: `n_transactions` and `matmul_ratio_a/b/c` are both derived automatically in bus-beat units, and trailing partial beats are computed and emitted. JSON-provided `matmul_ratio_a/b/c` are ignored.
+- If `matrix_m/n/k` are present: `matrix_elem_bytes` is required. `n_transactions` and `matmul_ratio_a/b/c` are both derived automatically in bus-beat units, and trailing partial beats are computed and emitted. JSON-provided `matmul_ratio_a/b/c` are ignored.
 - If `n_transactions` is explicit (no matrix dims): all beats are full-width (`be` all-ones). This is correct when region sizes were already specified in bus-beat units.
 
 **Bus-beat unit requirement**: `n_transactions`, `matmul_ratio_a/b/c`, and `region_size_bytes_a/b/c` must all be expressed in bus beats (one beat = `DATA_WIDTH/8` bytes for the master). For int8 tensors on a 256-bit (32-byte) HWPE, one beat covers 32 elements. Mixing element-count units and beat-count units causes wrap-around errors.
@@ -184,7 +185,7 @@ Gather from multiple read regions, scatter to write region.
 | `schedule` | no | `4read_1write` | string | |
 | `n_transactions` | conditional | derived | int | Derivable from region sizes and chunk. |
 
-### `matmul_tiled_interleave` (alias: `matmul_tiled`)
+### `matmul_tiled_interleave`
 Tile-like interleaving among A/B/C streams.
 
 | Field | Required | Default | Format / unit | Notes |

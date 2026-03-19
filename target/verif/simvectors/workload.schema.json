@@ -45,16 +45,14 @@
             "2d",
             "3d",
             "matmul_phased",
-            "matmul",
             "multi_linear",
             "bank_group_linear",
             "rw_rowwise",
             "gather_scatter",
             "matmul_tiled_interleave",
-            "matmul_tiled",
             "hotspot_random"
           ],
-          "description": "Access pattern selector. Aliases: 'matmul' -> 'matmul_phased', 'matmul_tiled' -> 'matmul_tiled_interleave'."
+          "description": "Access pattern selector."
         },
         "job": {
           "type": "string",
@@ -147,6 +145,26 @@
           "type": "integer",
           "minimum": 1,
           "description": "[matmul_phased] Columns of A / rows of B."
+        },
+        "matrix_elem_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "[matmul_phased] Element size in bytes for all operands (1=int8, 2=fp16/bf16, 4=fp32/int32). Required when deriving n_transactions from matrix_m/n/k. Overridden per-operand by matrix_elem_bytes_a/b/c."
+        },
+        "matrix_elem_bytes_a": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "[matmul_phased] Element size in bytes for operand A. Overrides matrix_elem_bytes for this operand."
+        },
+        "matrix_elem_bytes_b": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "[matmul_phased] Element size in bytes for operand B. Overrides matrix_elem_bytes for this operand."
+        },
+        "matrix_elem_bytes_c": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "[matmul_phased] Element size in bytes for operand C. Overrides matrix_elem_bytes for this operand."
         },
         "region_base_address_a": {
           "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }],
@@ -391,14 +409,14 @@
         },
         {
           "if": {
-            "properties": { "mem_access_type": { "enum": ["matmul_phased", "matmul"] } },
+            "properties": { "mem_access_type": { "const": "matmul_phased" } },
             "required": ["mem_access_type"]
           },
           "then": {
             "anyOf": [
               { "required": ["n_transactions"] },
               { "required": ["region_size_bytes"] },
-              { "required": ["matrix_m", "matrix_n", "matrix_k"] }
+              { "required": ["matrix_m", "matrix_n", "matrix_k", "matrix_elem_bytes"] }
             ]
           }
         },
@@ -420,7 +438,7 @@
         },
         {
           "if": {
-            "properties": { "mem_access_type": { "enum": ["matmul_tiled_interleave", "matmul_tiled"] } },
+            "properties": { "mem_access_type": { "const": "matmul_tiled_interleave" } },
             "required": ["mem_access_type"]
           },
           "then": {
@@ -463,9 +481,8 @@
           "items": { "$ref": "#/$defs/pattern" }
         }
       },
-      "allOf": [
-        { "$ref": "#/$defs/pattern" }
-      ]
+      "if":   { "not": { "required": ["patterns"] } },
+      "then": { "$ref": "#/$defs/pattern" }
     }
   }
 }
