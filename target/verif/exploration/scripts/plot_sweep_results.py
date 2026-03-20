@@ -6,7 +6,7 @@ import json
 import math
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import matplotlib
 
@@ -20,6 +20,9 @@ from matplotlib.patches import Patch
 INTERCO_ORDER = {"LOG": 0, "HCI": 1, "MUX": 2}
 INTERCO_COLORS = {"LOG": "#1f77b4", "MUX": "#9467bd", "HCI": "#ff7f0e"}
 IDEAL_COLOR = "#7f7f7f"
+
+# Colors for invert_prio=0 (blue) and invert_prio=1 (orange)
+TB_INVERT_COLORS = {0: "#2196F3", 1: "#FF9800", None: "#78909C"}
 
 
 def _to_int(value: object, default: int = 0) -> int:
@@ -44,11 +47,39 @@ def _master_sort_key(master: str) -> Tuple[int, int]:
     return (9, 0)
 
 
-def _parse_cfg_from_filename(path: Path) -> Tuple[str, int, int]:
-    match = re.match(r"^hardware_([a-zA-Z]+)_([0-9]+)hwpe_([0-9]+)fact\.json$", path.name)
+def _parse_hw_cfg_from_filename(path: Path) -> Tuple[str, int, int]:
+    """Parse (interco_type, n_hwpe, hwpe_width_fact) from filename stem.
+
+    Handles both old-style 'hardware_X_Nhwpe_Mfact.json' and new combined
+    'hardware_X_Nhwpe_Mfact_testbench_*.json' names.
+    """
+    match = re.match(r"^hardware_([a-zA-Z]+)_([0-9]+)hwpe_([0-9]+)fact", path.stem)
     if not match:
         return ("UNK", 0, 0)
     return (match.group(1).upper(), int(match.group(2)), int(match.group(3)))
+
+
+# Keep the old name as an alias so callers that still use it don't break.
+_parse_cfg_from_filename = _parse_hw_cfg_from_filename
+
+
+def _parse_tb_cfg_from_stem(stem: str) -> Tuple[Optional[int], Optional[int], Optional[int], str]:
+    """Parse TB config embedded in a combined result filename stem.
+
+    Returns (invert_prio, stall_num, stall_den, tb_name).
+    All values are None / '' when no testbench segment is found.
+    """
+    match = re.search(r"(testbench_invert_([01])_stall_([0-9]+)_([0-9]+))", stem)
+    if not match:
+        return (None, None, None, "")
+    return (int(match.group(2)), int(match.group(3)), int(match.group(4)), match.group(1))
+
+
+def _tb_sort_key(entry: Dict) -> Tuple:
+    stall_num = entry.get("stall_num") or 0
+    stall_den = entry.get("stall_den") or 1
+    invert = entry.get("invert_prio") if entry.get("invert_prio") is not None else -1
+    return (invert, stall_num / stall_den)
 
 
 def _derive_interco_side(hw_cfg: Dict[str, object]) -> Dict[str, int]:
@@ -110,7 +141,7 @@ def _load_results(results_dir: Path) -> List[Dict[str, object]]:
         memory = hw_cfg.get("memory", {}) if isinstance(hw_cfg, dict) else {}
         bw = data.get("bandwidth", {})
 
-        interco_from_name, n_hwpe_name, wf_name = _parse_cfg_from_filename(path)
+        interco_from_name, n_hwpe_name, wf_name = _parse_hw_cfg_from_filename(path)
         interco_type = str(hw_cfg.get("interconnect_side", {}).get("type", interco_from_name)).upper()
         if interco_type not in INTERCO_ORDER:
             interco_type = interco_from_name
@@ -133,10 +164,15 @@ def _load_results(results_dir: Path) -> List[Dict[str, object]]:
         actual_bw = _to_float(bw.get("actual_completion_bit_per_cycle"))
         util_pct = (actual_bw / ideal_bottleneck * 100.0) if ideal_bottleneck > 0 and not math.isnan(actual_bw) else float("nan")
 
+        invert_prio, stall_num, stall_den, tb_name = _parse_tb_cfg_from_stem(path.stem)
+        # Full hardware config name: strip the testbench suffix from the stem
+        hw_name = path.stem[: path.stem.index(f"_{tb_name}")] if tb_name else path.stem
+
         entries.append(
             {
                 "path": path,
                 "label": cfg_label,
+                "hw_name": hw_name,
                 "interco_type": interco_type,
                 "n_hwpe": n_hwpe,
                 "hwpe_width_fact": hwpe_wf,
@@ -149,6 +185,11 @@ def _load_results(results_dir: Path) -> List[Dict[str, object]]:
                 "actual_bw": actual_bw,
                 "utilization_pct": util_pct,
                 "n_core": n_core,
+                # TB config fields
+                "tb_name": tb_name,
+                "invert_prio": invert_prio,
+                "stall_num": stall_num,
+                "stall_den": stall_den,
             }
         )
 
@@ -173,8 +214,13 @@ def _parse_ideal_runtime(ideal_json_path: Path) -> float:
         print(f"Error: Failed to parse ideal runtime from JSON file: {ideal_json_path}. Exception: {e}")
         raise SystemExit(f"Failed to parse ideal runtime from JSON file: {ideal_json_path}")
 
+
+# -----------------------------------------------------------------------
+# Tick-label helpers
+# -----------------------------------------------------------------------
+
 def _apply_interco_tick_labels(ax, x_positions, entries) -> None:
-    """Replace x-tick labels with three-line labels: INTERCO_TYPE / N cores / M HWPEs."""
+    """Three-line x-tick labels: INTERCO_TYPE / N cores / M HWPEs."""
     ax.set_xticks(x_positions)
     ax.set_xticklabels([""] * len(entries))
     for xi, entry in zip(x_positions, entries):
@@ -197,6 +243,34 @@ def _apply_interco_tick_labels(ax, x_positions, entries) -> None:
             ha="center", va="top", fontsize=8,
         )
 
+
+def _apply_tb_tick_labels(ax, x_positions, entries) -> None:
+    """Two-line x-tick labels for TB sweep: stall ratio / invert prio."""
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([""] * len(entries))
+    for xi, entry in zip(x_positions, entries):
+        stall_num = entry.get("stall_num")
+        stall_den = entry.get("stall_den")
+        invert = entry.get("invert_prio")
+        stall_str = f"{stall_num}/{stall_den}" if stall_num is not None else "?"
+        inv_str = f"inv={'on' if invert else 'off'}" if invert is not None else ""
+        ax.annotate(
+            stall_str,
+            xy=(xi, 0), xycoords=("data", "axes fraction"),
+            xytext=(0, -5), textcoords="offset points",
+            ha="center", va="top", fontsize=10,
+        )
+        ax.annotate(
+            inv_str,
+            xy=(xi, 0), xycoords=("data", "axes fraction"),
+            xytext=(0, -18), textcoords="offset points",
+            ha="center", va="top", fontsize=8,
+        )
+
+
+# -----------------------------------------------------------------------
+# Per-TB plots (fixed TB, sweep HW) — same metrics as before
+# -----------------------------------------------------------------------
 
 def _plot_total_sim_time(entries: List[Dict[str, object]], ideal_runtime: float, out_path: Path) -> None:
     values = [e["total_sim_cycles"] for e in entries]
@@ -239,7 +313,7 @@ def _plot_total_sim_time(entries: List[Dict[str, object]], ideal_runtime: float,
             linewidth=1.6,
             label=f"Ideal workload runtime ({ideal_runtime:.0f} cycles)",
         )
-        legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.6, label="Ideal workload runtime"))
+        legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.6, label=f"Ideal workload runtime ({ideal_runtime:.0f} cycles)"))
     ax.legend(handles=legend, loc="lower left")
     ax.margins(y=0.24)
     fig.tight_layout()
@@ -247,7 +321,15 @@ def _plot_total_sim_time(entries: List[Dict[str, object]], ideal_runtime: float,
     plt.close(fig)
 
 
-def _plot_per_master_avg_req_to_gnt(entries: List[Dict[str, object]], out_path: Path) -> None:
+def _plot_per_master_avg_req_to_gnt(
+    entries: List[Dict[str, object]],
+    out_path: Path,
+    tick_label_fn: Callable = None,
+    title_suffix: str = "",
+) -> None:
+    if tick_label_fn is None:
+        tick_label_fn = _apply_interco_tick_labels
+
     masters = sorted(
         {
             row.get("master_name", "")
@@ -283,10 +365,10 @@ def _plot_per_master_avg_req_to_gnt(entries: List[Dict[str, object]], out_path: 
 
     fig, ax = plt.subplots(figsize=(max(10, 1.2 * len(entries)), max(4, 0.35 * len(masters))))
     im = ax.imshow(np.ma.masked_invalid(matrix), aspect="auto", cmap=cmap, interpolation="nearest")
-    ax.set_title("Avg req->gnt stall latency per master")
+    ax.set_title(f"Avg req->gnt stall latency per master{title_suffix}")
     ax.set_xlabel("Configuration", labelpad=50)
     ax.set_ylabel("Master")
-    _apply_interco_tick_labels(ax, np.arange(len(entries), dtype=float), entries)
+    tick_label_fn(ax, np.arange(len(entries), dtype=float), entries)
     ax.set_yticks(np.arange(len(masters)))
     ax.set_yticklabels(masters)
 
@@ -365,6 +447,7 @@ def _plot_bandwidth(entries: List[Dict[str, object]], ideal_runtime: float, out_
     # Ideal app BW computed from moved data and ideal application duration:
     # ideal_app_bw = effective_bw * total_real_sim_time / ideal_runtime
     valid_ideal_app_vals = [v for v in ideal_app_vals if not math.isnan(v)]
+    extra_legend = []
     if valid_ideal_app_vals:
         ideal_workload_bw = sum(valid_ideal_app_vals) / len(valid_ideal_app_vals)
         ax.axhline(
@@ -372,28 +455,146 @@ def _plot_bandwidth(entries: List[Dict[str, object]], ideal_runtime: float, out_
             color="red",
             linestyle="--",
             linewidth=1.8,
-            label="Ideal workload bandwidth",
             zorder=4,
         )
-        ax.text(
-            x[-1] + 0.35,
-            ideal_workload_bw,
-            f"{ideal_workload_bw:.1f}",
-            color="red",
-            fontsize=9,
-            ha="right",
-            va="bottom",
-            zorder=8,
-        )
+        extra_legend = [Line2D([0], [0], color="red", linestyle="--", linewidth=1.8,
+                               label=f"Ideal workload bandwidth ({ideal_workload_bw:.1f} bit/cycle)")]
 
     interco_legend = [Patch(facecolor=INTERCO_COLORS[k], label=f"Actual {k}") for k in ("LOG", "HCI", "MUX")]
     base_legend = [Patch(facecolor=IDEAL_COLOR, label="Max interco bandwidth")]
-    extra_legend = [Line2D([0], [0], color="red", linestyle="--", linewidth=1.8, label="Ideal workload bandwidth")]
     ax.legend(handles=base_legend + interco_legend + extra_legend, loc="best")
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
+
+# -----------------------------------------------------------------------
+# Per-HW plots (fixed HW, sweep TB config)
+# -----------------------------------------------------------------------
+
+def _plot_total_sim_time_vs_tb(
+    entries: List[Dict[str, object]],
+    ideal_runtime: Optional[float],
+    hw_label: str,
+    out_path: Path,
+) -> None:
+    entries = sorted(entries, key=_tb_sort_key)
+    values = [e["total_sim_cycles"] for e in entries]
+    colors = [TB_INVERT_COLORS.get(e.get("invert_prio"), TB_INVERT_COLORS[None]) for e in entries]
+    x = np.arange(len(entries), dtype=float)
+
+    fig, ax = plt.subplots(figsize=(max(8, 1.2 * len(entries)), 5.6))
+    bars = ax.bar(x, values, color=colors, width=0.68)
+    ax.set_title(f"Total simulation time vs testbench config  [{hw_label}]")
+    ax.set_ylabel("cycles")
+    ax.set_xlabel("Testbench config  (stall ratio / invert prio)", labelpad=40)
+    _apply_tb_tick_labels(ax, x, entries)
+    ax.set_axisbelow(True)
+    ax.grid(axis="y", alpha=0.25)
+
+    for bar, val in zip(bars, values):
+        if math.isnan(val):
+            continue
+        if ideal_runtime is not None:
+            mult = (val / ideal_runtime) if val > 0 and ideal_runtime > 0 else float("nan")
+            pct_txt = "n/a" if math.isnan(mult) else f"{mult:.2f}X ideal"
+            label_txt = f"{val:.0f}\n({pct_txt})"
+        else:
+            label_txt = f"{val:.0f}"
+        ax.text(bar.get_x() + bar.get_width() / 2.0, val, label_txt, ha="center", va="bottom", fontsize=8)
+
+    legend = [
+        Patch(facecolor=TB_INVERT_COLORS[0], label="invert prio off"),
+        Patch(facecolor=TB_INVERT_COLORS[1], label="invert prio on"),
+    ]
+    if ideal_runtime is not None:
+        ax.axhline(y=ideal_runtime, color="red", linestyle="--", linewidth=1.6)
+        legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.6, label=f"Ideal runtime ({ideal_runtime:.0f} cycles)"))
+    ax.legend(handles=legend, loc="lower left")
+    ax.margins(y=0.24)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _plot_bandwidth_vs_tb(
+    entries: List[Dict[str, object]],
+    ideal_runtime: Optional[float],
+    hw_label: str,
+    out_path: Path,
+) -> None:
+    entries = sorted(entries, key=_tb_sort_key)
+    actual_vals = [e["actual_bw"] for e in entries]
+    util_vals = [e["utilization_pct"] for e in entries]
+    sim_cycles_vals = [e["total_sim_cycles"] for e in entries]
+    colors = [TB_INVERT_COLORS.get(e.get("invert_prio"), TB_INVERT_COLORS[None]) for e in entries]
+
+    ideal_app_vals = []
+    for actual_bw, sim_cycles in zip(actual_vals, sim_cycles_vals):
+        if ideal_runtime is None or math.isnan(actual_bw) or math.isnan(sim_cycles) or ideal_runtime <= 0.0:
+            ideal_app_vals.append(float("nan"))
+        else:
+            ideal_app_vals.append(actual_bw * sim_cycles / ideal_runtime)
+
+    # The HW bottleneck BW is the same for all entries; show as horizontal line.
+    ideal_bottleneck = entries[0]["ideal_bottleneck_bw"] if entries else 0.0
+
+    x = np.arange(len(entries), dtype=float)
+    fig, ax = plt.subplots(figsize=(max(9, 1.25 * len(entries)), 5.0))
+    bars = ax.bar(x, actual_vals, width=0.56, color=colors, label="Actual BW (completion)")
+    ax.set_title(f"Bandwidth vs testbench config  [{hw_label}]")
+    ax.set_ylabel("bit/cycle")
+    ax.set_xlabel("Testbench config  (stall ratio / invert prio)", labelpad=40)
+    _apply_tb_tick_labels(ax, x, entries)
+    ax.set_axisbelow(True)
+    ax.grid(axis="y", alpha=0.25)
+
+    for bar, val, util in zip(bars, actual_vals, util_vals):
+        if math.isnan(val):
+            continue
+        util_txt = "n/a" if math.isnan(util) else f"{util:.1f}% util"
+        ax.text(bar.get_x() + bar.get_width() / 2.0, val, f"{val:.1f}\n({util_txt})",
+                ha="center", va="bottom", fontsize=8, zorder=8)
+
+    legend = [
+        Patch(facecolor=TB_INVERT_COLORS[0], label="invert prio off"),
+        Patch(facecolor=TB_INVERT_COLORS[1], label="invert prio on"),
+    ]
+
+    if ideal_bottleneck > 0:
+        ax.axhline(y=ideal_bottleneck, color=IDEAL_COLOR, linestyle="-.", linewidth=1.6, zorder=3)
+        legend.append(Line2D([0], [0], color=IDEAL_COLOR, linestyle="-.", linewidth=1.6,
+                             label=f"Max interco BW ({ideal_bottleneck:.0f} bit/cycle)"))
+
+    valid_ideal_app_vals = [v for v in ideal_app_vals if not math.isnan(v)]
+    if valid_ideal_app_vals:
+        ideal_workload_bw = sum(valid_ideal_app_vals) / len(valid_ideal_app_vals)
+        ax.axhline(y=ideal_workload_bw, color="red", linestyle="--", linewidth=1.8, zorder=4)
+        legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.8,
+                             label=f"Ideal workload BW ({ideal_workload_bw:.1f} bit/cycle)"))
+
+    ax.legend(handles=legend, loc="best")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def _plot_per_master_avg_req_to_gnt_vs_tb(
+    entries: List[Dict[str, object]],
+    hw_label: str,
+    out_path: Path,
+) -> None:
+    entries = sorted(entries, key=_tb_sort_key)
+    _plot_per_master_avg_req_to_gnt(
+        entries, out_path,
+        tick_label_fn=_apply_tb_tick_labels,
+        title_suffix=f"  [{hw_label}]",
+    )
+
+
+# -----------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Plot sweep results from parsed transcript JSON files.")
@@ -404,8 +605,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--out-dir",
-        default="target/verif/results/plots",
-        help="Output directory for generated plots.",
+        default=None,
+        help="Output directory for generated plots (default: <results-dir>/plots).",
     )
     parser.add_argument(
         "--ideal-run",
@@ -415,20 +616,68 @@ def main() -> int:
     args = parser.parse_args()
 
     results_dir = Path(args.results_dir)
-    out_dir = Path(args.out_dir)
+    out_dir = Path(args.out_dir) if args.out_dir else results_dir / "plots"
     out_dir.mkdir(parents=True, exist_ok=True)
     ideal_json_path = Path(args.ideal_run) if args.ideal_run else None
 
-    # Parse results
     entries = _load_results(results_dir)
     if not entries:
         raise SystemExit(f"No sweep JSON files found in: {results_dir}")
     ideal_runtime = _parse_ideal_runtime(ideal_json_path)
 
-    # Plot
-    _plot_total_sim_time(entries, ideal_runtime, out_dir / "total_simulation_time.png")
-    _plot_per_master_avg_req_to_gnt(entries, out_dir / "avg_req_to_gnt_per_master.png")
-    _plot_bandwidth(entries, ideal_runtime, out_dir / "bandwidth_ideal_vs_actual.png")
+    # -----------------------------------------------------------------
+    # Group entries by full testbench config name for per-TB plots.
+    # Each unique tb_name (e.g. testbench_invert_0_stall_4_5) gets its
+    # own set of plots so different invert_prio values are never mixed.
+    # Entries with no TB suffix are broadcast into every group so they
+    # appear in all per-TB comparison plots.
+    # -----------------------------------------------------------------
+    log_entries: List = []
+    tb_groups: Dict[str, List] = {}  # key: tb_name
+    for e in entries:
+        if e["tb_name"]:
+            tb_groups.setdefault(e["tb_name"], []).append(e)
+        else:
+            log_entries.append(e)
+
+    for tb_entries in tb_groups.values():
+        tb_entries.extend(log_entries)
+
+    # If there are only TB-less entries (no TB sweep at all), keep them as a
+    # single group so the plots are still generated.
+    if not tb_groups:
+        tb_groups[""] = list(log_entries)
+
+    # Per-TB plots: one set of 3 plots per full testbench config, using
+    # the tb_name as the filename suffix.
+    for tb_name, tb_entries in tb_groups.items():
+        suffix = f"_{tb_name}" if tb_name else ""
+        tb_entries.sort(key=lambda e: (
+            e["n_hwpe"],
+            e["hwpe_width_fact"],
+            INTERCO_ORDER.get(e["interco_type"], 9),
+        ))
+        _plot_total_sim_time(tb_entries, ideal_runtime, out_dir / f"total_simulation_time{suffix}.png")
+        _plot_per_master_avg_req_to_gnt(tb_entries, out_dir / f"avg_req_to_gnt_per_master{suffix}.png")
+        _plot_bandwidth(tb_entries, ideal_runtime, out_dir / f"bandwidth_ideal_vs_actual{suffix}.png")
+
+    # -----------------------------------------------------------------
+    # Group entries by full HW config name
+    # -----------------------------------------------------------------
+    hw_groups: Dict[str, List] = {}
+    for e in entries:
+        hw_groups.setdefault(e["hw_name"], []).append(e)
+
+    # Per-HW plots: sweep TB config on x-axis.
+    # Only generated for HW configs that actually have multiple TB entries
+    # (LOG configs have a single entry and produce no meaningful TB sweep).
+    for hw_name, hw_entries in hw_groups.items():
+        if len(hw_entries) <= 1:
+            continue
+        hw_label = hw_entries[0]["label"]  # short label for plot titles
+        _plot_total_sim_time_vs_tb(hw_entries, ideal_runtime, hw_label, out_dir / f"total_simulation_time_vs_tb_{hw_name}.png")
+        _plot_bandwidth_vs_tb(hw_entries, ideal_runtime, hw_label, out_dir / f"bandwidth_vs_tb_{hw_name}.png")
+        _plot_per_master_avg_req_to_gnt_vs_tb(hw_entries, hw_label, out_dir / f"avg_req_to_gnt_per_master_vs_tb_{hw_name}.png")
 
     print(f"Plots written to: {out_dir}")
     return 0
