@@ -20,6 +20,7 @@ from matplotlib.patches import Patch
 INTERCO_ORDER = {"LOG": 0, "HCI": 1, "MUX": 2}
 INTERCO_COLORS = {"LOG": "#1f77b4", "MUX": "#9467bd", "HCI": "#ff7f0e"}
 IDEAL_COLOR = "#7f7f7f"
+IDEAL_RED = "#C0392B"   # rich crimson for ideal-workload lines and annotations
 
 # Colors for invert_prio=0 (blue) and invert_prio=1 (orange)
 TB_INVERT_COLORS = {0: "#2196F3", 1: "#FF9800", None: "#78909C"}
@@ -272,14 +273,27 @@ def _apply_tb_tick_labels(ax, x_positions, entries) -> None:
 # Per-TB plots (fixed TB, sweep HW) — same metrics as before
 # -----------------------------------------------------------------------
 
-def _plot_total_sim_time(entries: List[Dict[str, object]], ideal_runtime: float, out_path: Path) -> None:
+def _set_title(ax, title: str, subtitle: str = "") -> None:
+    """Set a bold main title with an optional smaller subtitle below it."""
+    ax.set_title(title, fontweight="bold", pad=24 if subtitle else 6)
+    if subtitle:
+        ax.annotate(
+            subtitle,
+            xy=(0.5, 1.0), xycoords="axes fraction",
+            xytext=(0, 4), textcoords="offset points",
+            ha="center", va="bottom",
+            fontsize=8, color="#555555",
+            annotation_clip=False,
+        )
+
+def _plot_total_sim_time(entries: List[Dict[str, object]], ideal_runtime: float, out_path: Path, subtitle: str = "") -> None:
     values = [e["total_sim_cycles"] for e in entries]
     colors = [INTERCO_COLORS.get(e["interco_type"], "#333333") for e in entries]
     x = np.arange(len(entries), dtype=float)
 
     fig, ax = plt.subplots(figsize=(max(8, 1.2 * len(entries)), 5.6))
     bars = ax.bar(x, values, color=colors, width=0.68)
-    ax.set_title("Total simulation time vs ideal workload runtime")
+    _set_title(ax, "Total simulation time vs ideal workload runtime", subtitle)
     ax.set_ylabel("cycles")
     ax.set_xlabel("Configuration", labelpad=50)
     _apply_interco_tick_labels(ax, x, entries)
@@ -289,32 +303,29 @@ def _plot_total_sim_time(entries: List[Dict[str, object]], ideal_runtime: float,
     for bar, val in zip(bars, values):
         if math.isnan(val):
             continue
-        if ideal_runtime is not None:
-            mult_of_ideal = (val / ideal_runtime) if val > 0 and ideal_runtime > 0 else float("nan")
-            pct_txt = "n/a" if math.isnan(mult_of_ideal) else f"{mult_of_ideal:.2f}X of ideal runtime"
-            label_txt = f"{val:.0f}\n({pct_txt})"
-        else:
-            label_txt = f"{val:.0f}"
-        ax.text(
-            bar.get_x() + bar.get_width() / 2.0,
-            val,
-            label_txt,
-            ha="center",
-            va="bottom",
-            fontsize=8,
-        )
+        bar_cx = bar.get_x() + bar.get_width() / 2.0
+        # Value on top of bar; × of ideal stacked just above it
+        ax.text(bar_cx, val, f"{val:.0f} cyc", ha="center", va="bottom", fontsize=8)
+        if ideal_runtime is not None and ideal_runtime > 0:
+            mult_of_ideal = val / ideal_runtime
+            ax.annotate(
+                f"{mult_of_ideal:.2f}× of ideal",
+                xy=(bar_cx, val), xytext=(0, 16),
+                textcoords="offset points",
+                ha="center", va="bottom", fontsize=7, color=IDEAL_RED, zorder=8,
+                bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.75, edgecolor=IDEAL_RED, linewidth=0.8),
+            )
 
-    legend = [Patch(facecolor=INTERCO_COLORS[k], label=k) for k in ("LOG", "HCI", "MUX")]
     if ideal_runtime is not None:
-        ax.axhline(
-            y=ideal_runtime,
-            color="red",
-            linestyle="--",
-            linewidth=1.6,
-            label=f"Ideal workload runtime ({ideal_runtime:.0f} cycles)",
+        ax.axhline(y=ideal_runtime, color=IDEAL_RED, linestyle="--", linewidth=1.6)
+        ax.text(
+            0.98, ideal_runtime,
+            f"ideal workload runtime: {ideal_runtime:.0f} cyc",
+            transform=ax.get_yaxis_transform(),
+            ha="right", va="center",
+            fontsize=7.5, color=IDEAL_RED, zorder=6,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.97, edgecolor=IDEAL_RED, linewidth=0.8),
         )
-        legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.6, label=f"Ideal workload runtime ({ideal_runtime:.0f} cycles)"))
-    ax.legend(handles=legend, loc="lower left")
     ax.margins(y=0.24)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
@@ -326,6 +337,7 @@ def _plot_per_master_avg_req_to_gnt(
     out_path: Path,
     tick_label_fn: Callable = None,
     title_suffix: str = "",
+    subtitle: str = "",
 ) -> None:
     if tick_label_fn is None:
         tick_label_fn = _apply_interco_tick_labels
@@ -365,7 +377,7 @@ def _plot_per_master_avg_req_to_gnt(
 
     fig, ax = plt.subplots(figsize=(max(10, 1.2 * len(entries)), max(4, 0.35 * len(masters))))
     im = ax.imshow(np.ma.masked_invalid(matrix), aspect="auto", cmap=cmap, interpolation="nearest")
-    ax.set_title(f"Avg req->gnt stall latency per master{title_suffix}")
+    _set_title(ax, f"Avg req->gnt stall latency per master{title_suffix}", subtitle)
     ax.set_xlabel("Configuration", labelpad=50)
     ax.set_ylabel("Master")
     tick_label_fn(ax, np.arange(len(entries), dtype=float), entries)
@@ -388,10 +400,10 @@ def _plot_per_master_avg_req_to_gnt(
     plt.close(fig)
 
 
-def _plot_bandwidth(entries: List[Dict[str, object]], ideal_runtime: float, out_path: Path) -> None:
-    ideal_vals = [e["ideal_bottleneck_bw"] for e in entries]
+def _plot_bandwidth(entries: List[Dict[str, object]], ideal_runtime: float, out_path: Path, subtitle: str = "") -> None:
     actual_vals = [e["actual_bw"] for e in entries]
-    util_vals = [e["utilization_pct"] for e in entries]
+    ideal_bottleneck_vals = [e["ideal_bottleneck_bw"] for e in entries]
+    interco_util_vals = [e["utilization_pct"] for e in entries]
     sim_cycles_vals = [e["total_sim_cycles"] for e in entries]
     ideal_app_vals = []
     for actual_bw, sim_cycles in zip(actual_vals, sim_cycles_vals):
@@ -399,70 +411,69 @@ def _plot_bandwidth(entries: List[Dict[str, object]], ideal_runtime: float, out_
             ideal_app_vals.append(float("nan"))
         else:
             ideal_app_vals.append(actual_bw * sim_cycles / ideal_runtime)
+    # Utilization w.r.t. ideal workload bandwidth: actual_bw / ideal_app_bw = ideal_runtime / sim_cycles
+    workload_util_vals = []
+    for actual_bw, ideal_app_bw in zip(actual_vals, ideal_app_vals):
+        if math.isnan(actual_bw) or math.isnan(ideal_app_bw) or ideal_app_bw <= 0.0:
+            workload_util_vals.append(float("nan"))
+        else:
+            workload_util_vals.append(actual_bw / ideal_app_bw * 100.0)
     actual_colors = [INTERCO_COLORS.get(e["interco_type"], "#333333") for e in entries]
     x = np.arange(len(entries), dtype=float)
-    ideal_width = 0.20
-    actual_width = 0.34
+    actual_width = 0.50
 
     fig, ax = plt.subplots(figsize=(max(9, 1.25 * len(entries)), 5.0))
-    ideal_bars = ax.bar(
-        x - actual_width / 2.0,
-        ideal_vals,
-        width=ideal_width,
-        color=IDEAL_COLOR,
-        label="Max interco bandwidth",
-    )
-    actual_bars = ax.bar(x + ideal_width / 2.0, actual_vals, width=actual_width, color=actual_colors, label="Actual BW (completion)")
-    ax.set_title("Bandwidth: interconnect-side ideal vs actual")
+    actual_bars = ax.bar(x, actual_vals, width=actual_width, color=actual_colors, label="Actual BW (completion)")
+    _set_title(ax, "Bandwidth: actual vs ideal workload", subtitle)
     ax.set_ylabel("bit/cycle")
     ax.set_xlabel("Configuration", labelpad=50)
     _apply_interco_tick_labels(ax, x, entries)
     ax.set_axisbelow(True)
     ax.grid(axis="y", alpha=0.25)
 
-    for bar, val in zip(ideal_bars, ideal_vals):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2.0,
-            val,
-            f"{val:.0f}",
-            ha="center",
-            va="bottom",
-            fontsize=8,
-            zorder=8,
-        )
-    for bar, val, util in zip(actual_bars, actual_vals, util_vals):
+    for bar, val, wl_util, bottleneck, interco_util in zip(
+        actual_bars, actual_vals, workload_util_vals, ideal_bottleneck_vals, interco_util_vals
+    ):
         if math.isnan(val):
             continue
-        util_txt = "n/a" if math.isnan(util) else f"{util:.1f}% interco util"
+        wl_util_txt = "n/a" if math.isnan(wl_util) else f"{wl_util:.1f}%"
+        interco_util_txt = "n/a" if math.isnan(interco_util) else f"{interco_util:.1f}%"
+        bottleneck_txt = "n/a" if math.isnan(bottleneck) else f"{bottleneck:.0f}"
+        bar_cx = bar.get_x() + bar.get_width() / 2.0
+        # Value on top of bar
+        ax.text(bar_cx, val, f"{val:.1f} b/cyc", ha="center", va="bottom", fontsize=8)
+        # Upper box: workload utilisation (transparent red, matching ideal-workload line)
         ax.text(
-            bar.get_x() + bar.get_width() / 2.0,
-            val,
-            f"{val:.1f}\n({util_txt})",
-            ha="center",
-            va="bottom",
-            fontsize=8,
-            zorder=8,
+            bar_cx,
+            val * 0.88,
+            f"workload util: {wl_util_txt}",
+            ha="center", va="center", fontsize=7, color=IDEAL_RED, zorder=8,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.75, edgecolor=IDEAL_RED, linewidth=0.8),
+        )
+        # Lower box: interco max BW + interco utilisation
+        ax.text(
+            bar_cx,
+            val * 0.28,
+            f"interco max: {bottleneck_txt} b/cyc\ninterco util: {interco_util_txt}",
+            ha="center", va="center", fontsize=7, zorder=8,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="#cce5ff", alpha=0.85, edgecolor="none"),
         )
 
     # Ideal app BW computed from moved data and ideal application duration:
     # ideal_app_bw = effective_bw * total_real_sim_time / ideal_runtime
     valid_ideal_app_vals = [v for v in ideal_app_vals if not math.isnan(v)]
-    extra_legend = []
     if valid_ideal_app_vals:
         ideal_workload_bw = sum(valid_ideal_app_vals) / len(valid_ideal_app_vals)
-        ax.axhline(
-            y=ideal_workload_bw,
-            color="red",
-            linestyle="--",
-            linewidth=1.8,
-            zorder=4,
+        ax.axhline(y=ideal_workload_bw, color=IDEAL_RED, linestyle="--", linewidth=1.8, zorder=4)
+        ax.text(
+            0.98, ideal_workload_bw,
+            f"ideal workload BW: {ideal_workload_bw:.1f} b/cyc",
+            transform=ax.get_yaxis_transform(),
+            ha="right", va="center",
+            fontsize=7.5, color=IDEAL_RED, zorder=6,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.97, edgecolor=IDEAL_RED, linewidth=0.8),
         )
-        extra_legend = [Line2D([0], [0], color="red", linestyle="--", linewidth=1.8,
-                               label=f"Ideal workload bandwidth ({ideal_workload_bw:.1f} bit/cycle)")]
 
-    interco_legend = [Patch(facecolor=INTERCO_COLORS[k], label=f"Actual {k}") for k in ("LOG", "HCI", "MUX")]
-    base_legend = [Patch(facecolor=IDEAL_COLOR, label="Max interco bandwidth")]
-    ax.legend(handles=base_legend + interco_legend + extra_legend, loc="best")
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
@@ -477,6 +488,7 @@ def _plot_total_sim_time_vs_tb(
     ideal_runtime: Optional[float],
     hw_label: str,
     out_path: Path,
+    subtitle: str = "",
 ) -> None:
     entries = sorted(entries, key=_tb_sort_key)
     values = [e["total_sim_cycles"] for e in entries]
@@ -485,7 +497,7 @@ def _plot_total_sim_time_vs_tb(
 
     fig, ax = plt.subplots(figsize=(max(8, 1.2 * len(entries)), 5.6))
     bars = ax.bar(x, values, color=colors, width=0.68)
-    ax.set_title(f"Total simulation time vs testbench config  [{hw_label}]")
+    _set_title(ax, "Total simulation time vs testbench config", subtitle)
     ax.set_ylabel("cycles")
     ax.set_xlabel("Testbench config  (stall ratio / invert prio)", labelpad=40)
     _apply_tb_tick_labels(ax, x, entries)
@@ -495,21 +507,32 @@ def _plot_total_sim_time_vs_tb(
     for bar, val in zip(bars, values):
         if math.isnan(val):
             continue
-        if ideal_runtime is not None:
-            mult = (val / ideal_runtime) if val > 0 and ideal_runtime > 0 else float("nan")
-            pct_txt = "n/a" if math.isnan(mult) else f"{mult:.2f}X ideal"
-            label_txt = f"{val:.0f}\n({pct_txt})"
-        else:
-            label_txt = f"{val:.0f}"
-        ax.text(bar.get_x() + bar.get_width() / 2.0, val, label_txt, ha="center", va="bottom", fontsize=8)
+        bar_cx = bar.get_x() + bar.get_width() / 2.0
+        ax.text(bar_cx, val, f"{val:.0f} cyc", ha="center", va="bottom", fontsize=8)
+        if ideal_runtime is not None and ideal_runtime > 0:
+            mult = val / ideal_runtime
+            ax.annotate(
+                f"{mult:.2f}× of ideal",
+                xy=(bar_cx, val), xytext=(0, 16),
+                textcoords="offset points",
+                ha="center", va="bottom", fontsize=7, color=IDEAL_RED, zorder=8,
+                bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.75, edgecolor=IDEAL_RED, linewidth=0.8),
+            )
 
     legend = [
         Patch(facecolor=TB_INVERT_COLORS[0], label="invert prio off"),
         Patch(facecolor=TB_INVERT_COLORS[1], label="invert prio on"),
     ]
     if ideal_runtime is not None:
-        ax.axhline(y=ideal_runtime, color="red", linestyle="--", linewidth=1.6)
-        legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.6, label=f"Ideal runtime ({ideal_runtime:.0f} cycles)"))
+        ax.axhline(y=ideal_runtime, color=IDEAL_RED, linestyle="--", linewidth=1.6)
+        ax.text(
+            0.98, ideal_runtime,
+            f"ideal workload runtime: {ideal_runtime:.0f} cyc",
+            transform=ax.get_yaxis_transform(),
+            ha="right", va="center",
+            fontsize=7.5, color=IDEAL_RED, zorder=6,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.97, edgecolor=IDEAL_RED, linewidth=0.8),
+        )
     ax.legend(handles=legend, loc="lower left")
     ax.margins(y=0.24)
     fig.tight_layout()
@@ -522,6 +545,7 @@ def _plot_bandwidth_vs_tb(
     ideal_runtime: Optional[float],
     hw_label: str,
     out_path: Path,
+    subtitle: str = "",
 ) -> None:
     entries = sorted(entries, key=_tb_sort_key)
     actual_vals = [e["actual_bw"] for e in entries]
@@ -542,38 +566,47 @@ def _plot_bandwidth_vs_tb(
     x = np.arange(len(entries), dtype=float)
     fig, ax = plt.subplots(figsize=(max(9, 1.25 * len(entries)), 5.0))
     bars = ax.bar(x, actual_vals, width=0.56, color=colors, label="Actual BW (completion)")
-    ax.set_title(f"Bandwidth vs testbench config  [{hw_label}]")
+    _set_title(ax, "Bandwidth vs testbench config", subtitle)
     ax.set_ylabel("bit/cycle")
     ax.set_xlabel("Testbench config  (stall ratio / invert prio)", labelpad=40)
     _apply_tb_tick_labels(ax, x, entries)
     ax.set_axisbelow(True)
     ax.grid(axis="y", alpha=0.25)
 
-    for bar, val, util in zip(bars, actual_vals, util_vals):
+    for bar, val, ideal_app_bw in zip(bars, actual_vals, ideal_app_vals):
         if math.isnan(val):
             continue
-        util_txt = "n/a" if math.isnan(util) else f"{util:.1f}% util"
-        ax.text(bar.get_x() + bar.get_width() / 2.0, val, f"{val:.1f}\n({util_txt})",
-                ha="center", va="bottom", fontsize=8, zorder=8)
+        bar_cx = bar.get_x() + bar.get_width() / 2.0
+        # Value on top of bar
+        ax.text(bar_cx, val, f"{val:.1f} b/cyc", ha="center", va="bottom", fontsize=8, zorder=8)
+        # Workload util just inside bar top (red)
+        wl_util_txt = "n/a" if math.isnan(ideal_app_bw) or ideal_app_bw <= 0 else f"{val / ideal_app_bw * 100:.1f}%"
+        ax.text(
+            bar_cx, val * 0.88,
+            f"workload\nutil = {wl_util_txt}",
+            ha="center", va="center", fontsize=7, color=IDEAL_RED, zorder=8,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.75, edgecolor=IDEAL_RED, linewidth=0.8),
+        )
 
     legend = [
         Patch(facecolor=TB_INVERT_COLORS[0], label="invert prio off"),
         Patch(facecolor=TB_INVERT_COLORS[1], label="invert prio on"),
     ]
 
-    if ideal_bottleneck > 0:
-        ax.axhline(y=ideal_bottleneck, color=IDEAL_COLOR, linestyle="-.", linewidth=1.6, zorder=3)
-        legend.append(Line2D([0], [0], color=IDEAL_COLOR, linestyle="-.", linewidth=1.6,
-                             label=f"Max interco BW ({ideal_bottleneck:.0f} bit/cycle)"))
-
     valid_ideal_app_vals = [v for v in ideal_app_vals if not math.isnan(v)]
     if valid_ideal_app_vals:
         ideal_workload_bw = sum(valid_ideal_app_vals) / len(valid_ideal_app_vals)
-        ax.axhline(y=ideal_workload_bw, color="red", linestyle="--", linewidth=1.8, zorder=4)
-        legend.append(Line2D([0], [0], color="red", linestyle="--", linewidth=1.8,
-                             label=f"Ideal workload BW ({ideal_workload_bw:.1f} bit/cycle)"))
+        ax.axhline(y=ideal_workload_bw, color=IDEAL_RED, linestyle="--", linewidth=1.8, zorder=4)
+        ax.text(
+            0.98, ideal_workload_bw,
+            f"ideal workload BW: {ideal_workload_bw:.1f} b/cyc",
+            transform=ax.get_yaxis_transform(),
+            ha="right", va="center",
+            fontsize=7.5, color=IDEAL_RED, zorder=6,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white", alpha=0.97, edgecolor=IDEAL_RED, linewidth=0.8),
+        )
 
-    ax.legend(handles=legend, loc="best")
+    ax.legend(handles=legend, loc="lower right")
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
@@ -583,12 +616,13 @@ def _plot_per_master_avg_req_to_gnt_vs_tb(
     entries: List[Dict[str, object]],
     hw_label: str,
     out_path: Path,
+    subtitle: str = "",
 ) -> None:
     entries = sorted(entries, key=_tb_sort_key)
     _plot_per_master_avg_req_to_gnt(
         entries, out_path,
         tick_label_fn=_apply_tb_tick_labels,
-        title_suffix=f"  [{hw_label}]",
+        subtitle=subtitle,
     )
 
 
@@ -625,6 +659,10 @@ def main() -> int:
         raise SystemExit(f"No sweep JSON files found in: {results_dir}")
     ideal_runtime = _parse_ideal_runtime(ideal_json_path)
 
+    workload_label = results_dir.name
+    if workload_label.startswith("workload_"):
+        workload_label = workload_label[len("workload_"):]
+
     # -----------------------------------------------------------------
     # Group entries by full testbench config name for per-TB plots.
     # Each unique tb_name (e.g. testbench_invert_0_stall_4_5) gets its
@@ -657,9 +695,12 @@ def main() -> int:
             e["hwpe_width_fact"],
             INTERCO_ORDER.get(e["interco_type"], 9),
         ))
-        _plot_total_sim_time(tb_entries, ideal_runtime, out_dir / f"total_simulation_time{suffix}.png")
-        _plot_per_master_avg_req_to_gnt(tb_entries, out_dir / f"avg_req_to_gnt_per_master{suffix}.png")
-        _plot_bandwidth(tb_entries, ideal_runtime, out_dir / f"bandwidth_ideal_vs_actual{suffix}.png")
+        tb_subtitle = f"workload: {workload_label} | sweep: hw config"
+        if tb_name:
+            tb_subtitle += f" | tb: {tb_name}"
+        _plot_total_sim_time(tb_entries, ideal_runtime, out_dir / f"total_simulation_time{suffix}.png", subtitle=tb_subtitle)
+        _plot_per_master_avg_req_to_gnt(tb_entries, out_dir / f"avg_req_to_gnt_per_master{suffix}.png", subtitle=tb_subtitle)
+        _plot_bandwidth(tb_entries, ideal_runtime, out_dir / f"bandwidth_ideal_vs_actual{suffix}.png", subtitle=tb_subtitle)
 
     # -----------------------------------------------------------------
     # Group entries by full HW config name
@@ -675,9 +716,10 @@ def main() -> int:
         if len(hw_entries) <= 1:
             continue
         hw_label = hw_entries[0]["label"]  # short label for plot titles
-        _plot_total_sim_time_vs_tb(hw_entries, ideal_runtime, hw_label, out_dir / f"total_simulation_time_vs_tb_{hw_name}.png")
-        _plot_bandwidth_vs_tb(hw_entries, ideal_runtime, hw_label, out_dir / f"bandwidth_vs_tb_{hw_name}.png")
-        _plot_per_master_avg_req_to_gnt_vs_tb(hw_entries, hw_label, out_dir / f"avg_req_to_gnt_per_master_vs_tb_{hw_name}.png")
+        hw_subtitle = f"workload: {workload_label} | hw: {hw_label} | sweep: tb config"
+        _plot_total_sim_time_vs_tb(hw_entries, ideal_runtime, hw_label, out_dir / f"total_simulation_time_vs_tb_{hw_name}.png", subtitle=hw_subtitle)
+        _plot_bandwidth_vs_tb(hw_entries, ideal_runtime, hw_label, out_dir / f"bandwidth_vs_tb_{hw_name}.png", subtitle=hw_subtitle)
+        _plot_per_master_avg_req_to_gnt_vs_tb(hw_entries, hw_label, out_dir / f"avg_req_to_gnt_per_master_vs_tb_{hw_name}.png", subtitle=hw_subtitle)
 
     print(f"Plots written to: {out_dir}")
     return 0

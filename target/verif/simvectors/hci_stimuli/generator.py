@@ -46,6 +46,13 @@ class StimuliGenerator(PatternsMixin):
         self.MASTER_NUMBER_IDENTIFICATION = MASTER_NUMBER_IDENTIFICATION
 
     @property
+    def _ab(self):
+        """Access bytes: width of one bus transaction in bytes (DATA_WIDTH / 8).
+        For log masters this equals WIDTH_OF_MEMORY_BYTE (4 B for 32-bit banks).
+        For HWPE masters this equals HWPE_WIDTH_FACT * bank_word_bytes (e.g. 32 B)."""
+        return max(1, self.DATA_WIDTH // 8)
+
+    @property
     def BE_WIDTH(self):
         """Byte-enable width: one bit per byte lane of DATA_WIDTH."""
         return max(1, self.DATA_WIDTH // 8)

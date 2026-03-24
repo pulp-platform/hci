@@ -1,5 +1,6 @@
 """HTML report generation for memory lifetime visualization."""
 
+from collections import deque
 from pathlib import Path
 import html
 import math
@@ -197,6 +198,7 @@ def build_memory_lifetime_html(
     n_narrow_hci_cfg,
     n_wide_hci_cfg,
     n_banks,
+    tot_mem_size,
 ):
     palette = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#17becf",
@@ -232,7 +234,7 @@ def build_memory_lifetime_html(
     exec_svg = []
     exec_svg.append(f'<svg width="{chart_width}" height="{exec_h}" viewBox="0 0 {chart_width} {exec_h}" xmlns="http://www.w3.org/2000/svg">')
     exec_svg.append('<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>')
-    exec_svg.append(f'<text x="{x_left}" y="20" font-family="Arial, sans-serif" font-size="14" font-weight="700">Execution Timeline (transaction-count model)</text>')
+    exec_svg.append(f'<text x="{x_left}" y="20" font-family="Arial, sans-serif" font-size="14" font-weight="700">Execution Timeline</text>')
     for t in ticks:
         x = x_left + (t / total_for_plot) * plot_w
         exec_svg.append(f'<line x1="{x:.2f}" y1="{y_top - 6}" x2="{x:.2f}" y2="{exec_h - 52}" stroke="#e0e0e0" stroke-width="1"/>')
@@ -277,6 +279,16 @@ def build_memory_lifetime_html(
     def _outside_detail_lines(node, base_addr, size_kib):
         regs = list(node.get('regions', []))
         label_map = {str(r.get('label', '')): r for r in regs}
+
+        if node.get('mem_access_type') == 'copy_linear':
+            lines = []
+            for lbl in ('src(read)', 'dst(write)'):
+                if lbl in label_map:
+                    r = label_map[lbl]
+                    short = 'src' if lbl.startswith('src') else 'dst'
+                    lines.append(f"{short}@0x{int(r['base']):08x} ({_fmt_kib(r['size'])})")
+            return lines or [f"@0x{base_addr:08x}", f"{size_kib:.1f} KiB"]
+
         has_matmul_regs = any(k in label_map for k in ('A(read)', 'B(read)', 'C(write)'))
         is_matmul = node.get('mem_access_type') in {'matmul', 'matmul_phased', 'matmul_tiled_interleave'} or has_matmul_regs
 
@@ -301,12 +313,22 @@ def build_memory_lifetime_html(
         label_color = "#111111" if row['is_hwpe'] else "#555555"
         exec_svg.append(f'<text x="{x_left - 10}" y="{y + 34}" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="{label_color}">{name}</text>')
         exec_svg.append(f'<line x1="{x_left}" y1="{y + row_h - 1}" x2="{x_left + plot_w}" y2="{y + row_h - 1}" stroke="#f0f0f0" stroke-width="1"/>')
-        nodes = [n for n in pattern_nodes if n['driver_idx'] == row['driver_idx']]
-        for node in nodes:
+        nodes = sorted(
+            [n for n in pattern_nodes if n['driver_idx'] == row['driver_idx']],
+            key=lambda n: n['start_cycle'],
+        )
+        for node_i, node in enumerate(nodes):
             if node['end_cycle'] <= node['start_cycle']:
                 continue
             x = x_left + (node['start_cycle'] / total_for_plot) * plot_w
             w = max(1.0, ((node['end_cycle'] - node['start_cycle']) / total_for_plot) * plot_w)
+            # clip width: extend to next box start (or plot edge) so text can use empty space
+            next_nodes = [n for n in nodes[node_i + 1:] if n['end_cycle'] > n['start_cycle']]
+            if next_nodes:
+                next_x = x_left + (next_nodes[0]['start_cycle'] / total_for_plot) * plot_w
+            else:
+                next_x = x_left + plot_w
+            clip_w = max(w, next_x - x)
             color = _color_for_driver(node['driver_idx'])
             base_addr = min((int(r.get('base', 0)) for r in node.get('regions', [])), default=0)
             size_kib = (int(node['n_transactions']) * int(node.get('txn_bytes', 1))) / 1024.0
@@ -322,57 +344,46 @@ def build_memory_lifetime_html(
                 f"base=0x{base_addr:08x} {size_kib:.1f}KiB {rw_mix} "
                 f"{' | '.join(outside_lines)}"
             )
+            clip_id = f"c{node['node_idx']}"
+            exec_svg.append(
+                f'<defs><clipPath id="{clip_id}">'
+                f'<rect x="{x:.2f}" y="{y}" width="{clip_w:.2f}" height="{row_h}"/>'
+                f'</clipPath></defs>'
+            )
             exec_svg.append('<g style="cursor:help;">')
             exec_svg.append(f'<title>{html.escape(title)}</title>')
             exec_svg.append(
                 f'<rect x="{x:.2f}" y="{y + 4}" width="{w:.2f}" height="34" '
                 f'rx="3" ry="3" fill="{color}" fill-opacity="0.82" stroke="#222" stroke-width="0.2"/>'
             )
+            exec_svg.append(f'<g clip-path="url(#{clip_id})" style="pointer-events:none;">')
             line1 = html.escape(line1_full)
             exec_svg.append(
                 f'<text x="{x + 4:.2f}" y="{y + 15}" font-family="Arial, sans-serif" font-size="9" '
-                f'fill="#ffffff" style="pointer-events:none;">{line1}</text>'
+                f'fill="#ffffff">{line1}</text>'
             )
             line2 = html.escape(line2_full)
             exec_svg.append(
                 f'<text x="{x + 4:.2f}" y="{y + 25}" font-family="Arial, sans-serif" font-size="8" '
-                f'fill="#ffffff" style="pointer-events:none;">{line2}</text>'
+                f'fill="#ffffff">{line2}</text>'
             )
             line3 = html.escape(line3_full)
             exec_svg.append(
                 f'<text x="{x + 4:.2f}" y="{y + 34}" font-family="Arial, sans-serif" font-size="8" '
-                f'fill="#ffffff" style="pointer-events:none;">{line3}</text>'
+                f'fill="#ffffff">{line3}</text>'
             )
             for ext_idx, ext in enumerate(outside_lines):
                 y_ext = y + 49 + (ext_idx * 9)
                 ext_txt = html.escape(ext)
                 exec_svg.append(
                     f'<text x="{x + 2:.2f}" y="{y_ext:.2f}" font-family="Arial, sans-serif" font-size="8" '
-                    f'fill="#333333" style="pointer-events:none;">{ext_txt}</text>'
+                    f'fill="#333333">{ext_txt}</text>'
                 )
+            exec_svg.append('</g>')
             exec_svg.append('</g>')
     exec_svg.append('</svg>')
 
     region_rows = [regions_timeline[k] for k in sorted(regions_timeline.keys(), key=lambda k: (k[0], k[1], k[2]))]
-    overlap_rows = []
-    overlaps_by_region = {i: [] for i in range(len(region_rows))}
-    for i in range(len(region_rows)):
-        a = region_rows[i]
-        for j in range(i + 1, len(region_rows)):
-            b = region_rows[j]
-            ov_base = max(a['base'], b['base'])
-            ov_end = min(a['end'], b['end'])
-            if ov_base <= ov_end:
-                ov_size = ov_end - ov_base + 1
-                overlap_rows.append({
-                    'a_idx': i,
-                    'b_idx': j,
-                    'ov_base': ov_base,
-                    'ov_end': ov_end,
-                    'ov_size': ov_size,
-                })
-                overlaps_by_region[i].append((j, ov_base, ov_end, ov_size))
-                overlaps_by_region[j].append((i, ov_base, ov_end, ov_size))
 
     used_min = min((reg['base'] for reg in region_rows), default=0)
     used_max = max((reg['end'] for reg in region_rows), default=0)
@@ -381,7 +392,7 @@ def build_memory_lifetime_html(
     used_span = max(1, used_max - used_min + 1)
 
     # ---- Memory Address Timeline (2-D: address × time) ----
-    _mat_addr_max = (((used_max + 1) + 4095) // 4096) * 4096
+    _mat_addr_max = int(tot_mem_size) * 1024
     _mat_addr_span = max(1, _mat_addr_max)
     _mat_xl = 110
     _mat_xr = 24
@@ -395,11 +406,69 @@ def build_memory_lifetime_html(
     _WC = "#c0392b"   # write → red
     _MC = "#8e44ad"   # mixed → purple
 
-    def _mat_ay(addr):
-        return _mat_yt + (int(addr) / _mat_addr_span) * _mat_ph
+    # ---- Non-linear Y axis ----
+    # Each region interval gets a guaranteed minimum of _min_px display pixels
+    # (tall enough to show its start-address label on the Y axis), plus a
+    # proportional share of the remaining space.  This way _disp_scale == 1 and
+    # small regions never collapse below _min_px regardless of how many there are.
+    _min_px = 14.0   # px per region — enough for a 7.5px address label below the tick
+    _sregs = sorted(region_rows, key=lambda r: r['base'])
 
-    def _mat_ah(size):
-        return max(1.5, (int(size) / _mat_addr_span) * _mat_ph)
+    # Boundaries: region starts + 0 + addr_max  (end+1 skipped to reduce tick clutter)
+    _boundaries = sorted({0, _mat_addr_max}
+                         | {r['base'] for r in _sregs}
+                         | {r['end'] + 1 for r in _sregs})
+
+    # Count how many boundary intervals are "region" intervals
+    def _interval_is_region(a0, a1):
+        return any(r['base'] <= a0 and r['end'] >= a1 - 1 for r in _sregs)
+
+    _n_reg_intervals = sum(
+        1 for _bi in range(len(_boundaries) - 1)
+        if _interval_is_region(_boundaries[_bi], _boundaries[_bi + 1])
+    )
+    # Reserve fixed pixel budget for regions; remainder distributed proportionally
+    _reserved = _n_reg_intervals * _min_px
+    _remaining = max(0.0, _mat_ph - _reserved)
+
+    # Build intervals with guaranteed minimum pixel heights (disp_scale == 1.0)
+    _intervals = []   # (addr_lo, addr_hi, disp_h_px)
+    for _bi in range(len(_boundaries) - 1):
+        _a0, _a1 = _boundaries[_bi], _boundaries[_bi + 1]
+        _span = _a1 - _a0
+        _prop_h = (_span / _mat_addr_span) * _remaining
+        _is_r = _interval_is_region(_a0, _a1)
+        _dh = (_min_px + _prop_h) if _is_r else _prop_h
+        _intervals.append((_a0, _a1, _dh))
+    # Total == _mat_ph by construction; no scaling needed
+    _disp_scale = 1.0
+
+    # Build cumulative lookup: addr -> y pixel
+    _cum_addr = [_boundaries[0]]
+    _cum_y = [float(_mat_yt)]
+    for _a0, _a1, _dh in _intervals:
+        _cum_addr.append(_a1)
+        _cum_y.append(_cum_y[-1] + _dh)
+
+    def _mat_ay(addr):
+        _a = max(0, min(int(addr), _mat_addr_max))
+        # Binary search in cumulative table
+        _lo, _hi = 0, len(_cum_addr) - 1
+        while _lo < _hi - 1:
+            _mid = (_lo + _hi) // 2
+            if _cum_addr[_mid] <= _a:
+                _lo = _mid
+            else:
+                _hi = _mid
+        # Interpolate within interval
+        _ia0, _ia1 = _cum_addr[_lo], _cum_addr[_hi]
+        _iy0, _iy1 = _cum_y[_lo], _cum_y[_hi]
+        if _ia1 == _ia0:
+            return _iy0
+        return _iy0 + (_a - _ia0) / (_ia1 - _ia0) * (_iy1 - _iy0)
+
+    def _mat_ah(addr_start, size):
+        return max(1.5, _mat_ay(int(addr_start) + int(size)) - _mat_ay(int(addr_start)))
 
     mat_svg = []
     mat_svg.append(
@@ -412,29 +481,22 @@ def build_memory_lifetime_html(
         f'Memory Address Timeline</text>'
     )
 
-    # Background bands for each named region (alternating shades)
-    _sregs = sorted(region_rows, key=lambda r: r['base'])
+    # Background bands — each region uses the same non-linear mapping as everything else
     for _i, _reg in enumerate(_sregs):
         _ry = _mat_ay(_reg['base'])
-        _rh = _mat_ah(_reg['size'])
+        _rh = _mat_ah(_reg['base'], _reg['size'])
+        _fill = "#f5f5f5" if _i % 2 == 0 else "#ebebeb"
         mat_svg.append(
             f'<rect x="{_mat_xl}" y="{_ry:.2f}" width="{_mat_pw}" height="{_rh:.2f}" '
-            f'fill="{"#f5f5f5" if _i % 2 == 0 else "#ebebeb"}" stroke="#ddd" stroke-width="0.5"/>'
-        )
-        _lcy = max(_mat_yt + 5.0, min(_mat_ybot - 2.0, _ry + _rh / 2))
-        mat_svg.append(
-            f'<text x="{_mat_xl - 4}" y="{_lcy:.2f}" text-anchor="end" '
-            f'font-family="Arial, sans-serif" font-size="8" fill="#444">'
-            f'{html.escape(_reg["label"])}</text>'
+            f'fill="{_fill}" stroke="#ddd" stroke-width="0.5"/>'
         )
 
-    # Address-axis tick lines and hex labels at every region boundary
-    _tick_addrs = {0, _mat_addr_max}
-    for _reg in _sregs:
-        _tick_addrs.add(_reg['base'])
-        _tick_addrs.add(_reg['end'] + 1)
+    # Address-axis tick lines and hex labels.
+    # Show region start addresses + 0 + addr_max.
+    # With non-linear mapping each region start is >= _min_px apart — all labels fit.
+    _tick_addrs = sorted({0, _mat_addr_max} | {r['base'] for r in _sregs})
     _prev_ty = -999.0
-    for _addr in sorted(_tick_addrs):
+    for _addr in _tick_addrs:
         _ty = _mat_ay(_addr)
         if _ty < _mat_yt - 1 or _ty > _mat_ybot + 1:
             continue
@@ -442,9 +504,9 @@ def build_memory_lifetime_html(
             f'<line x1="{_mat_xl - 3}" y1="{_ty:.2f}" x2="{_mat_xl + _mat_pw}" y2="{_ty:.2f}" '
             f'stroke="#d0d0d0" stroke-width="0.5"/>'
         )
-        if abs(_ty - _prev_ty) >= 9:
+        if abs(_ty - _prev_ty) >= 8:
             mat_svg.append(
-                f'<text x="{_mat_xl - 5}" y="{_ty - 1:.2f}" text-anchor="end" '
+                f'<text x="{_mat_xl - 5}" y="{_ty + 7:.2f}" text-anchor="end" '
                 f'font-family="monospace" font-size="7.5" fill="#777">0x{_addr:05X}</text>'
             )
             _prev_ty = _ty
@@ -466,9 +528,14 @@ def build_memory_lifetime_html(
         f'fill="none" stroke="#999" stroke-width="1"/>'
     )
     mat_svg.append(
-        f'<text x="{_mat_xl + _mat_pw / 2:.2f}" y="{_mat_h - 4}" text-anchor="middle" '
-        f'font-family="Arial, sans-serif" font-size="11" fill="#333">'
-        f'Transaction number (same axis as Execution Timeline)</text>'
+        f'<text x="{_mat_xl + _mat_pw / 2:.2f}" y="{_mat_h - 18}" text-anchor="middle" '
+        f'font-family="Arial, sans-serif" font-size="12" fill="#333">Transaction number</text>'
+    )
+    mat_svg.append(
+        f'<text x="{_mat_xl + _mat_pw / 2:.2f}" y="{_mat_h - 2}" text-anchor="middle" '
+        f'font-family="Arial, sans-serif" font-size="11" fill="#555">'
+        f'Issued memory transactions (r/w) and computation cycles (i.e., req = 0) are both modeled here.'
+        f'</text>'
     )
 
     # One colored rectangle per (pattern_node, memory region)
@@ -495,7 +562,7 @@ def build_memory_lifetime_html(
                 else:
                     _color = _MC; _rws = "R/W"
             _ry = _mat_ay(_base)
-            _rh = _mat_ah(_size)
+            _rh = _mat_ah(_base, _size)
             _ry0 = max(float(_mat_yt), _ry)
             _ry1 = min(float(_mat_ybot), _ry + _rh)
             _rhc = _ry1 - _ry0
@@ -511,12 +578,27 @@ def build_memory_lifetime_html(
                 f'<rect x="{_nx:.2f}" y="{_ry0:.2f}" width="{_nw:.2f}" height="{_rhc:.2f}" '
                 f'fill="{_color}" fill-opacity="0.45" stroke="{_color}" stroke-width="0.7" rx="1.5"/>'
             )
-            if _nw >= 28 and _rhc >= 9:
+            if _nw >= 8 and _rhc >= 9:
+                _chars_per_line = max(1, int((_nw - 4) / 4))
+                _job = _node["job"]
+                _lines = [_job[i:i + _chars_per_line] for i in range(0, len(_job), _chars_per_line)]
+                _clip_id = f"mc{_node['node_idx']}r{_base}"
                 mat_svg.append(
-                    f'<text x="{_nx + 2:.2f}" y="{_ry0 + min(_rhc - 1, 8):.2f}" '
-                    f'font-family="Arial, sans-serif" font-size="7" fill="#111" '
-                    f'style="pointer-events:none;">{html.escape(_node["job"])}</text>'
+                    f'<defs><clipPath id="{_clip_id}">'
+                    f'<rect x="{_nx:.2f}" y="{_ry0:.2f}" width="{_nw:.2f}" height="{_rhc:.2f}"/>'
+                    f'</clipPath></defs>'
                 )
+                mat_svg.append(f'<g clip-path="url(#{_clip_id})" style="pointer-events:none;">')
+                for _li, _line in enumerate(_lines):
+                    _ty = _ry0 + 8 + _li * 9
+                    if _ty > _ry0 + _rhc:
+                        break
+                    mat_svg.append(
+                        f'<text x="{_nx + 2:.2f}" y="{_ty:.2f}" '
+                        f'font-family="Arial, sans-serif" font-size="7" fill="#111">'
+                        f'{html.escape(_line)}</text>'
+                    )
+                mat_svg.append('</g>')
             mat_svg.append('</g>')
 
     # Legend
@@ -534,6 +616,122 @@ def build_memory_lifetime_html(
         )
     mat_svg.append('</svg>')
 
+    # ---- Job Dependency DAG ----
+    _dag_node_h = 28
+    _dag_v_gap = 12
+    _dag_h_gap = 70
+    _dag_xl = 20
+    _dag_yt = 50
+
+    # Collect unique jobs (first occurrence wins for metadata)
+    _dag_jobs = {}
+    for _n in pattern_nodes:
+        _jn = _n['job']
+        if _jn not in _dag_jobs:
+            _dag_jobs[_jn] = {
+                'driver_idx': _n['driver_idx'],
+                'driver_name': _n['driver_name'],
+                'is_hwpe': _n['is_hwpe'],
+                'wait_for': list(_n.get('wait_for_jobs_declared', [])),
+            }
+
+    # Filter wait_for to existing jobs only
+    _all_dag_jobs = set(_dag_jobs)
+    for _info in _dag_jobs.values():
+        _info['wait_for'] = [d for d in _info['wait_for'] if d in _all_dag_jobs]
+
+    # Build children map and in-degree for topological sort
+    _dag_children = {j: [] for j in _dag_jobs}
+    _dag_indeg = {j: 0 for j in _dag_jobs}
+    for _jn, _info in _dag_jobs.items():
+        for _dep in _info['wait_for']:
+            _dag_children[_dep].append(_jn)
+            _dag_indeg[_jn] += 1
+
+    # Longest-path level assignment via topological BFS
+    _dag_levels = {j: 0 for j in _dag_jobs}
+    _tmp_indeg = dict(_dag_indeg)
+    _q = deque(j for j in _dag_jobs if _tmp_indeg[j] == 0)
+    while _q:
+        _jn = _q.popleft()
+        for _ch in _dag_children[_jn]:
+            _dag_levels[_ch] = max(_dag_levels[_ch], _dag_levels[_jn] + 1)
+            _tmp_indeg[_ch] -= 1
+            if _tmp_indeg[_ch] == 0:
+                _q.append(_ch)
+
+    # Group by level; sort within level by (driver_idx, job_name)
+    _dag_level_groups = {}
+    for _jn, _lvl in _dag_levels.items():
+        _dag_level_groups.setdefault(_lvl, []).append(_jn)
+    for _lvl in _dag_level_groups:
+        _dag_level_groups[_lvl].sort(key=lambda j: (_dag_jobs[j]['driver_idx'], j))
+
+    # Node width: fit the longest job name (~5.8px per char at font-size 9 + padding)
+    _dag_node_w = max(90, max((len(j) * 6 + 16) for j in _dag_jobs) if _dag_jobs else 90)
+
+    # Assign (x, y) positions
+    _dag_pos = {}
+    _max_dag_lvl = max(_dag_levels.values()) if _dag_levels else 0
+    for _lvl, _group in sorted(_dag_level_groups.items()):
+        _nx = _dag_xl + _lvl * (_dag_node_w + _dag_h_gap)
+        for _i, _jn in enumerate(_group):
+            _dag_pos[_jn] = (_nx, _dag_yt + _i * (_dag_node_h + _dag_v_gap))
+
+    _dag_svg_w = max(chart_width, _dag_xl + (_max_dag_lvl + 1) * (_dag_node_w + _dag_h_gap) + 20)
+    _max_per_dag_lvl = max(len(g) for g in _dag_level_groups.values()) if _dag_level_groups else 1
+    _dag_svg_h = _dag_yt + _max_per_dag_lvl * (_dag_node_h + _dag_v_gap) + 30
+
+    dag_svg = []
+    dag_svg.append(
+        f'<svg width="{_dag_svg_w}" height="{_dag_svg_h}" '
+        f'viewBox="0 0 {_dag_svg_w} {_dag_svg_h}" xmlns="http://www.w3.org/2000/svg">'
+    )
+    dag_svg.append('<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>')
+    dag_svg.append(
+        f'<text x="{_dag_xl}" y="22" font-family="Arial, sans-serif" '
+        f'font-size="14" font-weight="700">Job Dependency Graph</text>'
+    )
+    dag_svg.append(
+        '<defs><marker id="dag_arr" markerWidth="8" markerHeight="7" refX="7" refY="3.5" orient="auto">'
+        '<path d="M0,0 L0,7 L8,3.5 z" fill="#888"/>'
+        '</marker></defs>'
+    )
+
+    # Edges (drawn before nodes so nodes appear on top)
+    for _jn, _info in _dag_jobs.items():
+        _tx, _ty = _dag_pos[_jn]
+        _ty_mid = _ty + _dag_node_h / 2
+        for _dep in _info['wait_for']:
+            if _dep not in _dag_pos:
+                continue
+            _sx, _sy = _dag_pos[_dep]
+            _sy_mid = _sy + _dag_node_h / 2
+            _x1 = _sx + _dag_node_w
+            _x2 = _tx
+            _mx = (_x1 + _x2) / 2
+            dag_svg.append(
+                f'<path d="M{_x1:.1f},{_sy_mid:.1f} '
+                f'C{_mx:.1f},{_sy_mid:.1f} {_mx:.1f},{_ty_mid:.1f} {_x2:.1f},{_ty_mid:.1f}" '
+                f'fill="none" stroke="#aaa" stroke-width="1.2" marker-end="url(#dag_arr)"/>'
+            )
+
+    # Nodes
+    for _jn, _info in _dag_jobs.items():
+        _nx, _ny = _dag_pos[_jn]
+        _nc = _color_for_driver(_info['driver_idx'])
+        dag_svg.append(
+            f'<rect x="{_nx}" y="{_ny}" width="{_dag_node_w}" height="{_dag_node_h}" '
+            f'rx="4" fill="{_nc}" fill-opacity="0.88" stroke="#333" stroke-width="0.8"/>'
+        )
+        dag_svg.append(
+            f'<text x="{_nx + 6}" y="{_ny + 18}" font-family="Arial, sans-serif" '
+            f'font-size="9" fill="#ffffff" style="pointer-events:none;">'
+            f'{html.escape(_jn)}</text>'
+        )
+
+    dag_svg.append('</svg>')
+
     legend_items = []
     for d in sorted(driver_windows.keys()):
         n = driver_name_fn(d)
@@ -544,62 +742,11 @@ def build_memory_lifetime_html(
             f'<span>{html.escape(n)}</span></span>'
         )
 
-    region_cards = []
-    for idx, reg in enumerate(region_rows):
-        access_rows = []
-        accesses = sorted(reg['accesses'], key=lambda a: (a['driver_idx'], a['pattern_idx'], a['start']))
-        for acc in accesses:
-            desc = acc['description'] if acc['description'] else "-"
-            access_rows.append(
-                "<tr>"
-                f"<td>{html.escape(acc['driver_name'])}</td>"
-                f"<td>p{acc['pattern_idx']}</td>"
-                f"<td>{html.escape(acc['job'])}</td>"
-                f"<td>{html.escape(desc)}</td>"
-                f"<td>[{acc['start']}, {acc['end']})</td>"
-                "</tr>"
-            )
-        overlap_refs = overlaps_by_region.get(idx, [])
-        if overlap_refs:
-            ov_txt = ", ".join(
-                [
-                    f"{html.escape(region_rows[j]['label'])} "
-                    f"(0x{ovb:08x}-0x{ove:08x}, {ovs} B)"
-                    for (j, ovb, ove, ovs) in overlap_refs
-                ]
-            )
-        else:
-            ov_txt = "none"
-        region_cards.append(
-            "<div class='region-card'>"
-            f"<div><b>{html.escape(reg['label'])}</b> | base=0x{reg['base']:08x} | end=0x{reg['end']:08x} | size={reg['size']} B</div>"
-            f"<div class='meta' style='margin:4px 0 8px 0;'><b>Overlaps:</b> {ov_txt}</div>"
-            "<table class='smalltbl'><thead><tr>"
-            "<th>Driver/HWPE</th><th>Pattern</th><th>Job</th><th>Description</th><th>Modeled interval</th>"
-            "</tr></thead><tbody>"
-            f"{''.join(access_rows)}"
-            "</tbody></table>"
-            "</div>"
-        )
-
-    overlap_table_rows = []
-    for ov in overlap_rows:
-        a = region_rows[ov['a_idx']]
-        b = region_rows[ov['b_idx']]
-        overlap_table_rows.append(
-            "<tr>"
-            f"<td>{html.escape(a['label'])} (0x{a['base']:08x}-0x{a['end']:08x})</td>"
-            f"<td>{html.escape(b['label'])} (0x{b['base']:08x}-0x{b['end']:08x})</td>"
-            f"<td>0x{ov['ov_base']:08x}</td>"
-            f"<td>0x{ov['ov_end']:08x}</td>"
-            f"<td>{ov['ov_size']}</td>"
-            "</tr>"
-        )
-
-    note = "Timeline follows declared wait_for_jobs dependencies from workload.json."
+    note ="Timeline follows declared wait_for_jobs dependencies from workload.json."
     note_2 = (
         "Time axis is transaction-count based only "
-        "(no interconnect conflict/stall/arbitration modeling)."
+        "(no interconnect conflict/stall/arbitration modeling). "
+        "Computation is modeled through idle cycles with no transaction issued."
     )
     note_2b = "Per-driver list order is still enforced by stimulus/fence sequencing."
     note_3 = ""
@@ -615,14 +762,6 @@ def build_memory_lifetime_html(
         "<p style='margin:8px 0;color:#b00020;font-weight:600;'>Warning: dependency cycle detected; fallback scheduling order used.</p>"
         if schedule_has_cycle else ""
     )
-    overlap_html = (
-        "<table><thead><tr><th>Region A</th><th>Region B</th><th>Overlap Base</th><th>Overlap End</th><th>Overlap Size (B)</th></tr></thead><tbody>"
-        f"{''.join(overlap_table_rows)}"
-        "</tbody></table>"
-        if overlap_table_rows else
-        "<div class='meta'>No overlaps detected among used regions.</div>"
-    )
-
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<title>Memory Access Region View (Transaction-Count Model)</title>"
@@ -661,10 +800,9 @@ def build_memory_lifetime_html(
         "<div class='panel'>"
         f"{''.join(mat_svg)}"
         "</div>"
-        "<h2>Region Usage Blocks</h2>"
-        f"{''.join(region_cards)}"
-        "<h2>Overlapping Regions</h2>"
-        f"{overlap_html}"
+        "<div class='panel'>"
+        f"{''.join(dag_svg)}"
+        "</div>"
         "</body></html>"
     )
 

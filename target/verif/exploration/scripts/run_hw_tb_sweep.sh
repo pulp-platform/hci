@@ -111,6 +111,8 @@ for workload_json in "${workload_list[@]}"; do
       make run-verif
       # Parse vsim results and save
       python3 $VERIF_EXPL_DIR/scripts/parse_vsim.py --transcript $VERIF_DIR/vsim/transcript --out "$workload_results_dir/${run_name}.json"
+      # Remove used transcript so there is no danger to accidentally pick it up in next runs
+      rm -f $VERIF_DIR/vsim/transcript
       cp $VERIF_DIR/simvectors/generated/dataflow.html "$workload_results_dir/${run_name}.html"
     done
   done
@@ -127,6 +129,8 @@ for workload_json in "${workload_list[@]}"; do
     # No need to set TESTBENCH_JSON (use last one from the sweep): ideal run must not contain interference, so QoS settings should not matter
     make run-verif
     python3 $VERIF_EXPL_DIR/scripts/parse_vsim.py --transcript $VERIF_DIR/vsim/transcript --out "$workload_results_dir/ideal.json"
+    # Remove used transcript
+    rm -f $VERIF_DIR/vsim/transcript
     cp $VERIF_DIR/simvectors/generated/dataflow.html "$workload_results_dir/ideal.html"
     # Generate plots with ideal comparison
     python3 $VERIF_EXPL_DIR/scripts/plot_sweep_results.py --results-dir "$workload_results_dir" --ideal-run "$workload_results_dir/ideal.json"
