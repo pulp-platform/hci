@@ -67,51 +67,58 @@ module hci_arbiter
   input  logic                   clear_i,
   input  hci_interconnect_ctrl_t ctrl_i,
 
-  hci_core_intf.target    in_high    [0:NB_CHAN-1],
-  hci_core_intf.target    in_low     [0:NB_CHAN-1],
-  hci_core_intf.initiator out        [0:NB_CHAN-1]
+  hci_core_intf.target    in_high [0:NB_CHAN-1],
+  hci_core_intf.target    in_low  [0:NB_CHAN-1],
+  hci_core_intf.initiator out     [0:NB_CHAN-1]
 );
 
   logic [NB_CHAN-1:0] hs_req_in;
   logic [NB_CHAN-1:0] ls_req_in;
+  logic [NB_CHAN-1:0] bank_conflict;
   logic [NB_CHAN-1:0] hs_pass_d;
-  logic hs_req_d;
-  logic ls_req_d;
-  logic hs_req_masked_d;
+  logic any_conflict;
+  logic hs_req_suppress_d;
   logic switch_channels_d;
   logic unsigned [7:0] priority_cnt_q;
 
-  // priority_req is the OR of all requests coming out of the log interconnect.
-  // it should be simplified to simply an OR of all requests coming *into* the
-  // log interconnect directly within the synthesis tool.
+  // Per-bank conflict detection:
+  // bank_conflict[ii] is high when both sides request bank ii.
+  // any_conflict is high when at least one bank is contested.
   always_comb
   begin
-    hs_req_d = |hs_req_in;
-    ls_req_d = |ls_req_in;
-    hs_req_masked_d = hs_req_d;
-    if (ctrl_i.priority_cnt_numerator > 0) //Set to 0 to disable this functionality
+    bank_conflict = hs_req_in & ls_req_in;
+    any_conflict = |bank_conflict;
+    hs_req_suppress_d = 1'b0;
+    if (ctrl_i.priority_cnt_numerator > 0) // Set to 0 to disable this functionality
     begin
-      if (priority_cnt_q >= ctrl_i.priority_cnt_numerator && priority_cnt_q < ctrl_i.priority_cnt_denominator)
-        hs_req_masked_d = 0; //Let low side through for once
+      if (priority_cnt_q >= ctrl_i.priority_cnt_numerator &&
+          priority_cnt_q < ctrl_i.priority_cnt_denominator &&
+          any_conflict)
+        hs_req_suppress_d = 1'b1; // In the low-priority service window, only on real conflicts
     end
   end
-  
-  //Low side stall counter
-	always_ff @(posedge clk_i or negedge rst_ni)
-	begin
-		if (~rst_ni)
-			priority_cnt_q <= 0;
-    else if(priority_cnt_q == ctrl_i.priority_cnt_denominator-1)
+
+  // Counter of conflict cycles.
+  // The counter advances only while there is contention and stays frozen when
+  // banks are conflict-free.
+  always_ff @(posedge clk_i or negedge rst_ni)
+  begin
+    if (~rst_ni)
       priority_cnt_q <= 0;
-		else if (hs_req_d & ls_req_d)
-			priority_cnt_q <= priority_cnt_q + 1;
-	end
-  
+    else if (any_conflict)
+    begin
+      if(priority_cnt_q == ctrl_i.priority_cnt_denominator-1)
+        priority_cnt_q <= 0;
+      else
+        priority_cnt_q <= priority_cnt_q + 1;
+    end
+  end
+
   assign switch_channels_d = ctrl_i.invert_prio;
 
   // Req mapping
   generate
-    for(genvar ii=0; ii<NB_CHAN; ii++) begin: req_mapping
+    for(genvar ii=0; ii<NB_CHAN; ii++) begin: gen_req_mapping
 
       // switch_channels_d could switch priorities -> in_low is priority request
       always_comb
@@ -121,7 +128,7 @@ module hci_arbiter
           ls_req_in[ii] = in_high[ii].req;
           hs_req_in[ii] = in_low[ii].req;
         end
-        else 
+        else
         begin
           hs_req_in[ii] = in_high[ii].req;
           ls_req_in[ii] = in_low[ii].req;
@@ -132,19 +139,19 @@ module hci_arbiter
 
   // Side select
   generate
-    for(genvar ii=0; ii<NB_CHAN; ii++) begin: side_select
-      assign hs_pass_d[ii] = (hs_req_masked_d & hs_req_in[ii]) ^ switch_channels_d;
+    for(genvar ii=0; ii<NB_CHAN; ii++) begin: gen_side_select
+      assign hs_pass_d[ii] = ((~hs_req_suppress_d) & hs_req_in[ii]) ^ switch_channels_d;
     end // side_select
   endgenerate
 
   // tcdm ports binding
   generate
-    for(genvar ii=0; ii<NB_CHAN; ii++) begin: tcdm_binding
+    for(genvar ii=0; ii<NB_CHAN; ii++) begin: gen_tcdm_binding
       always_comb
       begin
         in_high[ii].gnt = '0;
         in_low [ii].gnt = '0;
-        if(hs_pass_d[ii]) 
+        if(hs_pass_d[ii])
         begin
           out[ii].req      = in_high[ii].req;
           out[ii].add      = in_high[ii].add;

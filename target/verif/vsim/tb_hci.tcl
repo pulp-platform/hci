@@ -170,6 +170,29 @@ if {$GUI == 1} {
     add wave -noupdate /tb_hci/s_clear
     add wave -noupdate /tb_hci/s_hci_ctrl
 
+    # -------------------------------------------------------------------------
+    # HCI internals
+    # -------------------------------------------------------------------------
+
+    add wave -noupdate -divider {HCI internals}
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/clk_i
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/rst_ni
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/clear_i
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/ctrl_i
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/hs_req_in
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/ls_req_in
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/bank_conflict
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/hs_pass_d
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/any_conflict
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/hs_req_suppress_d
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/switch_channels_d
+    add wave -noupdate -group arbiter_wide_vs_narrow /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/priority_cnt_q
+    for {set i 0} {$i < $N_BANKS} {incr i} {
+        add wave -noupdate -group arbiter_wide_vs_narrow -group "in_high.req" -label "req[$i]" /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/in_high[$i]/req
+        add wave -noupdate -group arbiter_wide_vs_narrow -group "in_low.req" -label "req[$i]" /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/in_low[$i]/req
+        add wave -noupdate -group arbiter_wide_vs_narrow -group "out.req" -label "req[$i]" /tb_hci/i_hci_interconnect/hwpe_branch_gen/i_wide_vs_narrow_arbiter/out[$i]/req
+    }
+
     configure wave -signalnamewidth 1
 } else {
     run -a
