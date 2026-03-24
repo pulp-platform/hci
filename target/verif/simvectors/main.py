@@ -239,6 +239,19 @@ def main(argv=None):
             idle_between = master_config.get('idle_cycles_between_phases', 0)
             if idle_between:
                 detail['idle_between_phases'] = f"{idle_between} cycles"
+        elif config == 'copy_linear':
+            src_b = _parse_maybe_bin_int(master_config.get('src_base_address'), 0)
+            src_s = _parse_maybe_bin_int(master_config.get('src_size_bytes'), 0)
+            dst_b = _parse_maybe_bin_int(master_config.get('dst_base_address'), 0)
+            dst_s = _parse_maybe_bin_int(master_config.get('dst_size_bytes'), 0)
+            detail['src (read)']  = f"0x{src_b:08x} - 0x{src_b + max(0, src_s) - access_bytes:08x}  ({src_s} B)"
+            detail['dst (write)'] = f"0x{dst_b:08x} - 0x{dst_b + max(0, dst_s) - access_bytes:08x}  ({dst_s} B)"
+            first_addr = min(src_b, dst_b)
+            last_addr  = max(src_b + src_s, dst_b + dst_s) - access_bytes
+            tpct = master_config.get('traffic_pct')
+            if tpct is not None:
+                n_idles_per_req = max(0, round((100 - int(tpct)) / int(tpct))) if int(tpct) < 100 else 0
+                detail['traffic_pct'] = f"{tpct}%  ({n_idles_per_req} idle(s) after each transaction)"
         elif config == 'multi_linear':
             regs = master_config.get('regions', []) or []
             detail['schedule'] = str(master_config.get('schedule', 'round_robin'))
@@ -398,6 +411,70 @@ def main(argv=None):
             idle_between = master_config.get('idle_cycles_between_phases', 0)
             if idle_between:
                 detail['idle_between_phases'] = f"{idle_between} cycles"
+        elif config == 'depthwise_windowed':
+            in_base = _parse_maybe_bin_int(master_config.get('input_base_address'), region_base)
+            in_row = _parse_maybe_bin_int(master_config.get('input_row_stride_bytes'), 0)
+            in_ch = _parse_maybe_bin_int(master_config.get('input_channel_stride_bytes'), 0)
+            wt_base = _parse_maybe_bin_int(master_config.get('weight_base_address'), 0)
+            wt_ch = _parse_maybe_bin_int(master_config.get('weight_channel_stride_bytes'), 0)
+            out_base = _parse_maybe_bin_int(master_config.get('output_base_address'), 0)
+            out_row = _parse_maybe_bin_int(master_config.get('output_row_stride_bytes'), 0)
+            out_ch = _parse_maybe_bin_int(master_config.get('output_channel_stride_bytes'), 0)
+
+            out_h = int(master_config.get('out_h', 1))
+            out_w = int(master_config.get('out_w', 1))
+            channels = int(master_config.get('channels', 1))
+            kh = int(master_config.get('kernel_h', 3))
+            kw = int(master_config.get('kernel_w', 3))
+            sh = int(master_config.get('stride_h', 1))
+            sw = int(master_config.get('stride_w', 1))
+            ph = int(master_config.get('pad_h', 0))
+            pw = int(master_config.get('pad_w', 0))
+            cg = max(1, int(master_config.get('channel_group', channels)))
+            include_weights = bool(master_config.get('include_weights', True))
+            out_writes = int(master_config.get('output_writes_per_point', 1))
+
+            groups = math.ceil(channels / cg)
+            active_cg = min(cg, channels)
+
+            in_span_h = max(0, (out_h - 1) * sh + kh)
+            in_span_w = max(0, (out_w - 1) * sw + kw)
+
+            detail['depthwise'] = (
+                f"out={out_h}x{out_w}, channels={channels}, kernel={kh}x{kw}, "
+                f"stride={sh}x{sw}, pad={ph}x{pw}, channel_group={cg}, groups={groups}"
+            )
+            detail['input'] = (
+                f"base=0x{in_base:08x}, row_stride={in_row} B, ch_stride={in_ch} B, "
+                f"span≈{in_span_h}x{in_span_w}"
+            )
+            if include_weights:
+                detail['weights'] = (
+                    f"base=0x{wt_base:08x}, ch_stride={wt_ch} B, "
+                    f"group_bytes≈{active_cg * kh * kw}"
+                )
+            detail['output'] = (
+                f"base=0x{out_base:08x}, row_stride={out_row} B, ch_stride={out_ch} B, "
+                f"writes_per_point={out_writes}"
+            )
+
+            first_addr = min(a for a in [in_base, wt_base if include_weights else None, out_base] if a is not None)
+            candidates = [in_base + max(0, (active_cg - 1) * in_ch) + max(0, (in_span_h - 1) * in_row) + max(0, in_span_w - access_bytes)]
+            if include_weights:
+                candidates.append(wt_base + max(0, active_cg * kh * kw - access_bytes))
+            candidates.append(out_base + max(0, (active_cg - 1) * out_ch) + max(0, (out_h - 1) * out_row) + max(0, out_w - access_bytes))
+            last_addr = max(candidates)
+
+            idle_rows = int(master_config.get('idle_cycles_between_rows', 0))
+            idle_groups = int(master_config.get('idle_cycles_between_groups', 0))
+            if idle_rows:
+                detail['idle_between_rows'] = f"{idle_rows} cycles"
+            if idle_groups:
+                detail['idle_between_groups'] = f"{idle_groups} cycles"
+            tpct = master_config.get('traffic_pct')
+            if tpct is not None:
+                n_idles_per_req = max(0, round((100 - int(tpct)) / int(tpct))) if int(tpct) < 100 else 0
+                detail['traffic_pct'] = f"{tpct}%  ({n_idles_per_req} idle(s) after each transaction)"
 
         if first_addr is not None:
             detail['first_addr'] = f"0x{first_addr:08x}  (bank {_bank_of(first_addr)})"
@@ -443,6 +520,8 @@ def main(argv=None):
             "gather_scatter",
             "matmul_tiled_interleave",
             "hotspot_random",
+            "depthwise_windowed",
+            "copy_linear",
         }
         if not isinstance(raw_value, str):
             print(
@@ -589,12 +668,41 @@ def main(argv=None):
                     per_tile += cnt_c
             if per_tile > 0:
                 return tiles * per_tile
+        elif mem_access_type == 'depthwise_windowed':
+            out_h = master_config.get('out_h')
+            out_w = master_config.get('out_w')
+            channels = master_config.get('channels')
+            kernel_h = master_config.get('kernel_h', 3)
+            kernel_w = master_config.get('kernel_w', 3)
+            channel_group = master_config.get('channel_group', channels)
+            include_weights = bool(master_config.get('include_weights', True))
+            output_writes = int(master_config.get('output_writes_per_point', 1))
+
+            if out_h is not None and out_w is not None and channels is not None:
+                out_h = int(out_h)
+                out_w = int(out_w)
+                channels = int(channels)
+                kernel_h = int(kernel_h)
+                kernel_w = int(kernel_w)
+                channel_group = max(1, int(channel_group if channel_group is not None else channels))
+                groups = math.ceil(channels / channel_group)
+                points_per_group = out_h * out_w * min(channel_group, channels)
+
+                reads_per_point = kernel_h * kernel_w
+                weight_reads_per_group = (min(channel_group, channels) * kernel_h * kernel_w) if include_weights else 0
+                writes_per_group = out_h * out_w * min(channel_group, channels) * output_writes
+
+                return groups * (points_per_group * reads_per_point + weight_reads_per_group + writes_per_group)
         elif mem_access_type == 'hotspot_random':
             total = 0
             for reg in master_config.get('hot_regions', []) or []:
                 total += max(0, int(_parse_maybe_bin_int(reg.get('size_bytes'), 0))) // access_bytes
             if total > 0:
                 return total
+        elif mem_access_type == 'copy_linear':
+            src_size = _parse_maybe_bin_int(master_config.get('src_size_bytes'), None)
+            if src_size is not None:
+                return 2 * max(0, int(src_size) // access_bytes)  # 1 read + 1 write per beat
         elif mem_access_type == 'idle':
             return 0
         print(f"ERROR: {kind}_{local_idx} has mem_access_type='{mem_access_type}' but no "
@@ -935,6 +1043,48 @@ def main(argv=None):
                 hot_regions=hot_regions_cfg,
                 traffic_pct=tpct,
                 traffic_read_pct=pattern_config.get('traffic_read_pct'),
+                append=append,
+            )
+        elif config == 'depthwise_windowed':
+            next_start_id = master.depthwise_windowed_gen(
+                next_start_id,
+                read_blocked_local,
+                write_blocked_local,
+                input_base_address=_parse_maybe_bin_int(pattern_config.get('input_base_address'), region_base),
+                input_row_stride_bytes=_parse_maybe_bin_int(pattern_config.get('input_row_stride_bytes'), 0),
+                input_channel_stride_bytes=_parse_maybe_bin_int(pattern_config.get('input_channel_stride_bytes'), 0),
+                weight_base_address=_parse_maybe_bin_int(pattern_config.get('weight_base_address'), 0),
+                weight_channel_stride_bytes=_parse_maybe_bin_int(pattern_config.get('weight_channel_stride_bytes'), 0),
+                output_base_address=_parse_maybe_bin_int(pattern_config.get('output_base_address'), 0),
+                output_row_stride_bytes=_parse_maybe_bin_int(pattern_config.get('output_row_stride_bytes'), 0),
+                output_channel_stride_bytes=_parse_maybe_bin_int(pattern_config.get('output_channel_stride_bytes'), 0),
+                out_h=int(pattern_config.get('out_h', 1)),
+                out_w=int(pattern_config.get('out_w', 1)),
+                channels=int(pattern_config.get('channels', 1)),
+                kernel_h=int(pattern_config.get('kernel_h', 3)),
+                kernel_w=int(pattern_config.get('kernel_w', 3)),
+                stride_h=int(pattern_config.get('stride_h', 1)),
+                stride_w=int(pattern_config.get('stride_w', 1)),
+                pad_h=int(pattern_config.get('pad_h', 0)),
+                pad_w=int(pattern_config.get('pad_w', 0)),
+                channel_group=int(pattern_config.get('channel_group', pattern_config.get('channels', 1))),
+                include_weights=bool(pattern_config.get('include_weights', True)),
+                output_writes_per_point=int(pattern_config.get('output_writes_per_point', 1)),
+                traffic_pct=tpct,
+                idle_cycles_between_rows=int(pattern_config.get('idle_cycles_between_rows', 0)),
+                idle_cycles_between_groups=int(pattern_config.get('idle_cycles_between_groups', 0)),
+                append=append,
+            )
+        elif config == 'copy_linear':
+            next_start_id = master.copy_linear_gen(
+                next_start_id,
+                read_blocked_local,
+                write_blocked_local,
+                src_base_address=_parse_maybe_bin_int(pattern_config.get('src_base_address'), region_base),
+                src_size_bytes=_parse_maybe_bin_int(pattern_config.get('src_size_bytes'), access_bytes),
+                dst_base_address=_parse_maybe_bin_int(pattern_config.get('dst_base_address'), region_base),
+                dst_size_bytes=_parse_maybe_bin_int(pattern_config.get('dst_size_bytes'), access_bytes),
+                traffic_pct=tpct,
                 append=append,
             )
 
@@ -1419,6 +1569,22 @@ def main(argv=None):
                     })
             return regions
 
+        if mem_access_type == 'copy_linear':
+            src_b = _parse_maybe_bin_int(pattern_config.get('src_base_address'), region_base)
+            src_s = _parse_maybe_bin_int(pattern_config.get('src_size_bytes'), 0)
+            dst_b = _parse_maybe_bin_int(pattern_config.get('dst_base_address'), region_base)
+            dst_s = _parse_maybe_bin_int(pattern_config.get('dst_size_bytes'), 0)
+            regions = []
+            for label, base_raw, size_raw in [('src(read)', src_b, src_s), ('dst(write)', dst_b, dst_s)]:
+                base = (int(base_raw) // access_bytes) * access_bytes
+                if base >= total_mem_bytes:
+                    base = base % total_mem_bytes
+                size = (max(0, int(size_raw)) // access_bytes) * access_bytes
+                if base + size > total_mem_bytes:
+                    size = ((total_mem_bytes - base) // access_bytes) * access_bytes
+                if size > 0:
+                    regions.append({'label': label, 'base': base, 'size': size, 'end': base + size - 1})
+            return regions
         if mem_access_type != 'matmul_phased':
             return [{
                 'label': 'region',
@@ -1426,6 +1592,51 @@ def main(argv=None):
                 'size': region_size,
                 'end': region_base + region_size - 1,
             }]
+
+        if mem_access_type == 'depthwise_windowed':
+            in_base = _parse_maybe_bin_int(pattern_config.get('input_base_address'), region_base)
+            in_row = _parse_maybe_bin_int(pattern_config.get('input_row_stride_bytes'), access_bytes)
+            in_ch = _parse_maybe_bin_int(pattern_config.get('input_channel_stride_bytes'), in_row)
+            wt_base = _parse_maybe_bin_int(pattern_config.get('weight_base_address'), 0)
+            wt_ch = _parse_maybe_bin_int(pattern_config.get('weight_channel_stride_bytes'), access_bytes)
+            out_base = _parse_maybe_bin_int(pattern_config.get('output_base_address'), 0)
+            out_row = _parse_maybe_bin_int(pattern_config.get('output_row_stride_bytes'), access_bytes)
+            out_ch = _parse_maybe_bin_int(pattern_config.get('output_channel_stride_bytes'), out_row)
+
+            out_h = max(1, int(pattern_config.get('out_h', 1)))
+            out_w = max(1, int(pattern_config.get('out_w', 1)))
+            channels = max(1, int(pattern_config.get('channels', 1)))
+            kh = max(1, int(pattern_config.get('kernel_h', 3)))
+            kw = max(1, int(pattern_config.get('kernel_w', 3)))
+            sh = max(1, int(pattern_config.get('stride_h', 1)))
+            sw = max(1, int(pattern_config.get('stride_w', 1)))
+            cg = max(1, int(pattern_config.get('channel_group', channels)))
+            include_weights = bool(pattern_config.get('include_weights', True))
+
+            active_cg = min(cg, channels)
+            in_span_h = max(1, (out_h - 1) * sh + kh)
+            in_span_w = max(1, (out_w - 1) * sw + kw)
+
+            regions = [{
+                'label': 'input(read)',
+                'base': in_base,
+                'size': max(access_bytes, active_cg * in_ch if in_ch > 0 else active_cg * in_span_h * in_span_w),
+                'end': in_base + max(access_bytes, active_cg * in_ch if in_ch > 0 else active_cg * in_span_h * in_span_w) - 1,
+            }]
+            if include_weights:
+                regions.append({
+                    'label': 'weights(read)',
+                    'base': wt_base,
+                    'size': max(access_bytes, active_cg * kh * kw),
+                    'end': wt_base + max(access_bytes, active_cg * kh * kw) - 1,
+                })
+            regions.append({
+                'label': 'output(write)',
+                'base': out_base,
+                'size': max(access_bytes, active_cg * out_ch if out_ch > 0 else active_cg * out_h * out_w),
+                'end': out_base + max(access_bytes, active_cg * out_ch if out_ch > 0 else active_cg * out_h * out_w) - 1,
+            })
+            return regions
 
         ra = _parse_maybe_bin_int(pattern_config.get('region_base_address_a'), None)
         sa = _parse_maybe_bin_int(pattern_config.get('region_size_bytes_a'), None)
@@ -1526,6 +1737,14 @@ def main(argv=None):
                 per_tile = sum({'A': cnt_a, 'B': cnt_b, 'C': cnt_c}.get(t, 0) for t in toks)
                 if per_tile > 0:
                     boundary_idles = max(0, math.ceil(n_test / per_tile) - 1) * tile_idle
+        elif mem_access_type == 'depthwise_windowed':
+            idle_rows = int(pattern_config.get('idle_cycles_between_rows', 0))
+            idle_groups = int(pattern_config.get('idle_cycles_between_groups', 0))
+            out_h = max(1, int(pattern_config.get('out_h', 1)))
+            channels = max(1, int(pattern_config.get('channels', 1)))
+            channel_group = max(1, int(pattern_config.get('channel_group', channels)))
+            groups = math.ceil(channels / channel_group)
+            boundary_idles = max(0, out_h - 1) * idle_rows * groups + max(0, groups - 1) * idle_groups
 
         return int(base * (1 + n_idles_per_req) + boundary_idles)
 
@@ -1563,8 +1782,8 @@ def main(argv=None):
                 'cycles': int(_estimate_pattern_cycles(pat, mem_access_type, n_test, int(data_width // 8))),
                 'mem_access_type': mem_access_type,
                 'traffic_read_pct': (
-                    pat.get('traffic_read_pct')
-                    if mem_access_type != 'rw_rowwise'
+                    50 if mem_access_type == 'copy_linear'
+                    else pat.get('traffic_read_pct') if mem_access_type != 'rw_rowwise'
                     else (lambda r, w: round(100 * r / (r + w)) if (r + w) > 0 else 50)(
                         int(pat.get('reads_per_row', 0)),
                         int(pat.get('writes_per_row', 0)),
@@ -1643,6 +1862,7 @@ def main(argv=None):
         n_narrow_hci_cfg=N_NARROW_HCI_CFG,
         n_wide_hci_cfg=N_WIDE_HCI_CFG,
         n_banks=N_BANKS,
+        tot_mem_size=TOT_MEM_SIZE,
     )
     print(f"Dataflow plot written: {dataflow_path}")
 

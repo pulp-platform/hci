@@ -113,7 +113,7 @@ class PatternsMixin:
     def _normalize_addr(self, addr):
         total = self._total_mem_bytes()
         a = int(addr)
-        end = a + self.WIDTH_OF_MEMORY_BYTE
+        end = a + self._ab
         if a < 0 or end > total:
             raise ValueError(
                 f"address 0x{a:X} (end 0x{end:X}) exceeds total memory "
@@ -202,7 +202,7 @@ class PatternsMixin:
             raise ValueError(
                 f"random: region end 0x{region_base + region_size:X} exceeds total memory 0x{total:X}"
             )
-        n_words = max(1, region_size // self.WIDTH_OF_MEMORY_BYTE)
+        n_words = max(1, region_size // self._ab)
         n_idles = self._idles_per_req(traffic_pct)
         if traffic_read_pct is not None:
             rpct = max(0, min(100, int(traffic_read_pct)))
@@ -221,7 +221,7 @@ class PatternsMixin:
                 else: data = "0"*self.DATA_WIDTH if wen else self.random_data()
                 placed = False
                 for _ in range(max_attempts):
-                    ad = region_base + random.randint(0, int(n_words)-1)*self.WIDTH_OF_MEMORY_BYTE
+                    ad = region_base + random.randint(0, int(n_words)-1)*self._ab
                     add = bin(int(ad))[2:].zfill(self.ADD_WIDTH)
                     if self._is_allowed(add, wen, read_blocked_set, write_blocked_set):
                         self._record_access(add, wen, read_blocked_set, write_blocked_set)
@@ -252,22 +252,22 @@ class PatternsMixin:
         total = self._total_mem_bytes()
         with self._open(append) as f:
             addr = self._parse_address(start_address)
-            if addr < 0 or addr + self.WIDTH_OF_MEMORY_BYTE > total:
+            if addr < 0 or addr + self._ab > total:
                 raise ValueError(
-                    f"linear: start_address 0x{addr:X} (end 0x{addr + self.WIDTH_OF_MEMORY_BYTE:X}) "
+                    f"linear: start_address 0x{addr:X} (end 0x{addr + self._ab:X}) "
                     f"exceeds total memory 0x{total:X}"
                 )
             for i in range(self.N_TEST):
                 wen = wen_seq[i] if wen_seq is not None else None
                 if wen is None: data, wen = self.data_wen()
                 else: data = "0"*self.DATA_WIDTH if wen else self.random_data()
-                if addr < 0 or addr + self.WIDTH_OF_MEMORY_BYTE > total:
+                if addr < 0 or addr + self._ab > total:
                     raise ValueError(
-                        f"linear: address 0x{addr:X} (end 0x{addr + self.WIDTH_OF_MEMORY_BYTE:X}) "
+                        f"linear: address 0x{addr:X} (end 0x{addr + self._ab:X}) "
                         f"exceeds total memory 0x{total:X} at transaction {i}"
                     )
                 add = bin(addr)[2:].zfill(self.ADD_WIDTH)
-                addr += self.WIDTH_OF_MEMORY_BYTE * stride0
+                addr += self._ab * stride0
                 if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set): continue
                 self._record_access(add, wen, read_blocked_set, write_blocked_set)
                 be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
@@ -291,10 +291,10 @@ class PatternsMixin:
                 emitted_before = id_value
                 for i in range(len_d0):
                     data, wen = self.data_wen()
-                    addr = base + i*self.WIDTH_OF_MEMORY_BYTE*stride0 + j*self.WIDTH_OF_MEMORY_BYTE*stride1
-                    if addr < 0 or addr + self.WIDTH_OF_MEMORY_BYTE > total:
+                    addr = base + i*self._ab*stride0 + j*self._ab*stride1
+                    if addr < 0 or addr + self._ab > total:
                         raise ValueError(
-                            f"2d: address 0x{addr:X} (end 0x{addr + self.WIDTH_OF_MEMORY_BYTE:X}) "
+                            f"2d: address 0x{addr:X} (end 0x{addr + self._ab:X}) "
                             f"exceeds total memory 0x{total:X} at i={i}, j={j}"
                         )
                     add = bin(addr)[2:].zfill(self.ADD_WIDTH)
@@ -326,10 +326,10 @@ class PatternsMixin:
                 for j in range(len_d1):
                     for i in range(len_d0):
                         data, wen = self.data_wen()
-                        addr = base + i*self.WIDTH_OF_MEMORY_BYTE*stride0 + j*self.WIDTH_OF_MEMORY_BYTE*stride1 + k*self.WIDTH_OF_MEMORY_BYTE*stride2
-                        if addr < 0 or addr + self.WIDTH_OF_MEMORY_BYTE > total:
+                        addr = base + i*self._ab*stride0 + j*self._ab*stride1 + k*self._ab*stride2
+                        if addr < 0 or addr + self._ab > total:
                             raise ValueError(
-                                f"3d: address 0x{addr:X} (end 0x{addr + self.WIDTH_OF_MEMORY_BYTE:X}) "
+                                f"3d: address 0x{addr:X} (end 0x{addr + self._ab:X}) "
                                 f"exceeds total memory 0x{total:X} at i={i}, j={j}, k={k}"
                             )
                         add = bin(addr)[2:].zfill(self.ADD_WIDTH)
@@ -463,7 +463,7 @@ class PatternsMixin:
     ):
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
-        ab = self.WIDTH_OF_MEMORY_BYTE
+        ab = self._ab
         tm = self._total_mem_bytes()
         n_idles = self._idles_per_req(traffic_pct)
         burst = max(1, int(burst_len))
@@ -555,9 +555,15 @@ class PatternsMixin:
         trailing_bytes=0,
         append=False,
     ):
+        if self._ab > self.WIDTH_OF_MEMORY_BYTE:
+            raise ValueError(
+                f"bank_group_linear: pattern targets individual bank words ({self.WIDTH_OF_MEMORY_BYTE} B) "
+                f"and cannot be used with a wide-bus master (DATA_WIDTH={self.DATA_WIDTH} bits, "
+                f"access={self._ab} B). Use a log/core master instead."
+            )
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
-        ab = self.WIDTH_OF_MEMORY_BYTE
+        ab = self._ab
         tm = self._total_mem_bytes()
         n_idles = self._idles_per_req(traffic_pct)
         span = max(1, min(int(bank_group_span), int(self.N_BANKS)))
@@ -613,7 +619,7 @@ class PatternsMixin:
     ):
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
-        ab = self.WIDTH_OF_MEMORY_BYTE
+        ab = self._ab
         n_idles = self._idles_per_req(traffic_pct)
         base = self._align_down(int(row_base_address), ab)
         row_size = max(ab, self._align_down(int(row_size_bytes), ab))
@@ -685,7 +691,7 @@ class PatternsMixin:
     ):
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
-        ab = self.WIDTH_OF_MEMORY_BYTE
+        ab = self._ab
         tm = self._total_mem_bytes()
         n_idles = self._idles_per_req(traffic_pct)
         chunk_val = ab if chunk_bytes is None else int(chunk_bytes)
@@ -797,7 +803,7 @@ class PatternsMixin:
     ):
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
-        ab = self.WIDTH_OF_MEMORY_BYTE
+        ab = self._ab
         tm = self._total_mem_bytes()
         n_idles = self._idles_per_req(traffic_pct)
         tile_idle = max(0, int(idle_cycles_between_tiles))
@@ -894,7 +900,7 @@ class PatternsMixin:
     ):
         id_value = id_start
         read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
-        ab = self.WIDTH_OF_MEMORY_BYTE
+        ab = self._ab
         tm = self._total_mem_bytes()
         n_idles = self._idles_per_req(traffic_pct)
 
@@ -956,4 +962,235 @@ class PatternsMixin:
 
         self._commit_blocked_sets(read_blocked, write_blocked, read_blocked_set, write_blocked_set)
         self._require_exact_emits("hotspot_random", id_start, id_value)
+        return id_value
+
+    def copy_linear_gen(self, id_start, read_blocked, write_blocked,
+                        src_base_address, src_size_bytes,
+                        dst_base_address, dst_size_bytes,
+                        traffic_pct=100, append=False):
+        """Interleaved read-from-src / write-to-dst streaming copy pattern.
+
+        Models a streaming copy/pack engine (e.g. DataMover doing im2col/pack):
+        alternates read[src_i] / write[dst_i] pairs up to N_TEST total transactions.
+        N_TEST should be even (n_copy_ops * 2) for a balanced 50% R / 50% W model.
+        """
+        id_value = id_start
+        read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
+        ab = self._ab
+        tm = self._total_mem_bytes()
+        n_idles = self._idles_per_req(traffic_pct)
+
+        src_base = self._align_down(int(src_base_address), ab)
+        src_size = self._align_down(int(src_size_bytes), ab)
+        dst_base = self._align_down(int(dst_base_address), ab)
+        dst_size = self._align_down(int(dst_size_bytes), ab)
+
+        for label, base, size in [("src", src_base, src_size), ("dst", dst_base, dst_size)]:
+            if base < 0 or base >= tm:
+                raise ValueError(f"copy_linear: {label} base 0x{base:X} out of range [0, 0x{tm:X})")
+            if size <= 0:
+                raise ValueError(f"copy_linear: {label} size {size} <= 0")
+            if base + size > tm:
+                raise ValueError(f"copy_linear: {label} end 0x{base+size:X} exceeds total memory 0x{tm:X}")
+
+        src_addr = src_base
+        dst_addr = dst_base
+        is_read = True
+
+        with self._open(append) as f:
+            while id_value - id_start < self.N_TEST:
+                if is_read:
+                    add = bin(self._normalize_addr(src_addr))[2:].zfill(self.ADD_WIDTH)
+                    if self._is_allowed(add, 1, read_blocked_set, write_blocked_set):
+                        self._record_access(add, 1, read_blocked_set, write_blocked_set)
+                        self._write_req(f, id_value, 1, "0" * self.DATA_WIDTH, add)
+                        id_value += 1
+                        for _ in range(n_idles):
+                            self._write_idle(f)
+                    src_addr += ab
+                    if src_addr >= src_base + src_size:
+                        src_addr = src_base
+                else:
+                    add = bin(self._normalize_addr(dst_addr))[2:].zfill(self.ADD_WIDTH)
+                    if self._is_allowed(add, 0, read_blocked_set, write_blocked_set):
+                        self._record_access(add, 0, read_blocked_set, write_blocked_set)
+                        self._write_req(f, id_value, 0, self.random_data(), add)
+                        id_value += 1
+                        for _ in range(n_idles):
+                            self._write_idle(f)
+                    dst_addr += ab
+                    if dst_addr >= dst_base + dst_size:
+                        dst_addr = dst_base
+                is_read = not is_read
+            self._write_pause(f)
+
+        self._commit_blocked_sets(read_blocked, write_blocked, read_blocked_set, write_blocked_set)
+        self._require_exact_emits("copy_linear", id_start, id_value)
+        return id_value
+
+    def depthwise_windowed_gen(
+        self,
+        id_start,
+        read_blocked,
+        write_blocked,
+        input_base_address,
+        input_row_stride_bytes,
+        input_channel_stride_bytes,
+        weight_base_address,
+        weight_channel_stride_bytes,
+        output_base_address,
+        output_row_stride_bytes,
+        output_channel_stride_bytes,
+        out_h,
+        out_w,
+        channels,
+        kernel_h=3,
+        kernel_w=3,
+        stride_h=1,
+        stride_w=1,
+        pad_h=0,
+        pad_w=0,
+        channel_group=1,
+        include_weights=True,
+        output_writes_per_point=1,
+        traffic_pct=100,
+        idle_cycles_between_rows=0,
+        idle_cycles_between_groups=0,
+        trailing_bytes=0,
+        append=False,
+    ):
+        """
+        Approximate a depthwise-convolution accelerator traffic pattern.
+
+        Semantics:
+          - For each channel group:
+              - optional compact kernel-bank reads
+              - for each output point: read KH*KW input-window elements from the same channel
+              - write output_writes_per_point output beats per output point
+          - Address generation is structured over channel, row, col, kernel_r, kernel_c.
+          - Padding is modeled by skipping out-of-bounds input reads (no transaction emitted).
+
+        This models a direct depthwise datapath better than GEMM/im2col, but it still
+        does not represent internal line-buffer reuse explicitly.
+        """
+        id_value = id_start
+        read_blocked_set, write_blocked_set = self._init_blocked_sets(read_blocked, write_blocked)
+        ab = self._ab
+        tm = self._total_mem_bytes()
+        n_idles = self._idles_per_req(traffic_pct)
+
+        in_base = self._align_down(int(input_base_address), ab)
+        in_row = max(ab, self._align_down(int(input_row_stride_bytes), ab))
+        in_ch = max(in_row, self._align_down(int(input_channel_stride_bytes), ab))
+        wt_base = self._align_down(int(weight_base_address), ab)
+        wt_ch = max(ab, self._align_down(int(weight_channel_stride_bytes), ab))
+        out_base = self._align_down(int(output_base_address), ab)
+        out_row = max(ab, self._align_down(int(output_row_stride_bytes), ab))
+        out_ch = max(out_row, self._align_down(int(output_channel_stride_bytes), ab))
+
+        out_h = max(0, int(out_h))
+        out_w = max(0, int(out_w))
+        channels = max(0, int(channels))
+        kernel_h = max(1, int(kernel_h))
+        kernel_w = max(1, int(kernel_w))
+        stride_h = max(1, int(stride_h))
+        stride_w = max(1, int(stride_w))
+        pad_h = max(0, int(pad_h))
+        pad_w = max(0, int(pad_w))
+        channel_group = max(1, int(channel_group))
+        output_writes_per_point = max(1, int(output_writes_per_point))
+        groups = max(1, (channels + channel_group - 1) // channel_group)
+
+        def _safe_emit(fobj, addr, wen, tx_idx):
+            nonlocal id_value
+            addr = self._normalize_addr(addr)
+            add = bin(addr)[2:].zfill(self.ADD_WIDTH)
+            data = "0" * self.DATA_WIDTH if wen else self.random_data()
+            if not self._is_allowed(add, wen, read_blocked_set, write_blocked_set):
+                return tx_idx, False
+            self._record_access(add, wen, read_blocked_set, write_blocked_set)
+            be = self._be_for(tx_idx, self.N_TEST, trailing_bytes)
+            self._write_req(fobj, id_value, wen, data, add, be=be)
+            id_value += 1
+            tx_idx += 1
+            for _ in range(n_idles):
+                self._write_idle(fobj)
+            return tx_idx, True
+
+        tx_idx = 0
+        with self._open(append) as f:
+            for g in range(groups):
+                c_start = g * channel_group
+                c_end = min(channels, c_start + channel_group)
+
+                if include_weights:
+                    for c in range(c_start, c_end):
+                        for kr in range(kernel_h):
+                            for kc in range(kernel_w):
+                                if id_value - id_start >= self.N_TEST:
+                                    break
+                                w_addr = wt_base + c * wt_ch + (kr * kernel_w + kc) * ab
+                                tx_idx, _ = _safe_emit(f, w_addr, 1, tx_idx)
+                            if id_value - id_start >= self.N_TEST:
+                                break
+                        if id_value - id_start >= self.N_TEST:
+                            break
+
+                if id_value - id_start >= self.N_TEST:
+                    break
+
+                for oh in range(out_h):
+                    emitted_before_row = id_value
+                    for ow in range(out_w):
+                        for c in range(c_start, c_end):
+                            in_h0 = oh * stride_h - pad_h
+                            in_w0 = ow * stride_w - pad_w
+
+                            for kr in range(kernel_h):
+                                for kc in range(kernel_w):
+                                    if id_value - id_start >= self.N_TEST:
+                                        break
+                                    ih = in_h0 + kr
+                                    iw = in_w0 + kc
+
+                                    if ih < 0 or iw < 0:
+                                        continue
+
+                                    in_addr = in_base + c * in_ch + ih * in_row + iw * ab
+                                    if in_addr < 0 or in_addr + ab > tm:
+                                        continue
+                                    tx_idx, _ = _safe_emit(f, in_addr, 1, tx_idx)
+                                if id_value - id_start >= self.N_TEST:
+                                    break
+                            if id_value - id_start >= self.N_TEST:
+                                break
+
+                            out_addr = out_base + c * out_ch + oh * out_row + ow * ab
+                            for _ in range(output_writes_per_point):
+                                if id_value - id_start >= self.N_TEST:
+                                    break
+                                tx_idx, _ = _safe_emit(f, out_addr, 0, tx_idx)
+                            if id_value - id_start >= self.N_TEST:
+                                break
+                        if id_value - id_start >= self.N_TEST:
+                            break
+
+                    if oh < out_h - 1 and id_value > emitted_before_row:
+                        for _ in range(max(0, int(idle_cycles_between_rows))):
+                            self._write_idle(f)
+
+                    if id_value - id_start >= self.N_TEST:
+                        break
+
+                if g < groups - 1:
+                    for _ in range(max(0, int(idle_cycles_between_groups))):
+                        self._write_idle(f)
+
+                if id_value - id_start >= self.N_TEST:
+                    break
+
+            self._write_pause(f)
+
+        self._commit_blocked_sets(read_blocked, write_blocked, read_blocked_set, write_blocked_set)
+        self._require_exact_emits("depthwise_windowed", id_start, id_value)
         return id_value
