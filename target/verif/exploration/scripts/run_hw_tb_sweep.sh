@@ -64,6 +64,11 @@ hw_configs=( $HARDWARE_PATTERN )
 tb_configs=( $TESTBENCH_PATTERN )
 workload_list=( $WORKLOADS )
 
+# Set defaults
+export WORKLOAD_JSON=$VERIF_EXPL_DIR/config/workloads/workload_transformer_block.json
+export HARDWARE_JSON=$VERIF_EXPL_DIR/config/hardware/hardware_hci_2hwpe_8fact.json
+export TESTBENCH_JSON=$VERIF_EXPL_DIR/config/testbench/testbench_invert_0_stall_1_2.json
+
 # -----------------------------------------------------------------------
 # Main sweep: per workload → per hardware config → per testbench config
 # -----------------------------------------------------------------------
@@ -86,13 +91,13 @@ for workload_json in "${workload_list[@]}"; do
   for hardware_config in "${hw_configs[@]}"; do
     hw_name=$(basename "$hardware_config" .json)
 
-    # LOG topology is not affected by QoS/priority testbench settings: run once
-    # with the default testbench, mirroring the ideal-run treatment.
+    # LOG topology is not affected by QoS/priority testbench settings:
+    # run once with the default testbench
     if [[ "$hw_name" == *_log_* ]]; then
       make clean-verif
       echo -e "\033[32;1mRunning: hw=$hw_name  tb=default (LOG topology — TB sweep skipped)\033[0m"
       export HARDWARE_JSON="$hardware_config"
-      export TESTBENCH_JSON="$VERIF_DIR/config/testbench.json"
+      # No need to set TESTBENCH_JSON (use last one from the sweep): LOG interco does not have an arbiter, so QoS settings do not matter
       make run-verif
       python3 $VERIF_EXPL_DIR/scripts/parse_vsim.py --transcript $VERIF_DIR/vsim/transcript --out "$workload_results_dir/${hw_name}.json"
       cp $VERIF_DIR/simvectors/generated/dataflow.html "$workload_results_dir/${hw_name}.html"
