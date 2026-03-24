@@ -1,0 +1,739 @@
+{
+  "description": "Conv2d (C_in=96, C_out=96, H=W=32, k=3x3, pad=1, stride=1, int8). Tiled im2col-GEMM-SiLU pipeline, Tile_M=32 (32 output pixels/tile), K=864=96*3*3, N=96. 4 representative tiles (of 32 total). Steady-state/no-halo abstraction: each tile source is modeled as 32 gathered receptive fields, so PATCH_A/PATCH_B each hold 32x864B = 27648B. Memory: WEIGHT_BUF(82944B)+IM2COL_A+IM2COL_B(2x27648B)+PATCH_A+PATCH_B(2x27648B)+OUTPUT_C(3072B)=192KiB. HW: 8 cores, 1 ext-narrow (idle), 3 wide HWPEs: DMA(id0)/GEMM(id1)/DataMover(id2). DMA: weight preload + double-buffered patch prefetch + output drain. DataMover: patch-pack/im2col traffic model (PATCH -> IM2COL, same byte volume). GEMM: IM2COL x WEIGHT -> OUTPUT_C. Cores: in-place SiLU activation with true read-modify-write traffic (8 cores partition OUTPUT_C into 384B chunks). Double-buffering: PATCH_A/IM2COL_A for even tiles, PATCH_B/IM2COL_B for odd tiles. Memory map (base: WEIGHT=0x00000, IM2COL_A=0x14400, IM2COL_B=0x1B000, PATCH_A=0x21C00, PATCH_B=0x28800, OUTPUT_C=0x2F400).",
+  "log_masters": [
+    {
+      "id": 0,
+      "description": "Core 0 - SiLU on OUTPUT_C[0x2F400..0x2F57F] (384B chunk)",
+      "patterns": [
+        {
+          "description": "SiLU tile 0 core 0",
+          "job": "silu_c0_t0",
+          "wait_for_jobs": ["gemm_t0"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F400",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 1 core 0",
+          "job": "silu_c0_t1",
+          "wait_for_jobs": ["gemm_t1"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F400",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 2 core 0",
+          "job": "silu_c0_t2",
+          "wait_for_jobs": ["gemm_t2"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F400",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 3 core 0",
+          "job": "silu_c0_t3",
+          "wait_for_jobs": ["gemm_t3"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F400",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "description": "Core 1 - SiLU on OUTPUT_C[0x2F580..0x2F6FF] (384B chunk)",
+      "patterns": [
+        {
+          "description": "SiLU tile 0 core 1",
+          "job": "silu_c1_t0",
+          "wait_for_jobs": ["gemm_t0"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F580",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 1 core 1",
+          "job": "silu_c1_t1",
+          "wait_for_jobs": ["gemm_t1"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F580",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 2 core 1",
+          "job": "silu_c1_t2",
+          "wait_for_jobs": ["gemm_t2"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F580",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 3 core 1",
+          "job": "silu_c1_t3",
+          "wait_for_jobs": ["gemm_t3"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F580",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "description": "Core 2 - SiLU on OUTPUT_C[0x2F700..0x2F87F] (384B chunk)",
+      "patterns": [
+        {
+          "description": "SiLU tile 0 core 2",
+          "job": "silu_c2_t0",
+          "wait_for_jobs": ["gemm_t0"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F700",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 1 core 2",
+          "job": "silu_c2_t1",
+          "wait_for_jobs": ["gemm_t1"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F700",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 2 core 2",
+          "job": "silu_c2_t2",
+          "wait_for_jobs": ["gemm_t2"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F700",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 3 core 2",
+          "job": "silu_c2_t3",
+          "wait_for_jobs": ["gemm_t3"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F700",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "description": "Core 3 - SiLU on OUTPUT_C[0x2F880..0x2F9FF] (384B chunk)",
+      "patterns": [
+        {
+          "description": "SiLU tile 0 core 3",
+          "job": "silu_c3_t0",
+          "wait_for_jobs": ["gemm_t0"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F880",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 1 core 3",
+          "job": "silu_c3_t1",
+          "wait_for_jobs": ["gemm_t1"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F880",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 2 core 3",
+          "job": "silu_c3_t2",
+          "wait_for_jobs": ["gemm_t2"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F880",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 3 core 3",
+          "job": "silu_c3_t3",
+          "wait_for_jobs": ["gemm_t3"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2F880",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "description": "Core 4 - SiLU on OUTPUT_C[0x2FA00..0x2FB7F] (384B chunk)",
+      "patterns": [
+        {
+          "description": "SiLU tile 0 core 4",
+          "job": "silu_c4_t0",
+          "wait_for_jobs": ["gemm_t0"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FA00",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 1 core 4",
+          "job": "silu_c4_t1",
+          "wait_for_jobs": ["gemm_t1"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FA00",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 2 core 4",
+          "job": "silu_c4_t2",
+          "wait_for_jobs": ["gemm_t2"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FA00",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 3 core 4",
+          "job": "silu_c4_t3",
+          "wait_for_jobs": ["gemm_t3"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FA00",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "description": "Core 5 - SiLU on OUTPUT_C[0x2FB80..0x2FCFF] (384B chunk)",
+      "patterns": [
+        {
+          "description": "SiLU tile 0 core 5",
+          "job": "silu_c5_t0",
+          "wait_for_jobs": ["gemm_t0"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FB80",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 1 core 5",
+          "job": "silu_c5_t1",
+          "wait_for_jobs": ["gemm_t1"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FB80",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 2 core 5",
+          "job": "silu_c5_t2",
+          "wait_for_jobs": ["gemm_t2"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FB80",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 3 core 5",
+          "job": "silu_c5_t3",
+          "wait_for_jobs": ["gemm_t3"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FB80",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "description": "Core 6 - SiLU on OUTPUT_C[0x2FD00..0x2FE7F] (384B chunk)",
+      "patterns": [
+        {
+          "description": "SiLU tile 0 core 6",
+          "job": "silu_c6_t0",
+          "wait_for_jobs": ["gemm_t0"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FD00",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 1 core 6",
+          "job": "silu_c6_t1",
+          "wait_for_jobs": ["gemm_t1"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FD00",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 2 core 6",
+          "job": "silu_c6_t2",
+          "wait_for_jobs": ["gemm_t2"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FD00",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 3 core 6",
+          "job": "silu_c6_t3",
+          "wait_for_jobs": ["gemm_t3"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FD00",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "description": "Core 7 - SiLU on OUTPUT_C[0x2FE80..0x2FFFF] (384B chunk)",
+      "patterns": [
+        {
+          "description": "SiLU tile 0 core 7",
+          "job": "silu_c7_t0",
+          "wait_for_jobs": ["gemm_t0"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FE80",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 1 core 7",
+          "job": "silu_c7_t1",
+          "wait_for_jobs": ["gemm_t1"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FE80",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 2 core 7",
+          "job": "silu_c7_t2",
+          "wait_for_jobs": ["gemm_t2"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FE80",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        },
+        {
+          "description": "SiLU tile 3 core 7",
+          "job": "silu_c7_t3",
+          "wait_for_jobs": ["gemm_t3"],
+          "mem_access_type": "rw_rowwise",
+          "row_base_address": "0x2FE80",
+          "row_size_bytes": 384,
+          "n_rows": 1,
+          "row_stride_bytes": 384,
+          "reads_per_row": 96,
+          "writes_per_row": 96,
+          "traffic_pct": 80
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "description": "External narrow interface (unused)",
+      "patterns": [
+        {
+          "description": "External idle",
+          "job": "ext_idle",
+          "wait_for_jobs": [],
+          "mem_access_type": "idle"
+        }
+      ]
+    }
+  ],
+  "hwpe_masters": [
+    {
+      "id": 0,
+      "description": "DMA - weight preload + double-buffered patch prefetch + output drain",
+      "patterns": [
+        {
+          "description": "Preload WEIGHT_BUF [0x00000, 82944B=0x14400] from external (2592 txns @ 32B)",
+          "job": "dma_load_weights",
+          "wait_for_jobs": [],
+          "mem_access_type": "linear",
+          "region_base_address": "0x00000",
+          "region_size_bytes": 82944,
+          "traffic_pct": 100,
+          "traffic_read_pct": 0
+        },
+        {
+          "description": "Prefetch gathered patch tile 0 -> PATCH_A [0x21C00, 27648B] (864 txns)",
+          "job": "dma_load_patch_t0",
+          "wait_for_jobs": [],
+          "mem_access_type": "linear",
+          "region_base_address": "0x21C00",
+          "region_size_bytes": 27648,
+          "traffic_pct": 100,
+          "traffic_read_pct": 0
+        },
+        {
+          "description": "Prefetch gathered patch tile 1 -> PATCH_B [0x28800, 27648B] (864 txns)",
+          "job": "dma_load_patch_t1",
+          "wait_for_jobs": [],
+          "mem_access_type": "linear",
+          "region_base_address": "0x28800",
+          "region_size_bytes": 27648,
+          "traffic_pct": 100,
+          "traffic_read_pct": 0
+        },
+        {
+          "description": "Drain OUTPUT_C [0x2F400, 3072B] to external after SiLU t0 (96 txns)",
+          "job": "dma_store_t0",
+          "wait_for_jobs": [
+            "silu_c0_t0",
+            "silu_c1_t0",
+            "silu_c2_t0",
+            "silu_c3_t0",
+            "silu_c4_t0",
+            "silu_c5_t0",
+            "silu_c6_t0",
+            "silu_c7_t0"
+          ],
+          "mem_access_type": "linear",
+          "region_base_address": "0x2F400",
+          "region_size_bytes": 3072,
+          "traffic_pct": 100,
+          "traffic_read_pct": 100
+        },
+        {
+          "description": "Prefetch gathered patch tile 2 -> PATCH_A [0x21C00, 27648B] (reuse ping; pack_im2col_t0 freed it) (864 txns)",
+          "job": "dma_load_patch_t2",
+          "wait_for_jobs": ["pack_im2col_t0"],
+          "mem_access_type": "linear",
+          "region_base_address": "0x21C00",
+          "region_size_bytes": 27648,
+          "traffic_pct": 100,
+          "traffic_read_pct": 0
+        },
+        {
+          "description": "Drain OUTPUT_C [0x2F400, 3072B] to external after SiLU t1 (96 txns)",
+          "job": "dma_store_t1",
+          "wait_for_jobs": [
+            "silu_c0_t1",
+            "silu_c1_t1",
+            "silu_c2_t1",
+            "silu_c3_t1",
+            "silu_c4_t1",
+            "silu_c5_t1",
+            "silu_c6_t1",
+            "silu_c7_t1"
+          ],
+          "mem_access_type": "linear",
+          "region_base_address": "0x2F400",
+          "region_size_bytes": 3072,
+          "traffic_pct": 100,
+          "traffic_read_pct": 100
+        },
+        {
+          "description": "Prefetch gathered patch tile 3 -> PATCH_B [0x28800, 27648B] (reuse pong; pack_im2col_t1 freed it) (864 txns)",
+          "job": "dma_load_patch_t3",
+          "wait_for_jobs": ["pack_im2col_t1"],
+          "mem_access_type": "linear",
+          "region_base_address": "0x28800",
+          "region_size_bytes": 27648,
+          "traffic_pct": 100,
+          "traffic_read_pct": 0
+        },
+        {
+          "description": "Drain OUTPUT_C [0x2F400, 3072B] to external after SiLU t2 (96 txns)",
+          "job": "dma_store_t2",
+          "wait_for_jobs": [
+            "silu_c0_t2",
+            "silu_c1_t2",
+            "silu_c2_t2",
+            "silu_c3_t2",
+            "silu_c4_t2",
+            "silu_c5_t2",
+            "silu_c6_t2",
+            "silu_c7_t2"
+          ],
+          "mem_access_type": "linear",
+          "region_base_address": "0x2F400",
+          "region_size_bytes": 3072,
+          "traffic_pct": 100,
+          "traffic_read_pct": 100
+        },
+        {
+          "description": "Drain OUTPUT_C [0x2F400, 3072B] to external after SiLU t3 (96 txns)",
+          "job": "dma_store_t3",
+          "wait_for_jobs": [
+            "silu_c0_t3",
+            "silu_c1_t3",
+            "silu_c2_t3",
+            "silu_c3_t3",
+            "silu_c4_t3",
+            "silu_c5_t3",
+            "silu_c6_t3",
+            "silu_c7_t3"
+          ],
+          "mem_access_type": "linear",
+          "region_base_address": "0x2F400",
+          "region_size_bytes": 3072,
+          "traffic_pct": 100,
+          "traffic_read_pct": 100
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "description": "GEMM - IM2COL x WEIGHT -> OUTPUT_C (M=32, K=864, N=96, int8, 3552 txns/tile)",
+      "patterns": [
+        {
+          "description": "GEMM tile 0: IM2COL_A[0x14400] x WEIGHT[0x00000] -> OUTPUT_C[0x2F400]",
+          "job": "gemm_t0",
+          "wait_for_jobs": ["dma_load_weights", "pack_im2col_t0"],
+          "mem_access_type": "matmul_phased",
+          "traffic_pct": 90,
+          "matrix_m": 32,
+          "matrix_n": 96,
+          "matrix_k": 864,
+          "matrix_elem_bytes": 1,
+          "region_base_address_a": "0x14400",
+          "region_size_bytes_a": 27648,
+          "region_base_address_b": "0x00000",
+          "region_size_bytes_b": 82944,
+          "region_base_address_c": "0x2F400",
+          "region_size_bytes_c": 3072
+        },
+        {
+          "description": "GEMM tile 1: IM2COL_B[0x1B000] x WEIGHT[0x00000] -> OUTPUT_C[0x2F400]",
+          "job": "gemm_t1",
+          "wait_for_jobs": ["pack_im2col_t1", "dma_store_t0"],
+          "mem_access_type": "matmul_phased",
+          "traffic_pct": 90,
+          "matrix_m": 32,
+          "matrix_n": 96,
+          "matrix_k": 864,
+          "matrix_elem_bytes": 1,
+          "region_base_address_a": "0x1B000",
+          "region_size_bytes_a": 27648,
+          "region_base_address_b": "0x00000",
+          "region_size_bytes_b": 82944,
+          "region_base_address_c": "0x2F400",
+          "region_size_bytes_c": 3072
+        },
+        {
+          "description": "GEMM tile 2: IM2COL_A[0x14400] x WEIGHT[0x00000] -> OUTPUT_C[0x2F400] (IM2COL_A reused after gemm_t0 freed it)",
+          "job": "gemm_t2",
+          "wait_for_jobs": ["pack_im2col_t2", "dma_store_t1"],
+          "mem_access_type": "matmul_phased",
+          "traffic_pct": 90,
+          "matrix_m": 32,
+          "matrix_n": 96,
+          "matrix_k": 864,
+          "matrix_elem_bytes": 1,
+          "region_base_address_a": "0x14400",
+          "region_size_bytes_a": 27648,
+          "region_base_address_b": "0x00000",
+          "region_size_bytes_b": 82944,
+          "region_base_address_c": "0x2F400",
+          "region_size_bytes_c": 3072
+        },
+        {
+          "description": "GEMM tile 3: IM2COL_B[0x1B000] x WEIGHT[0x00000] -> OUTPUT_C[0x2F400] (IM2COL_B reused after gemm_t1 freed it)",
+          "job": "gemm_t3",
+          "wait_for_jobs": ["pack_im2col_t3", "dma_store_t2"],
+          "mem_access_type": "matmul_phased",
+          "traffic_pct": 90,
+          "matrix_m": 32,
+          "matrix_n": 96,
+          "matrix_k": 864,
+          "matrix_elem_bytes": 1,
+          "region_base_address_a": "0x1B000",
+          "region_size_bytes_a": 27648,
+          "region_base_address_b": "0x00000",
+          "region_size_bytes_b": 82944,
+          "region_base_address_c": "0x2F400",
+          "region_size_bytes_c": 3072
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "description": "DataMover - patch-pack/im2col traffic model: reads gathered PATCH buffer, writes IM2COL matrix. 864 reads + 864 writes = 1728 txns/tile.",
+      "patterns": [
+        {
+          "description": "pack/im2col tile 0: PATCH_A[0x21C00, 27648B] -> IM2COL_A[0x14400, 27648B] (864 read+write pairs = 1728 txns)",
+          "job": "pack_im2col_t0",
+          "wait_for_jobs": ["dma_load_patch_t0"],
+          "mem_access_type": "copy_linear",
+          "traffic_pct": 100,
+          "src_base_address": "0x21C00",
+          "src_size_bytes": 27648,
+          "dst_base_address": "0x14400",
+          "dst_size_bytes": 27648
+        },
+        {
+          "description": "pack/im2col tile 1: PATCH_B[0x28800, 27648B] -> IM2COL_B[0x1B000, 27648B] (864 read+write pairs = 1728 txns)",
+          "job": "pack_im2col_t1",
+          "wait_for_jobs": ["dma_load_patch_t1"],
+          "mem_access_type": "copy_linear",
+          "traffic_pct": 100,
+          "src_base_address": "0x28800",
+          "src_size_bytes": 27648,
+          "dst_base_address": "0x1B000",
+          "dst_size_bytes": 27648
+        },
+        {
+          "description": "pack/im2col tile 2: PATCH_A[0x21C00] -> IM2COL_A[0x14400] (reuse ping; gemm_t0 has freed IM2COL_A) (1728 txns)",
+          "job": "pack_im2col_t2",
+          "wait_for_jobs": ["dma_load_patch_t2", "gemm_t0"],
+          "mem_access_type": "copy_linear",
+          "traffic_pct": 100,
+          "src_base_address": "0x21C00",
+          "src_size_bytes": 27648,
+          "dst_base_address": "0x14400",
+          "dst_size_bytes": 27648
+        },
+        {
+          "description": "pack/im2col tile 3: PATCH_B[0x28800] -> IM2COL_B[0x1B000] (reuse pong; gemm_t1 has freed IM2COL_B) (1728 txns)",
+          "job": "pack_im2col_t3",
+          "wait_for_jobs": ["dma_load_patch_t3", "gemm_t1"],
+          "mem_access_type": "copy_linear",
+          "traffic_pct": 100,
+          "src_base_address": "0x28800",
+          "src_size_bytes": 27648,
+          "dst_base_address": "0x1B000",
+          "dst_size_bytes": 27648
+        }
+      ]
+    }
+  ]
+}

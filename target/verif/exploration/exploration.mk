@@ -19,12 +19,12 @@ HW_TB_SWEEP_SCRIPT := $(HCI_VERIF_EXPL_DIR)/scripts/run_hw_tb_sweep.sh
 RESULTS_DIR ?= $(HCI_VERIF_EXPL_DIR)/results
 
 # Glob patterns (or single paths) for configs to sweep
-SWEEP_HARDWARE_CFG  ?= $(HCI_VERIF_EXPL_DIR)/config/hardware/hardware_*.json
+SWEEP_HARDWARE_CFG  ?= $(HCI_VERIF_EXPL_DIR)/config/hardware/hardware_*_3hwpe_8fact.json
 SWEEP_TESTBENCH_CFG ?= $(HCI_VERIF_EXPL_DIR)/config/testbench/testbench_*.json
-SWEEP_WORKLOADS_CFG ?= $(HCI_VERIF_EXPL_DIR)/config/workloads/workload_transformer_block.json
+SWEEP_WORKLOADS_CFG ?= $(HCI_VERIF_EXPL_DIR)/config/workloads/workload_conv2d_tiled.json
 
 # Hardware config used for the ideal (no-stall) reference run
-IDEAL_HARDWARE_CFG ?= $(HCI_VERIF_EXPL_DIR)/config/hardware/hardware_hci_2hwpe_8fact.json
+IDEAL_HARDWARE_CFG ?= $(HCI_VERIF_EXPL_DIR)/config/hardware/hardware_hci_3hwpe_8fact.json
 
 hw-tb-sweep:
 	bash $(HW_TB_SWEEP_SCRIPT) \
