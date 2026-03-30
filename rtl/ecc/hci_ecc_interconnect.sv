@@ -65,7 +65,9 @@ module hci_ecc_interconnect
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
   parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
-  parameter int unsigned HCI_CUT = 0                        , // HCI CUT enable
+  parameter int unsigned CUT_CORES = 0                      , // Insert a cut in cores interconnect
+  parameter int unsigned CUT_IDMA  = 0                      , // Insert a cut in Idma interconnect
+  parameter int unsigned CUT_EXT   = 0                      , // Insert a cut in EXT interconnect
   parameter int unsigned FILTER_WRITE_R_VALID[0:N_HWPE-1] = '{default: 0},
   parameter int unsigned CHUNK_SIZE = 32                    , // Chunk size of data to be encoded separately (HWPE branch)
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(cores) = '0,
@@ -417,9 +419,10 @@ module hci_ecc_interconnect
     end
   endgenerate
 
+
   generate
     for(genvar ii=0; ii<N_CORE; ii++) begin: cores_binding
-      if (HCI_CUT) begin : hci_cut
+      if (CUT_CORES) begin : hci_cut
         hci_core_cut #(
         .`HCI_SIZE_PARAM(in)(`HCI_SIZE_PARAM(cores))
         ) i_hci_cut (
@@ -437,16 +440,40 @@ module hci_ecc_interconnect
       end
     end : cores_binding
     for(genvar ii=0; ii<N_EXT; ii++) begin: ext_binding
+      if (CUT_IDMA) begin : hci_cut
+          hci_core_cut #(
+          .`HCI_SIZE_PARAM(in)(`HCI_SIZE_PARAM(cores))
+          ) i_hci_cut (
+              .clk_i  ( clk_i                ),
+              .rst_ni ( rst_ni               ),
+              .in     ( ext             [ii] ),
+              .out    ( all_except_hwpe [N_CORE+ii] )
+          );
+      end 
+      else begin : no_hci_cut
       hci_core_assign i_ext_assign (
         .tcdm_target    ( ext             [ii]        ),
         .tcdm_initiator ( all_except_hwpe [N_CORE+ii] )
       );
-    end : ext_binding
+      end
+    end : ext_binding 
     for(genvar ii=0; ii<N_DMA; ii++) begin: dma_binding
-      hci_core_assign i_dma_assign (
-        .tcdm_target    ( dma             [ii]              ),
-        .tcdm_initiator ( all_except_hwpe [N_CORE+N_EXT+ii] )
-      );
+      if (CUT_EXT) begin : hci_cut
+          hci_core_cut #(
+          .`HCI_SIZE_PARAM(in)(`HCI_SIZE_PARAM(cores))
+          ) i_hci_cut (
+              .clk_i  ( clk_i                ),
+              .rst_ni ( rst_ni               ),
+              .in     ( dma             [ii] ),
+              .out    ( all_except_hwpe [N_CORE+N_EXT+ii] )
+          );
+      end 
+      else begin : no_hci_cut
+        hci_core_assign i_dma_assign (
+          .tcdm_target    ( dma             [ii]              ),
+          .tcdm_initiator ( all_except_hwpe [N_CORE+N_EXT+ii] )
+        );
+      end
     end : dma_binding
   endgenerate
 
