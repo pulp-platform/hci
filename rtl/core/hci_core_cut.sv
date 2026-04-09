@@ -2,8 +2,8 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-// Michael Rogenmoser <michaero@iis.ee.ethz.ch>
-// Luigi Ghionda
+// Luigi Ghionda,    Fondazione Chips-IT    
+// Niccolò Giuliani, Fondazione Chips-IT 
 
 `include "hci_helpers.svh"
 
@@ -35,7 +35,6 @@ module hci_core_cut
   localparam int unsigned REQW = AW + 1 + DW + DW/BW + UW + IW + EW;
   localparam int unsigned RSPW = DW + UW + IW + 1 + EW;
 
-  // logic [REQW-1:0] req_payload_in, req_payload_out;
 
   typedef struct packed {
     logic [AW-1:0]      add;
@@ -66,7 +65,6 @@ module hci_core_cut
     ecc:  in.ecc
   };
 
-  // assign req_payload_in = {in.ecc, in.id, in.user, in.be, in.data, in.wen, in.add};
 
 
   spill_register #(
@@ -93,17 +91,6 @@ module hci_core_cut
     out.id   = req_payload_out.id;
     out.ecc  = req_payload_out.ecc;
   end
-
-  // always_comb
-  // begin : out_assign
-  //   out.add = req_payload_out[AW-1:0];
-  //   out.wen = req_payload_out[AW];
-  //   out.data = req_payload_out[AW+1+DW-1:0];
-  //   out.be = req_payload_out[AW+1+DW+DW/BW-1:0];
-  //   out.user = req_payload_out[AW+1+DW+DW/BW+UW-1:0];
-  //   out.id = req_payload_out[AW+1+DW+DW/BW+UW+ID-1:0];
-  //   out.ecc = req_payload_out[AW+1+DW+DW/BW+UW+ID+ECC-1:0];
-  // end
 
   rsp_payload_t rsp_payload_in, rsp_payload_out;
 
