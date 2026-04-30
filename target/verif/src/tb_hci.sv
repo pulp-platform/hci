@@ -18,9 +18,6 @@
 
 `include "hci_helpers.svh"
 
-timeunit 1ns;
-timeprecision 10ps;
-
 module tb_hci
   import hci_package::*;
   import tb_hci_pkg::*;
