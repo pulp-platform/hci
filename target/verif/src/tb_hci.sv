@@ -81,7 +81,7 @@ module tb_hci
     .IW(HCI_SIZE_cores.IW),
     .EW(HCI_SIZE_cores.EW),
     .EHW(HCI_SIZE_cores.EHW)
-  ) hci_driver_log_if [0:N_LOG_MASTERS-1] (
+  ) hci_driver_log_if [0:hci_package::iomsb(N_LOG_MASTERS)] (
     .clk(clk)
   );
 
@@ -93,7 +93,7 @@ module tb_hci
     .IW(HCI_SIZE_hwpe.IW),
     .EW(HCI_SIZE_hwpe.EW),
     .EHW(HCI_SIZE_hwpe.EHW)
-  ) hci_driver_hwpe_if [0:N_HWPE-1] (
+  ) hci_driver_hwpe_if [0:hci_package::iomsb(N_HWPE)] (
     .clk(clk)
   );
 
@@ -107,7 +107,7 @@ module tb_hci
     .IW(HCI_SIZE_cores.IW),
     .EW(HCI_SIZE_cores.EW),
     .EHW(HCI_SIZE_cores.EHW)
-  ) hci_initiator_narrow [0:N_NARROW_HCI-1] (
+  ) hci_initiator_narrow [0:hci_package::iomsb(N_NARROW_HCI)] (
     .clk(clk)
   );
 
@@ -119,7 +119,7 @@ module tb_hci
     .IW(HCI_SIZE_hwpe.IW),
     .EW(HCI_SIZE_hwpe.EW),
     .EHW(HCI_SIZE_hwpe.EHW)
-  ) hci_initiator_wide [0:N_WIDE_HCI-1] (
+  ) hci_initiator_wide [0:hci_package::iomsb(N_WIDE_HCI)] (
     .clk(clk)
   );
 
@@ -131,7 +131,7 @@ module tb_hci
     .IW(HCI_SIZE_cores.IW),
     .EW(HCI_SIZE_cores.EW),
     .EHW(HCI_SIZE_cores.EHW)
-  ) hci_initiator_dma [0:N_DMA-1] (
+  ) hci_initiator_dma [0:hci_package::iomsb(N_DMA)] (
     .clk(clk)
   );
 
@@ -143,7 +143,7 @@ module tb_hci
     .IW(HCI_SIZE_cores.IW),
     .EW(HCI_SIZE_cores.EW),
     .EHW(HCI_SIZE_cores.EHW)
-  ) hci_initiator_ext [0:N_EXT-1] (
+  ) hci_initiator_ext [0:hci_package::iomsb(N_EXT)] (
     .clk(clk)
   );
 
@@ -159,7 +159,7 @@ module tb_hci
     .WAIVE_RQ4_ASSERT(1'b1),
     .WAIVE_RSP3_ASSERT(1'b1),
     .WAIVE_RSP5_ASSERT(1'b1)
-  ) hci_target_mems [0:N_BANKS-1] (
+  ) hci_target_mems [0:hci_package::iomsb(N_BANKS)] (
     .clk(clk)
   );
 
