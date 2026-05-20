@@ -110,7 +110,6 @@ module hci_core_sink
 
   localparam int unsigned DATA_WIDTH = `HCI_SIZE_GET_DW(tcdm);
   localparam int unsigned EHW        = `HCI_SIZE_GET_EHW(tcdm);
-  localparam int unsigned BW         = `HCI_SIZE_GET_BW(tcdm);
 
   hci_streamer_state_t cs, ns;
   flags_fifo_t addr_fifo_flags;
@@ -135,16 +134,7 @@ module hci_core_sink
     .clk ( clk_i )
   );
 
-  localparam hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '{
-    DW:  DATA_WIDTH,
-    AW:  DEFAULT_AW,
-    BW:  BW,
-    UW:  DEFAULT_UW,
-    IW:  DEFAULT_IW,
-    EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
-  };
-  `HCI_INTF(tcdm_target, clk_i);
+  `HCI_INTF_EXPLICIT_PARAM(tcdm_target, clk_i, `HCI_SIZE_PARAM(tcdm));
 
   hwpe_stream_addressgen_v4 #(
     .DIM_ENABLE_1H ( DIM_ENABLE_1H )
