@@ -239,6 +239,10 @@ def poolInit(s, t, l):
     lock = l
 
 if __name__ == '__main__':
+    # Python 3.14 changed the default multiprocessing start method on Linux
+    # from 'fork' to 'forkserver'. Workers below rely on inheriting `args` and
+    # other module-level state via fork's copy-on-write memory, so force it.
+    multiprocessing.set_start_method('fork')
     args = runtest.parse_args()
     pp = pprint.PrettyPrinter(indent=4)
 
