@@ -13,10 +13,32 @@
  * specific language governing permissions and limitations under the License.
  */
 
- /*
- * The **hci_ecc_sink** module acts as an ECC-extended wrapper around the **hci_core_sink** module.
- * It extends the functionality with ECC support, while preserving it's original behavior.
- * Please refer to **hci_core_sink** for detailed functional information.
+/**
+ * The **hci_ecc_sink** module acts as an ECC-extended wrapper around the
+ * **hci_core_sink** module. It extends the functionality with ECC support,
+ * while preserving its original behavior; please refer to **hci_core_sink**
+ * for detailed functional information on the underlying streamer.
+ *
+ * Internally, the module instantiates a `hci_core_sink` driving an
+ * unprotected "virtual" HCI-Core interface, and a `hci_ecc_enc` block that
+ * applies ECC encoding to bridge the virtual interface to the actual
+ * ECC-protected `tcdm` initiator port. Since the sink only performs stores,
+ * no response-phase error flags are exposed; the encoder output ports for
+ * read-back checks are left unconnected.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_ecc_sink_params:
+ * .. table:: **hci_ecc_sink** design-time parameters.
+ *
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | **Name**              | **Default** | **Description**                                                                                                        |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *TCDM_FIFO_DEPTH*     | 0           | If >0, the module produces a HWPE-MemDecoupled interface and includes a TCDM FIFO of this depth.                       |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *TRANS_CNT*           | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.   |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *MISALIGNED_ACCESSES* | 1           | If set to 0, the sink will not support non-word-aligned HCI-Core accesses.                                             |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  *
  */
 

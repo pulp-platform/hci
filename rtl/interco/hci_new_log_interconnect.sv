@@ -15,6 +15,50 @@
  * Top level for the log interconnect, wrapped with HCI interfaces.
  */
 
+/**
+ * The **hci_new_log_interconnect** module is an alternative wrapper of the
+ * PULP TCDM logarithmic interconnect, based on the legacy `new_XBAR_TCDM`
+ * crossbar (as opposed to the `tcdm_interconnect` used by
+ * **hci_log_interconnect**). It exposes the same `hci_core_intf`-based
+ * initiator/target interface as **hci_log_interconnect** and carries native
+ * support for HCI-style test-and-set transactions via the `data_ts_set_o`
+ * side band of the underlying crossbar.
+ *
+ * It is provided primarily for backward compatibility with platforms that
+ * already integrate `new_XBAR_TCDM`; for new designs, **hci_log_interconnect**
+ * is preferred.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_new_log_interconnect_params:
+ * .. table:: **hci_new_log_interconnect** design-time parameters.
+ *
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | **Name**  | **Default**                 | **Description**                                                   |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *N_CH0*   | 16                          | Number of "channel 0" initiator ports (typically cores).          |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *N_CH1*   | 4                           | Number of "channel 1" initiator ports (typically DMA / external). |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *N_MEM*   | 32                          | Number of memory bank target ports.                               |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *AWC*     | `DEFAULT_AW`                | Address width on the initiator (core) side.                       |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *AWM*     | `DEFAULT_AW`                | Address width on the target (memory) side.                        |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *DW*      | `DEFAULT_DW`                | Data width.                                                       |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *BW*      | `DEFAULT_BW`                | Byte width (granularity of the byte enable).                      |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *TS_BIT*  | 21                          | Bit position used to alias the test-and-set memory region.        |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *IW*      | `N_CH0+N_CH1`               | ID width propagated by the crossbar with the response.            |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *UW*      | `DEFAULT_UW`                | Width of the side-channel `user` field.                           |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *EW*      | `DEFAULT_EW`                | Width of the side-channel `ecc` field.                            |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *
+ */
 module hci_new_log_interconnect
   import hci_package::*;
 #(

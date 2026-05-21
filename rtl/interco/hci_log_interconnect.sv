@@ -15,6 +15,52 @@
  * Top level for the log interconnect, wrapped with HCI interfaces.
  */
 
+/**
+ * The **hci_log_interconnect** module wraps the standard PULP TCDM logarithmic
+ * interconnect (`tcdm_interconnect` configured with the `LIC` topology) and
+ * exposes its initiator and target ports as `hci_core_intf` instances.
+ * It is typically used as the LIC branch of the top-level
+ * **hci_interconnect** (see :ref:`hci_interconnect`), routing requests from
+ * `N_CH0+N_CH1` initiator channels (cores, DMA, external masters) to `N_MEM`
+ * memory banks with full crossbar arbitration and starvation-free
+ * round-robin selection.
+ *
+ * The wrapper takes care of "unrolling" the HCI-Core interface arrays into
+ * the flat signal arrays consumed by the underlying `tcdm_interconnect`,
+ * propagating `data`, `user` and `ecc` payloads transparently when the
+ * corresponding widths are non-zero.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_log_interconnect_params:
+ * .. table:: **hci_log_interconnect** design-time parameters.
+ *
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | **Name**  | **Default**                 | **Description**                                                          |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *N_CH0*   | 16                          | Number of "channel 0" initiator ports (typically cores).                 |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *N_CH1*   | 4                           | Number of "channel 1" initiator ports (typically DMA / external).        |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *N_MEM*   | 32                          | Number of memory bank target ports.                                      |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *AWC*     | `DEFAULT_AW`                | Address width on the initiator (core) side.                              |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *AWM*     | `DEFAULT_AW`                | Address width on the target (memory) side.                               |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *DW*      | `DEFAULT_DW`                | Data width.                                                              |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *BW*      | `DEFAULT_BW`                | Byte width (granularity of the byte enable).                             |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *TS_BIT*  | 21                          | Bit position used to alias the test-and-set memory region.               |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *IW*      | `N_CH0+N_CH1`               | ID width (currently unused inside the interconnect).                     |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *UW*      | `DEFAULT_UW`                | Width of the side-channel `user` field.                                  |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *   | *EW*      | `DEFAULT_EW`                | Width of the side-channel `ecc` field.                                   |
+ *   +-----------+-----------------------------+--------------------------------------------------------------------------+
+ *
+ */
 module hci_log_interconnect
   import hci_package::*;
   import tcdm_interconnect_pkg::topo_e;
