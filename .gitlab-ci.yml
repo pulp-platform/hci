@@ -13,6 +13,9 @@ variables:
 before_script:
   - python -V  # Print out python version for debugging
   - python -m pip install --user virtualenv
+  - python -m virtualenv .venv
+  - source .venv/bin/activate
+  - PIP_USER=0 pip install junit_xml pyyaml prettytable
 
 .base:
   artifacts:
