@@ -13,10 +13,42 @@
  * specific language governing permissions and limitations under the License.
  */
 
-/*
- * See `hci_router` - this block contains the actual routing.
+/**
+ * The **hci_router_reorder** module is the actual routing engine wrapped by
+ * **hci_router** (see :ref:`hci_router`). It accepts up to `NB_IN_CHAN`
+ * 32-bit `in` HCI-Core channels and distributes their requests across
+ * `NB_OUT_CHAN` `out` channels (typically one per memory bank) according to
+ * the external `order_i` index, with no arbitration: per cycle, each `in`
+ * channel is routed to a distinct `out` channel determined by
+ * `(order_i + i) mod NB_OUT_CHAN`.
+ *
+ * Because the wide-word access pattern enforced by **hci_router** is
+ * conflict-free by construction, the `gnt` of all `in` channels is the AND
+ * of all `out` grants - i.e., a transaction either fully proceeds or fully
+ * stalls. Read responses are returned with a fixed latency of one cycle and
+ * are demultiplexed back to the originating `in` channel via instances of
+ * `addr_dec_resp_mux` (one per `in` channel).
+ *
+ * When `USE_ECC` is set, the 7 Hsiao SEC-DED check bits of the `ecc`
+ * side-channel are routed alongside the data; otherwise they are tied off.
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_router_reorder_params:
+ * .. table:: **hci_router_reorder** design-time parameters.
+ *
+ *   +------------------------+-------------+------------------------------------------------------------------------------+
+ *   | **Name**               | **Default** | **Description**                                                              |
+ *   +------------------------+-------------+------------------------------------------------------------------------------+
+ *   | *NB_IN_CHAN*           | 2           | Number of input HCI-Core channels (typically `DWH/32`).                      |
+ *   +------------------------+-------------+------------------------------------------------------------------------------+
+ *   | *NB_OUT_CHAN*          | 2           | Number of output HCI-Core channels (one per memory bank).                    |
+ *   +------------------------+-------------+------------------------------------------------------------------------------+
+ *   | *FILTER_WRITE_R_VALID* | 0           | If 1, suppress the `r_valid` pulse for write transactions on the response.   |
+ *   +------------------------+-------------+------------------------------------------------------------------------------+
+ *   | *USE_ECC*              | 0           | If 1, propagate the 7-bit ECC check bits alongside data.                     |
+ *   +------------------------+-------------+------------------------------------------------------------------------------+
+ *
  */
-
 module hci_router_reorder
   import hwpe_stream_package::*;
 #(

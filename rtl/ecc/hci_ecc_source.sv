@@ -13,20 +13,57 @@
  * specific language governing permissions and limitations under the License.
  */
 
-/*
- * The **hci_ecc_source** module acts as an ECC-extended wrapper around the **hci_core_source** module.
- * It extends the functionality with ECC support, while preserving it's original behavior.
- * Please refer to **hci_core_source** for detailed functional information.
+/**
+ * The **hci_ecc_source** module acts as an ECC-extended wrapper around the
+ * **hci_core_source** module. It extends the functionality with ECC support,
+ * while preserving its original behavior; please refer to **hci_core_source**
+ * for detailed functional information on the underlying streamer.
+ *
+ * Internally, the module instantiates a `hci_core_source` driving an
+ * unprotected "virtual" HCI-Core interface, and a `hci_ecc_enc` block that
+ * applies ECC encoding/decoding to bridge the virtual interface to the actual
+ * ECC-protected `tcdm` initiator port. ECC error flags are exposed on dedicated
+ * outputs for collection by a `hci_ecc_manager`.
+ *
+ * Compared to the underlying **hci_core_source**, this module exposes the
+ * additional `CHUNK_SIZE` parameter, which controls the granularity of ECC
+ * protection on the data field (see :ref:`hci_ecc_enc`).
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_ecc_source_params:
  * .. table:: **hci_ecc_source** design-time parameters.
  *
- *   +---------------------+-------------+--------------------------------------------------------------+
- *   | **Name**             | **Default** | **Description**                                              |
- *   +---------------------+-------------+--------------------------------------------------------------+
- *   | *CHUNK_SIZE*         | 32          | Width in bits of each chunk of data to protect individually. |
- *   +---------------------+-------------+--------------------------------------------------------------+
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | **Name**              | **Default** | **Description**                                                                                                          |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *LATCH_FIFO*          | 0           | If 1, use latches instead of flip-flops (requires special constraints in synthesis).                                     |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *TRANS_CNT*           | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.     |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *ADDR_MIS_DEPTH*      | 8           | Depth of the misaligned address FIFO. This **must** be equal to the max-latency between the HCI-Core `gnt` and `r_valid`.|
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *MISALIGNED_ACCESSES* | 1           | If set to 0, the source will not support non-word-aligned HCI-Core accesses.                                             |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *PASSTHROUGH_FIFO*    | 0           | If set to 1, the address FIFO will be capable of fall-through operation (i.e., skipping the FIFO latency entirely).      |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *CHUNK_SIZE*          | 32          | Width in bits of each chunk of data to protect individually with ECC.                                                    |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_ecc_source_flags:
+ * .. table:: **hci_ecc_source** output ECC flags.
+ *
+ *   +-----------------------+---------------------+-----------------------------------------------------------------------------------+
+ *   | **Name**              | **Type**            | **Description**                                                                   |
+ *   +-----------------------+---------------------+-----------------------------------------------------------------------------------+
+ *   | *r_data_single_err_o* | `logic[N_CHUNK-1:0]`| One bit per data chunk, asserted when a single-bit (correctable) error is found.  |
+ *   +-----------------------+---------------------+-----------------------------------------------------------------------------------+
+ *   | *r_data_multi_err_o*  | `logic[N_CHUNK-1:0]`| One bit per data chunk, asserted when a multi-bit (uncorrectable) error is found. |
+ *   +-----------------------+---------------------+-----------------------------------------------------------------------------------+
+ *   | *r_meta_single_err_o* | `logic`             | Asserted when a single-bit (correctable) error is found in response metadata.     |
+ *   +-----------------------+---------------------+-----------------------------------------------------------------------------------+
+ *   | *r_meta_multi_err_o*  | `logic`             | Asserted when a multi-bit (uncorrectable) error is found in response metadata.    |
+ *   +-----------------------+---------------------+-----------------------------------------------------------------------------------+
  *
  */
 

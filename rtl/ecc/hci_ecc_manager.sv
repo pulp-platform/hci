@@ -13,10 +13,16 @@
  * specific language governing permissions and limitations under the License.
 */
 
-/*
+/**
  * The **hci_ecc_manager** module logs faults on data and metadata fields,
  * distinguishing correctable and uncorrectable errors, as detected along the
  * **hci_ecc_interconnect**, and collects them into software-accessible registers.
+ *
+ * Per-chunk and per-source error flags from the ECC-protected interconnect are
+ * reduced through population counters and accumulated into four 32-bit
+ * saturation-free counters, exposed via a `reg_iface` device port through the
+ * auto-generated `hci_ecc_manager_reg_top` register file. Software can read
+ * each counter at any time and clear it by writing zero (`rw0c` access).
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_ecc_manager_params:
@@ -31,7 +37,24 @@
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------+
  *   | *PAR_META*          | 1           | Number of independent parallel metadata error sources monitored across the interconnect.   |
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------+
- * */
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_ecc_manager_regs:
+ * .. table:: **hci_ecc_manager** memory-mapped registers.
+ *
+ *   +---------------------------------+----------+--------------------------------------------------------------------------------+
+ *   | **Name**                        | **Offset**| **Description**                                                               |
+ *   +---------------------------------+----------+--------------------------------------------------------------------------------+
+ *   | *data_correctable_errors*       | 0x00     | Running count of single-bit (correctable) errors on the data payload.          |
+ *   +---------------------------------+----------+--------------------------------------------------------------------------------+
+ *   | *data_uncorrectable_errors*     | 0x04     | Running count of multi-bit (uncorrectable) errors on the data payload.         |
+ *   +---------------------------------+----------+--------------------------------------------------------------------------------+
+ *   | *metadata_correctable_errors*   | 0x08     | Running count of single-bit (correctable) errors on the request metadata.      |
+ *   +---------------------------------+----------+--------------------------------------------------------------------------------+
+ *   | *metadata_uncorrectable_errors* | 0x0C     | Running count of multi-bit (uncorrectable) errors on the request metadata.     |
+ *   +---------------------------------+----------+--------------------------------------------------------------------------------+
+ *
+ */
 
 
 module hci_ecc_manager

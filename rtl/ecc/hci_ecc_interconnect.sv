@@ -16,13 +16,20 @@
  */
 
 /**
- * Convenience top-level for the PULP heterogeneous cluster interconnect. It
- * wraps both a logarithmic interconnect (LIC) and an (optional) HCI router meant
- * to realize a LIC and a HWPE branch of the interconnect, respectively.
- * The two branches are (optionally) arbitrated via a HCI arbiter.
+ * The **hci_ecc_interconnect** module is the ECC-protected variant of
+ * **hci_interconnect** (see :ref:`hci_interconnect`): it wraps both a
+ * logarithmic interconnect (LIC) and an (optional) HCI router to realize the
+ * LIC and HWPE branches of a cluster interconnect, optionally arbitrated by
+ * an HCI arbiter, and additionally instantiates ECC encoders/decoders on
+ * each initiator port and an `hci_ecc_manager` register file to expose error
+ * counters to software.
+ *
+ * Refer to :ref:`hci_interconnect` for the description of the underlying
+ * arbitration and routing scheme, and to :ref:`hci_ecc_enc` /
+ * :ref:`hci_ecc_dec` for the details of the ECC protection layout.
  *
  * .. tabularcolumns:: |l|l|J|
- * .. _hci_interconnect_params:
+ * .. _hci_ecc_interconnect_params:
  * .. table:: **hci_ecc_interconnect** design-time parameters.
  *
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+

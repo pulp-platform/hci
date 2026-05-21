@@ -14,19 +14,40 @@
  */
 
 /**
- * The **hci_copy_source** module is used to monitor an input hci interface
- * stream `tcdm_main` and copy it to an output hci interface `tcdm_copy`.
- * Together with hci_copy_sink this allows for fault detection on a chain of
- * HCI modules.
+ * The **hci_copy_source** module opens a duplicated (lockstep-copy) path on
+ * an HCI-Core interface. It monitors a primary HCI-Core stream on the
+ * `tcdm_main` port (as a passive `monitor` modport) and reproduces it on a
+ * redundant `tcdm_copy` initiator port; the redundant stream is then meant
+ * to run in lockstep through a parallel chain of HCI modules and be closed
+ * by a matching **hci_copy_sink** (see :ref:`hci_copy_sink`) that compares
+ * the two streams and raises a fault on divergence.
  *
- * How "deep" the copy is can be set with the parameter COPY_TYPE.
- * COPY_TYPE MUST match on connected sinks and sources!
+ * The granularity of duplication is controlled by the `COPY_TYPE` and
+ * `COMPARE_TYPE` parameters, which configure respectively the main-to-copy
+ * driving and the copy-to-main checking. The selected mode **must** match
+ * on both ends of the duplicated path.
  *
- * The available options are:
- * - COPY:      Fully copy of everything.
- * - NO_ECC:    No copy of ECC signals.
- * - NO_DATA:   No copy of data signals.
- * - CTRL_ONLY: o copy of data or ECC signals.
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_copy_source_params:
+ * .. table:: **hci_copy_source** design-time parameters.
+ *
+ *   +-----------------+-------------+----------------------------------------------------------------------------------+
+ *   | **Name**        | **Default** | **Description**                                                                  |
+ *   +-----------------+-------------+----------------------------------------------------------------------------------+
+ *   | *COPY_TYPE*     | `COPY`      | Depth of main-to-copy duplication (see `hci_copy_t` below).                      |
+ *   +-----------------+-------------+----------------------------------------------------------------------------------+
+ *   | *COMPARE_TYPE*  | `COPY`      | Depth of copy-to-main comparison.                                                |
+ *   +-----------------+-------------+----------------------------------------------------------------------------------+
+ *   | *DONT_CARE*     | 1           | Constant value driven on signals that are not propagated by the current mode.    |
+ *   +-----------------+-------------+----------------------------------------------------------------------------------+
+ *
+ * The supported `hci_copy_t` modes (shared with **hci_copy_sink**) are:
+ *
+ * - **COPY**:      Fully copy and compare every HCI signal.
+ * - **NO_ECC**:    Copy and compare everything except the `ecc` side-channel.
+ * - **NO_DATA**:   Copy and compare everything except the `data` payload.
+ * - **CTRL_ONLY**: No copy or compare of `data` or `ecc` signals; only the
+ *   control plane is duplicated.
  */
 
 `include "hci_helpers.svh"

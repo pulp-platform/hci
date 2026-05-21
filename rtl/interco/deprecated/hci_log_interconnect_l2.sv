@@ -15,6 +15,46 @@
  * Top level for the log interconnect, wrapped with HCI interfaces.
  */
 
+/**
+ * The **hci_log_interconnect_l2** module is a variant of
+ * **hci_log_interconnect** specialized for L2-style memory systems, where the
+ * `ecc` side-channel is not propagated and the per-bank address has its two
+ * least significant bits dropped (so that `AWM` bits address a word-aligned
+ * memory bank entry).
+ *
+ * Like its L1 counterpart, the module wraps the PULP `tcdm_interconnect`
+ * (`LIC` topology) and unrolls the HCI-Core interface arrays into the flat
+ * signal arrays consumed by the underlying interconnect. It is typically
+ * instantiated as the LIC branch of the top-level **hci_interconnect** when
+ * `SEL_LIC=1` (see :ref:`hci_interconnect`).
+ *
+ * .. tabularcolumns:: |l|l|J|
+ * .. _hci_log_interconnect_l2_params:
+ * .. table:: **hci_log_interconnect_l2** design-time parameters.
+ *
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | **Name**  | **Default**                 | **Description**                                                   |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *N_CH0*   | 16                          | Number of "channel 0" initiator ports (typically cores).          |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *N_CH1*   | 4                           | Number of "channel 1" initiator ports (typically DMA / external). |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *N_MEM*   | 32                          | Number of memory bank target ports.                               |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *AWC*     | `DEFAULT_AW`                | Address width on the initiator (core) side.                       |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *AWM*     | `DEFAULT_AW`                | Address width on the target (memory) side.                        |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *DW*      | `DEFAULT_DW`                | Data width.                                                       |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *BW*      | `DEFAULT_BW`                | Byte width (granularity of the byte enable).                      |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *IW*      | `N_CH0+N_CH1`               | ID width (currently unused inside the interconnect).              |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *   | *UW*      | `DEFAULT_UW`                | Width of the side-channel `user` field.                           |
+ *   +-----------+-----------------------------+-------------------------------------------------------------------+
+ *
+ */
 module hci_log_interconnect_l2
   import hci_package::*;
 #(
