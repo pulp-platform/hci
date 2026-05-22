@@ -303,7 +303,7 @@ module hci_core_sink
       end
       STREAMER_DONE : begin
         address_gen_en = 1'b1;
-        if(address_cnt_q==ctrl_i.addressgen_ctrl.tot_len) begin
+        if((address_cnt_q==ctrl_i.addressgen_ctrl.tot_len) | (address_cnt_q==ctrl_i.addressgen_ctrl.tot_len-1 && address_cnt_en)) begin
           ns = STREAMER_IDLE;
           done = 1'b1;
           address_gen_en  = 1'b0;
