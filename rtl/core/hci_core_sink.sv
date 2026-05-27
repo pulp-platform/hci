@@ -91,6 +91,7 @@ module hci_core_sink
   localparam int unsigned BANK_DATA_WIDTH      = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
   localparam  int unsigned ELEMENT_INDEX_WIDTH = $clog2(ELEMENTS_PER_BANK),
   parameter bit [3:0] DIM_ENABLE_1H            = 4'b1111, // Number of dimensions enabled in the address generator
+  parameter int unsigned PARTIAL_TILING        = 0, // 1 Enable/0 Disable hwpe_stream_addressgen_v4 _last logic for partial tiling
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
@@ -137,7 +138,8 @@ module hci_core_sink
   `HCI_INTF_EXPLICIT_PARAM(tcdm_target, clk_i, `HCI_SIZE_PARAM(tcdm));
 
   hwpe_stream_addressgen_v4 #(
-    .DIM_ENABLE_1H ( DIM_ENABLE_1H )
+    .DIM_ENABLE_1H  ( DIM_ENABLE_1H  ),
+    .PARTIAL_TILING ( PARTIAL_TILING )
   ) i_addressgen (
     .clk_i       ( clk_i                    ),
     .rst_ni      ( rst_ni                   ),
