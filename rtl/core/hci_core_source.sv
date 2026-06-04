@@ -225,7 +225,7 @@ module hci_core_source
       outstanding_gnt_q <= outstanding_gnt_d;
   end
 
-  assign tcdm.r_ready = stream.ready;
+  assign tcdm.r_ready = 1'b1;
   assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & (stream.ready | (~stream_valid_q & ~outstanding_gnt_q)) : '0;
   if(ADDR_OFFSET == 1)
     assign tcdm.add     = (cs != STREAMER_IDLE) ? addr_pop.data[31:0] : '0;
