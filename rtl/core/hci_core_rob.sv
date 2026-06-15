@@ -1,5 +1,5 @@
 /*
- * hci_outstanding_rob.sv
+ * hci_core_rob.sv
  * Marco Bertuletti <mbertuletti@iis.ee.ethz.ch>
  *
  * Copyright (C) 2017-2023 ETH Zurich, University of Bologna
@@ -14,7 +14,7 @@
  */
 
 /**
- * The **HCI-Outstanding reorder buffer** issues requests with up to ROB_NW
+ * The **HCI-Core reorder buffer** issues requests with up to ROB_NW
  * unique user-IDs. The responses can be retired out-of-order, by comparing
  * the incoming response user-ID with the issued IDs. As the user-ID is
  * implemented as user signal, any module coming after (i.e., nearer to memory
@@ -22,8 +22,8 @@
  * it must return them identical in the response.
  *
  * .. tabularcolumns:: |l|l|J|
- * .. _hci_outstanding_rob_params:
- * .. table:: **hci_outstanding_mux** design-time parameters.
+ * .. _hci_core_rob_params:
+ * .. table:: **hci_core_rob** design-time parameters.
  *
  *   +------------+-------------+-----------------------------------------------+
  *   | **Name**   | **Default** | **Description**                               |
@@ -35,7 +35,7 @@
 
 `include "hci_helpers.svh"
 
-module hci_outstanding_rob
+module hci_core_rob
   import hwpe_stream_package::*;
   import hci_package::*;
   import cf_math_pkg::idx_width;
@@ -48,8 +48,8 @@ module hci_outstanding_rob
   input  logic  clk_i,
   input  logic  rst_ni,
 
-  hci_outstanding_intf.target    in,
-  hci_outstanding_intf.initiator out
+  hci_core_intf.target    in,
+  hci_core_intf.initiator out
 );
 
   localparam int unsigned DW  = `HCI_SIZE_GET_DW(out);
@@ -57,6 +57,8 @@ module hci_outstanding_rob
   localparam int unsigned AW  = `HCI_SIZE_GET_AW(out);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(out);
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(out);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(out);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(out);
 
   // Pointers to memory queue and total words counter
   logic [ROB_IW-1:0] read_pointer_p, read_pointer_q;
@@ -72,39 +74,55 @@ module hci_outstanding_rob
   // Memory queue
   logic [ROB_NW-1:0][IW-1:0] mem_req_id_p, mem_req_id_q;
   logic [ROB_NW-1:0][DW-1:0] mem_resp_data_p, mem_resp_data_q;
+  logic [ROB_NW-1:0][EW-1:0] mem_resp_ecc_p, mem_resp_ecc_q;
   logic [ROB_NW-1:0] mem_resp_opc_p, mem_resp_opc_q;
   logic [ROB_NW-1:0] mem_resp_valid_p, mem_resp_valid_q;
 
   // HCI Port Left assignment
-  assign out.req_add     = in.req_add;
-  assign out.req_wen     = in.req_wen;
-  assign out.req_be      = in.req_be;
-  assign out.req_data    = in.req_data;
+  assign out.add     = in.add;
+  assign out.wen     = in.wen;
+  assign out.be      = in.be;
+  assign out.data    = in.data;
+  assign out.ecc     = in.ecc;
 
   // Assign unique ROB ID to the user field
-  assign out.req_user    = write_pointer_q;
-  assign out.req_id      = in.req_id;
-  assign out.req_valid   = !full & in.req_valid;
-  assign in.req_ready    = !full & out.req_ready;
+  assign out.user    = write_pointer_q;
+  assign out.id      = in.id;
+  assign out.req     = !full & in.req;
+  assign in.gnt      = !full & out.gnt;
 
   // HCI Port Right assignment
-  assign in.resp_data    = mem_resp_data_q[read_pointer_q];
-  assign in.resp_opc     = mem_resp_opc_q[read_pointer_q];
-  assign in.resp_user    = '0;
+  assign in.r_data    = mem_resp_data_q[read_pointer_q];
+  assign in.r_opc     = mem_resp_opc_q[read_pointer_q];
+  assign in.r_user    = '0;
+  assign in.r_ecc     = mem_resp_ecc_q[read_pointer_q];
 
   // ROB ID of the incoming response
-  assign in.resp_id      = mem_req_id_q[read_pointer_q];
-  assign in.resp_valid   = mem_resp_valid_q[read_pointer_q];
-  assign out.resp_ready  = !empty;
+  assign in.r_id      = mem_req_id_q[read_pointer_q];
+  assign in.r_valid   = mem_resp_valid_q[read_pointer_q];
+  assign out.r_ready  = !empty;
+
+  if (EHW > 0) begin : ecc_handshake_gen
+    assign out.ereq     = '{default: {out.req}};
+    assign in.egnt      = '{default: {in.gnt}};
+    assign in.r_evalid  = '{default: {in.r_valid}};
+    assign out.r_eready = '{default: {out.r_ready}};
+  end
+  else begin : no_ecc_handshake_gen
+    assign out.ereq     = '0;
+    assign in.egnt      = '1;
+    assign in.r_evalid  = '0;
+    assign out.r_eready = '1;
+  end
 
   // Assign status flags
   assign full  = (status_cnt_q == ROB_NW-1);
   assign empty = (status_cnt_q == 'd0);
 
   // Assign buffer commands
-  assign request_id = in.req_valid & in.req_ready;
-  assign pop 		    = mem_resp_valid_q[read_pointer_q] & in.resp_ready;
-  assign push 		  = out.resp_valid & out.resp_ready;
+  assign request_id = in.req & in.gnt;
+  assign pop 		    = mem_resp_valid_q[read_pointer_q] & in.r_ready;
+  assign push 		  = out.r_valid & out.r_ready;
 
   // Read and Write logic
   always_comb begin: read_write_comb
@@ -117,13 +135,14 @@ module hci_outstanding_rob
     // Maintain response queue & initiator_id queue
     mem_req_id_p     = mem_req_id_q;
     mem_resp_data_p  = mem_resp_data_q;
+    mem_resp_ecc_p   = mem_resp_ecc_q;
     mem_resp_opc_p   = mem_resp_opc_q;
     mem_resp_valid_p = mem_resp_valid_q;
 
     // Request an ID.
     if (request_id) begin
       // Store in the initiator_id queue
-      mem_req_id_p[write_pointer_q] = in.req_id;
+      mem_req_id_p[write_pointer_q] = in.id;
 
       // Increment the write pointer
       if (write_pointer_q == ROB_NW-1) begin
@@ -139,16 +158,18 @@ module hci_outstanding_rob
 
     // Push data
     if (push) begin
-      resp_write_id = out.resp_user;
-      mem_resp_data_p  [resp_write_id] = out.resp_data;
-      mem_resp_opc_p   [resp_write_id] = out.resp_opc;
-      mem_resp_valid_p [resp_write_id] = out.resp_valid;
+      resp_write_id = out.r_user;
+      mem_resp_data_p  [resp_write_id] = out.r_data;
+      mem_resp_ecc_p   [resp_write_id] = out.r_ecc;
+      mem_resp_opc_p   [resp_write_id] = out.r_opc;
+      mem_resp_valid_p [resp_write_id] = out.r_valid;
     end
 
     // Pop data
     if (pop) begin
       // Word was consumed
       mem_req_id_p[read_pointer_q] = 1'b0;
+      mem_resp_ecc_p[read_pointer_q] = '0;
       mem_resp_valid_p[read_pointer_q] = 1'b0;
 
       // Increment the read pointer
@@ -178,6 +199,7 @@ module hci_outstanding_rob
       // Memory queues
 	    mem_req_id_q     <= '0;
 	    mem_resp_data_q  <= '0;
+	    mem_resp_ecc_q   <= '0;
 	    mem_resp_opc_q   <= '0;
 	    mem_resp_valid_q <= '0;
     end
@@ -188,6 +210,7 @@ module hci_outstanding_rob
       // Memory queues
 	    mem_req_id_q     <= mem_req_id_p;
 	    mem_resp_data_q  <= mem_resp_data_p;
+	    mem_resp_ecc_q   <= mem_resp_ecc_p;
 	    mem_resp_opc_q   <= mem_resp_opc_p;
 	    mem_resp_valid_q <= mem_resp_valid_p;
     end
@@ -216,10 +239,10 @@ module hci_outstanding_rob
   initial
     iw_out :  assert(out.UW  >= $clog2(ROB_NW));
 
-  `HCI_OUTSTANDING_SIZE_CHECK_ASSERTS(out);
+  `HCI_VARIABLELATENCY_SIZE_CHECK_ASSERTS(out);
 
 `endif
 `endif
 `endif;
 
-endmodule: hci_outstanding_rob
+endmodule: hci_core_rob

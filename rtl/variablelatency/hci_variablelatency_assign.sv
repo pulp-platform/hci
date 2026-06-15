@@ -1,5 +1,5 @@
 /*
- * hci_outstanding_assign.sv
+ * hci_variablelatency_assign.sv
  * Marco Bertuletti <mbertuletti@iis.ee.ethz.ch>
  *
  * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
@@ -14,16 +14,16 @@
  */
 
 /**
- * The **hci_outstanding_assign** module implements a simple assignment for
- * HCI-Outstanding streams.
+ * The **hci_variablelatency_assign** module implements a simple assignment for
+ * HCI-variablelatency streams.
  *
  */
 
-module hci_outstanding_assign 
+module hci_variablelatency_assign
   import hwpe_stream_package::*;
 (
-  hci_outstanding_intf.target    tcdm_target,
-  hci_outstanding_intf.initiator tcdm_initiator
+  hci_variablelatency_intf.target    tcdm_target,
+  hci_variablelatency_intf.initiator tcdm_initiator
 );
 
   assign tcdm_initiator.req_add     = tcdm_target.req_add;
@@ -42,4 +42,4 @@ module hci_outstanding_assign
   assign tcdm_target.resp_valid    = tcdm_initiator.resp_valid;
   assign tcdm_initiator.resp_ready = tcdm_target.resp_ready;
 
-endmodule // hci_outstanding_assign
+endmodule // hci_variablelatency_assign

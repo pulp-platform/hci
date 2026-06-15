@@ -223,7 +223,7 @@ module hci_core_source
     );
     assign addr_misaligned_push.data  = {6'b0, addr_pop.data[1:0]};
     assign addr_misaligned_push.strb  = '1;
-    assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
+    assign addr_misaligned_push.valid = enable_i & tcdm.gnt; // BEWARE: considered always ready!!!
     assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & stream.ready;
     assign addr_misaligned_q = addr_misaligned_pop.data[1:0];
 
@@ -245,7 +245,7 @@ module hci_core_source
   end
 
   assign tcdm.r_ready = stream.ready;
-  assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready : '0;
+  assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
   assign tcdm.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
   assign tcdm.wen     = 1'b1;
   assign tcdm.be      = 4'h0;
@@ -256,7 +256,7 @@ module hci_core_source
   assign stream.strb  = '1;
   assign stream.data  = stream_data_aligned;
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
-  assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready & tcdm.gnt : 1'b0;
+  assign addr_pop.ready = (cs != STREAMER_IDLE) ? tcdm.gnt : 1'b0;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin

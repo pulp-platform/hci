@@ -208,7 +208,7 @@ interface hci_core_intf (
 
 endinterface // hci_core_intf
 
-interface hci_outstanding_intf (
+interface hci_variablelatency_intf (
   input logic clk
 );
 
@@ -291,7 +291,7 @@ interface hci_outstanding_intf (
     input resp_ready
   );
 
-endinterface // hci_outstanding_intf
+endinterface // hci_variablelatency_intf
 
 `ifdef BUILD_DEPRECATED
 interface hci_mem_intf (
