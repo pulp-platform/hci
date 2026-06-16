@@ -22,26 +22,29 @@
 module hci_variablelatency_tocore
   import hwpe_stream_package::*;
 (
-  hci_variablelatency_intf.initiator tcdm_target,
-  hci_core_intf.initiator        tcdm_initiator
+  hci_core_intf.target               in,
+  hci_variablelatency_intf.initiator out
 );
 
-  assign tcdm_target.req_add     = tcdm_initiator.add;
-  assign tcdm_target.req_wen     = tcdm_initiator.wen;
-  assign tcdm_target.req_data    = tcdm_initiator.data;
-  assign tcdm_target.req_be      = tcdm_initiator.be;
-  assign tcdm_target.req_user    = tcdm_initiator.user;
-  assign tcdm_target.req_id      = tcdm_initiator.id;
-  assign tcdm_target.req_valid   = tcdm_initiator.req;
-  assign tcdm_initiator.gnt      = tcdm_target.req_valid & tcdm_target.req_ready;
+  assign out.req_add     = in.add;
+  assign out.req_wen     = in.wen;
+  assign out.req_data    = in.data;
+  assign out.req_be      = in.be;
+  assign out.req_user    = in.user;
+  assign out.req_id      = in.id;
+  assign out.req_valid   = in.req;
+  assign in.gnt          = out.req_valid & out.req_ready;
+  // Mirror gnt on ECC (no ECC in hci-variablelatency)
+  assign in.egnt         = out.req_valid & out.req_ready;
   
-  assign tcdm_initiator.r_data   = tcdm_target.resp_data;
-  assign tcdm_initiator.r_user   = tcdm_target.resp_user;
-  assign tcdm_initiator.r_id     = tcdm_target.resp_id;
-  assign tcdm_initiator.r_opc    = tcdm_target.resp_opc;
-  assign tcdm_initiator.r_ecc    = '0;
-  assign tcdm_initiator.r_evalid = 1'b0;
-  assign tcdm_initiator.r_valid  = tcdm_target.resp_valid;
-  assign tcdm_target.resp_ready  = tcdm_initiator.r_ready;
+  assign in.r_data       = out.resp_data;
+  assign in.r_user       = out.resp_user;
+  assign in.r_id         = out.resp_id;
+  assign in.r_opc        = out.resp_opc;
+  assign in.r_ecc        = '0;
+  assign in.r_valid      = out.resp_valid;
+  // Mirror r_valid on ECC (no ECC in hci-variablelatency)
+  assign in.r_evalid     = out.resp_valid;
+  assign out.resp_ready  = in.r_ready;
 
 endmodule // hci_variablelatency_tocore
