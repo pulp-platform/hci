@@ -46,6 +46,8 @@
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *PASSTHROUGH_FIFO*    | 0           | If set to 1, the address FIFO will be capable of fall-through operation (i.e., skipping the FIFO latency entirely).      |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *RESP_FIFO_DEPTH*     | 0           | If > 0, responses are buffered through a HWPE-Stream FIFO of this depth before reaching the output stream.               |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *CHUNK_SIZE*          | 32          | Width in bits of each chunk of data to protect individually with ECC.                                                    |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *
@@ -78,6 +80,7 @@ module hci_ecc_source
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES = 1,
   parameter int unsigned PASSTHROUGH_FIFO = 0,
+  parameter int unsigned RESP_FIFO_DEPTH = 0,
   parameter int unsigned CHUNK_SIZE  = 32,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   parameter int unsigned DW  = `HCI_SIZE_GET_DW(tcdm),
@@ -138,6 +141,7 @@ module hci_ecc_source
     .ADDR_MIS_DEPTH      ( ADDR_MIS_DEPTH ),
     .MISALIGNED_ACCESSES ( MISALIGNED_ACCESSES ),
     .PASSTHROUGH_FIFO    ( PASSTHROUGH_FIFO ),
+    .RESP_FIFO_DEPTH     ( RESP_FIFO_DEPTH ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(virt_tcdm) )
   ) i_hci_core_source (
     .clk_i       ( clk_i       ),
