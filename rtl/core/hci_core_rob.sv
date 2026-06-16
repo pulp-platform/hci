@@ -63,7 +63,7 @@ module hci_core_rob
   // Pointers to memory queue and total words counter
   logic [ROB_IW-1:0] read_pointer_p, read_pointer_q;
   logic [ROB_IW-1:0] write_pointer_p, write_pointer_q, resp_write_id;
-  logic [ROB_IW-1:0] status_cnt_p, status_cnt_q;
+  logic [ROB_IW:0] status_cnt_p, status_cnt_q;
 
   // Status flags
   logic full, empty;
@@ -116,7 +116,7 @@ module hci_core_rob
   end
 
   // Assign status flags
-  assign full  = (status_cnt_q == ROB_NW-1);
+  assign full  = (status_cnt_q == ROB_NW);
   assign empty = (status_cnt_q == 'd0);
 
   // Assign buffer commands
@@ -238,8 +238,12 @@ module hci_core_rob
     uw :  assert(in.UW  == out.UW);
   initial
     iw_out :  assert(out.UW  >= $clog2(ROB_NW));
+  initial
+    ew :  assert(in.EW  == out.EW);
+  initial
+    ehw : assert(in.EHW == out.EHW);
 
-  `HCI_VARIABLELATENCY_SIZE_CHECK_ASSERTS(out);
+  `HCI_SIZE_CHECK_ASSERTS(out);
 
 `endif
 `endif
