@@ -56,6 +56,8 @@
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *PASSTHROUGH_FIFO*  | 0           | If set to 1, the address FIFO will be capable of fall-through operation (i.e., skipping the FIFO latency entirely).      |
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *RESP_FIFO_DEPTH*   | 0           | If > 0, responses are buffered through a HWPE-Stream FIFO of this depth before reaching the output stream.               |
+ *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_source_ctrl:
@@ -97,6 +99,7 @@ module hci_core_source
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES = 1,
   parameter int unsigned PASSTHROUGH_FIFO = 0,
+  parameter int unsigned RESP_FIFO_DEPTH = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   parameter bit [2:0] DIM_ENABLE_1H = 3'b011 // Number of dimensions enabled in the address generator
 )
@@ -224,7 +227,7 @@ module hci_core_source
     assign addr_misaligned_push.data  = {6'b0, addr_pop.data[1:0]};
     assign addr_misaligned_push.strb  = '1;
     assign addr_misaligned_push.valid = enable_i & tcdm.gnt; // BEWARE: considered always ready!!!
-    assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & stream.ready;
+    assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & resp_push.ready;
     assign addr_misaligned_q = addr_misaligned_pop.data[1:0];
 
     hwpe_stream_fifo #(
@@ -244,19 +247,57 @@ module hci_core_source
     assign stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
   end
 
-  assign tcdm.r_ready = stream.ready;
-  assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
-  assign tcdm.add     = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
-  assign tcdm.wen     = 1'b1;
-  assign tcdm.be      = 4'h0;
-  assign tcdm.data    = '0;
-  assign tcdm.user    = '0;
-  assign tcdm.id      = '0;
-  assign tcdm.ecc     = '0;
-  assign stream.strb  = '1;
-  assign stream.data  = stream_data_aligned;
-  assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
-  assign addr_pop.ready = (cs != STREAMER_IDLE) ? tcdm.gnt : 1'b0;
+  // Response FIFO
+  hwpe_stream_intf_stream #(
+    .DATA_WIDTH ( DATA_WIDTH )
+  ) resp_push (
+    .clk ( clk_i )
+  );
+  hwpe_stream_intf_stream #(
+    .DATA_WIDTH ( DATA_WIDTH )
+  ) resp_pop (
+    .clk ( clk_i )
+  );
+
+  assign tcdm.req        = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
+  assign tcdm.add        = (cs != STREAMER_IDLE) ? {addr_pop.data[31:2],2'b0}    : '0;
+  assign tcdm.wen        = 1'b1;
+  assign tcdm.be         = 4'h0;
+  assign tcdm.data       = '0;
+  assign tcdm.user       = '0;
+  assign tcdm.id         = '0;
+  assign tcdm.ecc        = '0;
+  assign addr_pop.ready  = (cs != STREAMER_IDLE) ? tcdm.gnt : 1'b0;
+  assign resp_push.data  = stream_data_aligned;
+  assign resp_push.strb  = '1;
+  assign resp_push.valid = enable_i & (tcdm.r_valid | stream_valid_q);
+  assign tcdm.r_ready    = resp_push.ready;
+
+  generate
+    if (RESP_FIFO_DEPTH > 0) begin : gen_resp_fifo
+      hwpe_stream_fifo #(
+        .DATA_WIDTH ( DATA_WIDTH     ),
+        .FIFO_DEPTH ( RESP_FIFO_DEPTH )
+      ) i_resp_fifo (
+        .clk_i   ( clk_i     ),
+        .rst_ni  ( rst_ni    ),
+        .clear_i ( clear_i   ),
+        .flags_o (           ),
+        .push_i  ( resp_push ),
+        .pop_o   ( resp_pop  )
+      );
+    end else begin : gen_no_resp_fifo
+      hwpe_stream_assign i_resp_assign (
+        .push_i ( resp_push ),
+        .pop_o  ( resp_pop  )
+      );
+    end
+  endgenerate
+
+  assign stream.data    = resp_pop.data;
+  assign stream.valid   = resp_pop.valid;
+  assign stream.strb    = resp_pop.strb;
+  assign resp_pop.ready = stream.ready;
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin
@@ -265,11 +306,11 @@ module hci_core_source
     else if(clear_i)
       stream_valid_q <= 1'b0;
     else if(enable_i) begin
-      if(tcdm.r_valid & stream.ready)
+      if(tcdm.r_valid & resp_push.ready)
         stream_valid_q <= 1'b0;
       else if(tcdm.r_valid)
         stream_valid_q <= 1'b1;
-      else if(stream_valid_q & stream.ready)
+      else if(stream_valid_q & resp_push.ready)
         stream_valid_q <= 1'b0;
     end
   end
