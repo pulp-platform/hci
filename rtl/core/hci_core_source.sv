@@ -263,7 +263,7 @@ module hci_core_source
     .clk ( clk_i )
   );
 
-  assign tcdm.req        = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
+  assign tcdm.req        = (cs != STREAMER_IDLE) ? (addr_pop.valid & resp_push.ready) : '0;
   if(ADDR_OFFSET == 1)
     assign tcdm.add        = (cs != STREAMER_IDLE) ? addr_pop.data[31:0] : '0;
   else
@@ -278,7 +278,7 @@ module hci_core_source
   assign resp_push.data  = stream_data_aligned;
   assign resp_push.strb  = '1;
   assign resp_push.valid = enable_i & (tcdm.r_valid | stream_valid_q);
-  assign tcdm.r_ready    = resp_push.ready;
+  assign tcdm.r_ready    = 1'b1;
 
   generate
     if (RESP_FIFO_DEPTH > 0) begin : gen_resp_fifo
