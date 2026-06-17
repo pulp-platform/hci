@@ -37,7 +37,7 @@ packages:
       Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
   hwpe-stream:
-    revision: becd46385d3cc873b70446216247e62b83510620
+    revision: 0eeb3e1140641aff6cd2e059ef114372cf35b537
     version: null
     source:
       Git: https://github.com/pulp-platform/hwpe-stream.git
