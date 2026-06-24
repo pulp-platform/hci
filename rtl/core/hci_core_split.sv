@@ -250,7 +250,7 @@ module hci_core_split
       assign tcdm_initiator[ii].ecc     = tcdm_fifo[ii].ecc;
       assign tcdm_initiator[ii].r_ready = tcdm_fifo[ii].r_ready;
       assign tcdm_initiator[ii].ereq    = tcdm_initiator_ereq[ii];
-      assign tcdm_initiator[ii].r_ready = tcdm_initiator_r_eready[ii];
+      assign tcdm_initiator[ii].r_eready = tcdm_initiator_r_eready[ii];
 
       assign tcdm_initiator_req[ii] = tcdm_initiator[ii].req;
       assign tcdm_initiator_r_ready[ii] = tcdm_initiator[ii].r_ready;
