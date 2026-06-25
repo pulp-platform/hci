@@ -185,7 +185,7 @@ module hci_core_sink
   assign bank_offset = addr_pop.data[ELEMENT_INDEX_WIDTH-1:0]; 
 
   generate
-    if (MISALIGNED_ACCESSES == 1) begin: missaligned_access_gen
+    if (MISALIGNED_ACCESSES == 1) begin: misaligned_access_gen
       for (genvar offs = 0; offs < ELEMENTS_PER_BANK; offs++) begin : aligned_stream_gen
         if (offs > 0) begin 
           assign stream_data_aligned_array[offs][offs*ELEMENT_WIDTH-1:0] = '0;
