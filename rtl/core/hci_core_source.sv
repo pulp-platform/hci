@@ -63,7 +63,7 @@
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *ELEMENTS_PER_BANK*   | 4           | Number of elements stored in one memory bank; sets the bank data width.                                                  |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | *DIM_ENABLE_1H*       | 4'b011      | Bit-mask selecting how many address-generator dimensions are enabled (see **hwpe_stream_addressgen_v4**).                |
+ *   | *DIM_ENABLE_1H*       | 4'b0011     | Bit-mask selecting how many address-generator dimensions are enabled (see **hwpe_stream_addressgen_v4**).                |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
@@ -111,7 +111,7 @@ module hci_core_source
   parameter int unsigned ELEMENTS_PER_BANK    = 4,  // number of elements in one memory bank
   localparam int unsigned BANK_DATA_WIDTH     = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
   localparam int unsigned ADDR_OFFSET         = ELEMENTS_PER_BANK == 1 ? 1 : $clog2(ELEMENTS_PER_BANK),
-  parameter bit [3:0] DIM_ENABLE_1H           = 4'b011, // Number of dimensions enabled in the address generator
+  parameter bit [3:0] DIM_ENABLE_1H           = 4'b0011, // Number of dimensions enabled in the address generator
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
