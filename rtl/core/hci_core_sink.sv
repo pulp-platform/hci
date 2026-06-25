@@ -21,33 +21,40 @@
  * fundamental IPs.
  *
  * Fundamentally, a sink streamer acts as a specialized DMA engine acting
- * out a predefined pattern from an **hwpe_stream_addressgen_v3** to perform
+ * out a predefined pattern from an **hwpe_stream_addressgen_v4** to perform
  * a burst of stores via a HCI-Core interface, consuming a HWPE-Stream data
  * stream into the HCI-Core `data` field.
  * The sink streamer is insensitive to memory latency.
  * This is due to the nature of store streams, which are unidirectional
  * (i.e. `addr` and `data` move in the same direction).
  *
- * Misaligned accesses are supported by widening the HCI-Core data width of 32
- * bits compared to the HWPE-Stream that gets consumed by the streamer.
- * The stream is shifted according to the address alignment and invalid bytes
- * are disabled by unsetting their `strb`. This feature can be deactivated by
- * unsetting the `MISALIGNED_ACCESS` parameter; in this case, the sink will
- * only work correctly if all data is aligned to a word boundary.
+ * Misaligned accesses are supported by widening the HCI-Core data width by one
+ * memory-bank data width (`BANK_DATA_WIDTH = ELEMENT_WIDTH * ELEMENTS_PER_BANK`,
+ * 32 bits by default) compared to the HWPE-Stream that gets consumed by the
+ * streamer. The stream is shifted according to the address alignment and invalid
+ * bytes are disabled by unsetting their `strb`. This feature can be deactivated by
+ * unsetting the `MISALIGNED_ACCESSES` parameter; in this case, the sink will
+ * only work correctly if all data is aligned to a bank-word boundary.
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_sink_params:
  * .. table:: **hci_core_sink** design-time parameters.
  *
- *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
- *   | **Name**            | **Default** | **Description**                                                                                                        |
- *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
- *   | *TCDM_FIFO_DEPTH*   | 2           | If >0, the module produces a HWPE-MemDecoupled interface and includes a TCDM FIFO of this depth.                       |
- *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
- *   | *TRANS_CNT*         | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.   |
- *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
- *   | *MISALIGNED_ACCESS* | 1           | If set to 0, the sink will not support non-word-aligned HWPE-Mem accesses.                                             |
- *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | **Name**              | **Default** | **Description**                                                                                                        |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *TCDM_FIFO_DEPTH*     | 0           | If >0, the module produces a HWPE-MemDecoupled interface and includes a TCDM FIFO of this depth.                       |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *TRANS_CNT*           | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.   |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *MISALIGNED_ACCESSES* | 1           | If set to 0, the sink will not support non-bank-word-aligned HWPE-Mem accesses.                                        |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *ELEMENT_WIDTH*       | 8           | Bit-width of a single data element; with `ELEMENTS_PER_BANK` it sets the bank data width.                              |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *ELEMENTS_PER_BANK*   | 4           | Number of elements stored in one memory bank; sets the bank data width.                                                |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *DIM_ENABLE_1H*       | 4'b1111     | Bit-mask selecting how many address-generator dimensions are enabled (see **hwpe_stream_addressgen_v4**).              |
+ *   +-----------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_sink_ctrl:
@@ -58,22 +65,24 @@
  *   +-------------------+------------------------+----------------------------------------------------------------------------+
  *   | *req_start*       | `logic`                | When 1, the sink streamer operation is started if it is ready.             |
  *   +-------------------+------------------------+----------------------------------------------------------------------------+
- *   | *addressgen_ctrl* | `ctrl_addressgen_v3_t` | Configuration of the address generator (see **hwpe_stream_addresgen_v3**). |
+ *   | *addressgen_ctrl* | `ctrl_addressgen_v4_t` | Configuration of the address generator (see **hwpe_stream_addressgen_v4**).|
  *   +-------------------+------------------------+----------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_sink_flags:
  * .. table:: **hci_core_sink** output flags.
  *
- *   +--------------------+------------------------+-----------------------------------------------------------------------------------------------+
- *   | **Name**           | **Type**               | **Description**                                                                               |
- *   +--------------------+------------------------+-----------------------------------------------------------------------------------------------+
- *   | *ready_start*      | `logic`                | 1 when the sink streamer is ready to start operation, from the first IDLE state cycle on.     |
- *   +--------------------+------------------------+-----------------------------------------------------------------------------------------------+
- *   | *done*             | `logic`                | 1 for one cycle when the streamer ends operation, in the cycle before it goes to IDLE state . |
- *   +--------------------+------------------------+-----------------------------------------------------------------------------------------------+
- *   | *addressgen_flags* | `flags_addressgen_v3_t`| Address generator flags (see **hwpe_stream_addresgen_v3**).                                   |
- *   +--------------------+------------------------+-----------------------------------------------------------------------------------------------+
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------+
+ *   | **Name**             | **Type**               | **Description**                                                                               |
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------+
+ *   | *ready_start*        | `logic`                | 1 when the sink streamer is ready to start operation, from the first IDLE state cycle on.     |
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------+
+ *   | *done*               | `logic`                | 1 for one cycle when the streamer ends operation, in the cycle before it goes to IDLE state . |
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------+
+ *   | *no_valid_transfers* | `logic`                | 1 while no store is in flight; used to detect an empty/idle streamer run.  |
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------+
+ *   | *addressgen_flags*   | `flags_addressgen_v4_t`| Address generator flags (see **hwpe_stream_addressgen_v4**).                                  |
+ *   +----------------------+------------------------+-----------------------------------------------------------------------------------------------+
  *
  */
 `include "hci_helpers.svh"
