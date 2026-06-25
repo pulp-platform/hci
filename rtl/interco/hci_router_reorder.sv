@@ -16,9 +16,9 @@
 /**
  * The **hci_router_reorder** module is the actual routing engine wrapped by
  * **hci_router** (see :ref:`hci_router`). It accepts up to `NB_IN_CHAN`
- * 32-bit `in` HCI-Core channels and distributes their requests across
- * `NB_OUT_CHAN` `out` channels (typically one per memory bank) according to
- * the external `order_i` index, with no arbitration: per cycle, each `in`
+ * `BANK_WORD_WIDTH`-bit `in` HCI-Core channels and distributes their requests
+ * across `NB_OUT_CHAN` `out` channels (typically one per memory bank) according
+ * to the external `order_i` index, with no arbitration: per cycle, each `in`
  * channel is routed to a distinct `out` channel determined by
  * `(order_i + i) mod NB_OUT_CHAN`.
  *
@@ -29,8 +29,9 @@
  * are demultiplexed back to the originating `in` channel via instances of
  * `addr_dec_resp_mux` (one per `in` channel).
  *
- * When `USE_ECC` is set, the 7 Hsiao SEC-DED check bits of the `ecc`
- * side-channel are routed alongside the data; otherwise they are tied off.
+ * When `USE_ECC` is set, the `$clog2(BANK_WORD_WIDTH)+2` Hsiao SEC-DED check
+ * bits of the `ecc` side-channel are routed alongside the data; otherwise they
+ * are tied off.
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_router_reorder_params:
@@ -39,13 +40,17 @@
  *   +------------------------+-------------+------------------------------------------------------------------------------+
  *   | **Name**               | **Default** | **Description**                                                              |
  *   +------------------------+-------------+------------------------------------------------------------------------------+
- *   | *NB_IN_CHAN*           | 2           | Number of input HCI-Core channels (typically `DWH/32`).                      |
+ *   | *NB_IN_CHAN*           | 2           | Number of input HCI-Core channels (typically `DWH/BANK_WORD_WIDTH`).         |
  *   +------------------------+-------------+------------------------------------------------------------------------------+
  *   | *NB_OUT_CHAN*          | 2           | Number of output HCI-Core channels (one per memory bank).                    |
  *   +------------------------+-------------+------------------------------------------------------------------------------+
+ *   | *BANK_WORD_WIDTH*      | 32          | Bit-width of one bank word (data width of each `in`/`out` channel).          |
+ *   +------------------------+-------------+------------------------------------------------------------------------------+
+ *   | *BANK_ELEM_WIDTH*      | 8           | Bit-width of one element within a bank word (`be` strobe granularity).       |
+ *   +------------------------+-------------+------------------------------------------------------------------------------+
  *   | *FILTER_WRITE_R_VALID* | 0           | If 1, suppress the `r_valid` pulse for write transactions on the response.   |
  *   +------------------------+-------------+------------------------------------------------------------------------------+
- *   | *USE_ECC*              | 0           | If 1, propagate the 7-bit ECC check bits alongside data.                     |
+ *   | *USE_ECC*              | 0           | If 1, propagate the ECC check bits alongside data.                           |
  *   +------------------------+-------------+------------------------------------------------------------------------------+
  *
  */
@@ -54,6 +59,8 @@ module hci_router_reorder
 #(
   parameter int unsigned NB_IN_CHAN  = 2,
   parameter int unsigned NB_OUT_CHAN = 2,
+  parameter int unsigned BANK_WORD_WIDTH = 32,
+  parameter int unsigned BANK_ELEM_WIDTH = 8,
   parameter int unsigned FILTER_WRITE_R_VALID = 0,
   parameter bit          USE_ECC = 0
 )
@@ -69,33 +76,34 @@ module hci_router_reorder
 
 );
 
-  // Hsiao SEC-DED ECC needs $clog2(DW)+2 check bits
-  // At this level only data are ECC-protected and with DW fixed at 32 that is 5+2 = 7
-  // When USE_ECC == 1 those 7 bits are appended to the 32-bit data word
-  localparam int unsigned EW              = (USE_ECC) ?  7     : 1;
-  localparam int unsigned RESP_DATA_WIDTH = (USE_ECC) ? (32+7) : 32;
+  // Width of the HCI byte-enable field
+  localparam int unsigned BE_WIDTH = BANK_WORD_WIDTH / BANK_ELEM_WIDTH;
+  // Hsiao SEC-DED ECC needs $clog2(DW)+2 check bits.
+  // When USE_ECC == 1 those bits are appended to the BANK_WORD_WIDTH-bit data word.
+  localparam int unsigned EW              = (USE_ECC) ? ($clog2(BANK_WORD_WIDTH)+2) : 1;
+  localparam int unsigned RESP_DATA_WIDTH = (USE_ECC) ? (BANK_WORD_WIDTH+EW) : BANK_WORD_WIDTH;
 
-  logic [NB_IN_CHAN-1:0]       in_req;
-  logic [NB_IN_CHAN-1:0]       in_req_q;
-  logic [NB_IN_CHAN-1:0][31:0] in_add;
-  logic [NB_IN_CHAN-1:0]       in_wen;
-  logic [NB_IN_CHAN-1:0][3:0]  in_be;
-  logic [NB_IN_CHAN-1:0][31:0] in_data;
-  logic [NB_IN_CHAN-1:0][EW-1:0] in_ecc;
-  logic [NB_IN_CHAN-1:0]       in_gnt;
-  logic [NB_IN_CHAN-1:0][31:0] in_r_data;
-  logic [NB_IN_CHAN-1:0]       in_r_valid;
-  logic [NB_IN_CHAN-1:0][EW-1:0] in_r_ecc;
-  logic [NB_OUT_CHAN-1:0]       out_req;
-  logic [NB_OUT_CHAN-1:0][31:0] out_add;
-  logic [NB_OUT_CHAN-1:0]       out_wen;
-  logic [NB_OUT_CHAN-1:0][3:0]  out_be;
-  logic [NB_OUT_CHAN-1:0][31:0] out_data;
-  logic [NB_OUT_CHAN-1:0][EW-1:0] out_ecc;
-  logic [NB_OUT_CHAN-1:0]       out_gnt;
-  logic [NB_OUT_CHAN-1:0][31:0] out_r_data;
-  logic [NB_OUT_CHAN-1:0][EW-1:0] out_r_ecc;
-  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0] ma_req;
+  logic [NB_IN_CHAN-1:0]                       in_req;
+  logic [NB_IN_CHAN-1:0]                       in_req_q;
+  logic [NB_IN_CHAN-1:0][31:0]                 in_add;
+  logic [NB_IN_CHAN-1:0]                       in_wen;
+  logic [NB_IN_CHAN-1:0][BE_WIDTH-1:0]         in_be;
+  logic [NB_IN_CHAN-1:0][BANK_WORD_WIDTH-1:0]  in_data;
+  logic [NB_IN_CHAN-1:0][EW-1:0]               in_ecc;
+  logic [NB_IN_CHAN-1:0]                       in_gnt;
+  logic [NB_IN_CHAN-1:0][BANK_WORD_WIDTH-1:0]  in_r_data;
+  logic [NB_IN_CHAN-1:0]                       in_r_valid;
+  logic [NB_IN_CHAN-1:0][EW-1:0]               in_r_ecc;
+  logic [NB_OUT_CHAN-1:0]                      out_req;
+  logic [NB_OUT_CHAN-1:0][31:0]                out_add;
+  logic [NB_OUT_CHAN-1:0]                      out_wen;
+  logic [NB_OUT_CHAN-1:0][BE_WIDTH-1:0]        out_be;
+  logic [NB_OUT_CHAN-1:0][BANK_WORD_WIDTH-1:0] out_data;
+  logic [NB_OUT_CHAN-1:0][EW-1:0]              out_ecc;
+  logic [NB_OUT_CHAN-1:0]                      out_gnt;
+  logic [NB_OUT_CHAN-1:0][BANK_WORD_WIDTH-1:0] out_r_data;
+  logic [NB_OUT_CHAN-1:0][EW-1:0]              out_r_ecc;
+  logic [NB_IN_CHAN-1:0][NB_OUT_CHAN-1:0]      ma_req;
 
   logic [NB_IN_CHAN-1:0 ][RESP_DATA_WIDTH-1:0] resp_data_o;
   logic [NB_OUT_CHAN-1:0][RESP_DATA_WIDTH-1:0] resp_data_i;

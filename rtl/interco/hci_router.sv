@@ -97,6 +97,8 @@ module hci_router
   localparam int unsigned ELEM_ADDR_OFFSET = NUM_ELEM_WORD == 1 ? 0 : $clog2(NUM_ELEM_WORD);
   localparam int unsigned LSB_COMMON_ADDR = $clog2(NB_OUT_CHAN) + ELEM_ADDR_OFFSET;
   localparam int unsigned AWC = AWM+$clog2(NB_OUT_CHAN);
+  // ECC width per bank word
+  localparam int unsigned EW_BANK = $clog2(BANK_WORD_WIDTH)+2;
 
   logic [$clog2(NB_OUT_CHAN)-1:0] bank_offset_s;
   logic virt_in_0_handshake_d, virt_in_0_handshake_q;
@@ -121,7 +123,7 @@ module hci_router
     BW:  BANK_ELEM_WIDTH,
     UW:  0,
     IW:  0,
-    EW:  7*USE_ECC,
+    EW:  EW_BANK*USE_ECC,
     EHW: EHW
   };
   hci_core_intf #(
@@ -218,10 +220,10 @@ module hci_router
       
       assign virt_in[ii].r_ready = postfifo.r_ready;
 
-      // ecc and r_ecc are each EW=7 bits wide
+      // ecc and r_ecc are each EW_BANK = $clog2(BANK_WORD_WIDTH)+2 bits wide
       if(USE_ECC) begin : ecc_assignment
-        assign virt_in[ii].ecc             = postfifo.ecc[ii*7+6:ii*7];
-        assign postfifo.r_ecc[ii*7+6:ii*7] = virt_in[ii].r_ecc;
+        assign virt_in[ii].ecc                       = postfifo.ecc[ii*EW_BANK +: EW_BANK];
+        assign postfifo.r_ecc[ii*EW_BANK +: EW_BANK] = virt_in[ii].r_ecc;
       end else
         assign virt_in[ii].ecc = postfifo.ecc;
 
@@ -292,9 +294,11 @@ module hci_router
   //Re-order the interfaces such that the port requesting the lowest bits of data
   //are located at the correct bank offset
   hci_router_reorder #(
-    .NB_IN_CHAN  ( NB_IN_CHAN  ),
-    .NB_OUT_CHAN ( NB_OUT_CHAN ),
-    .USE_ECC     ( USE_ECC     ),
+    .NB_IN_CHAN      ( NB_IN_CHAN      ),
+    .NB_OUT_CHAN     ( NB_OUT_CHAN     ),
+    .BANK_WORD_WIDTH ( BANK_WORD_WIDTH ),
+    .BANK_ELEM_WIDTH ( BANK_ELEM_WIDTH ),
+    .USE_ECC         ( USE_ECC         ),
     .FILTER_WRITE_R_VALID(FILTER_WRITE_R_VALID)
   ) i_reorder (
     .clk_i   ( clk_i         ),
