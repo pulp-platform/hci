@@ -294,7 +294,7 @@ module hci_core_source_v2
   );
   assign addr_misaligned_push.data  = {6'b0, addr_pop.data[1:0]};
   assign addr_misaligned_push.strb  = '1;
-  assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // BEWARE: considered always ready!!!
+  assign addr_misaligned_push.valid = enable_i & tcdm.req & tcdm.gnt; // check full handshake (req&gnt): hci_core_fifo plugs gnt to a ready, therefore gnt's may be asserted without a related req. BEWARE: pop considered always ready!!!
   assign addr_misaligned_pop.ready  = (tcdm.r_valid | stream_valid_q) & stream.ready;
   assign addr_misaligned_q = addr_misaligned_pop.data[1:0];
 
