@@ -279,8 +279,8 @@ module hci_core_source
   end
   else begin : gen_self_limit
     logic outstanding_d, outstanding_q;
-    assign outstanding_d  = (tcdm.req & tcdm.gnt)               ? 1'b1 :
-                            (resp_push.valid & resp_push.ready) ? 1'b0 :
+    assign outstanding_d  = (tcdm.req & tcdm.gnt) ? 1'b1 :
+                            tcdm.r_valid          ? 1'b0 :
                             outstanding_q;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
@@ -291,8 +291,8 @@ module hci_core_source
       else if(enable_i)
         outstanding_q <= outstanding_d;
     end
-    assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid &
-                          (~outstanding_q | (resp_push.valid & resp_push.ready)) : '0;
+    assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & (resp_push.ready |
+                          (~stream_valid_q & ~outstanding_q)) : '0;
     assign tcdm.r_ready = 1'b1;
   end
   if(ADDR_OFFSET == 1)
