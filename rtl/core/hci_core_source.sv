@@ -222,8 +222,8 @@ module hci_core_source
   end
   else begin : gen_self_limit
     logic outstanding_d, outstanding_q;
-    assign outstanding_d  = (tcdm.req & tcdm.gnt)          ? 1'b1 :
-                            (stream.valid & stream.ready) ? 1'b0 :
+    assign outstanding_d = (tcdm.req & tcdm.gnt)          ? 1'b1 :
+                            tcdm.r_valid                  ? 1'b0 :
                             outstanding_q;
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
@@ -234,8 +234,8 @@ module hci_core_source
       else if(enable_i)
         outstanding_q <= outstanding_d;
     end
-    assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready &
-                          (~outstanding_q | (stream.valid & stream.ready)) : '0;
+    assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & (stream.ready |
+                          (~stream_valid_q & ~outstanding_q)) : '0;
     assign tcdm.r_ready = 1'b1;
   end
   if(ADDR_OFFSET == 1)
@@ -252,7 +252,7 @@ module hci_core_source
   assign stream.data  = stream_data_aligned;
   assign stream.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
   // assign stream.valid = enable_i & tcdm.r_valid; // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
-  assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready & tcdm.gnt : 1'b0;
+  assign addr_pop.ready = (cs != STREAMER_IDLE) ? addr_pop.valid & tcdm.gnt : 1'b0;
 
   // hwpe stream is a factor of 8 hardcoded. Until this is fixed have to use this
   localparam int unsigned ADDR_OFFSET_BYTE = 8*((ADDR_OFFSET + 8 - 1) / 8);
