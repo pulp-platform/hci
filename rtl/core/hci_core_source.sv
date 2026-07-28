@@ -56,6 +56,8 @@
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *PASSTHROUGH_FIFO*  | 0           | If set to 1, the address FIFO will be capable of fall-through operation (i.e., skipping the FIFO latency entirely).      |
  *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *TCDM_R_READY_SUPPORT* | 1        | If 0, the TCDM ignores `r_ready`; the source self-limits to one outstanding load instead of backpressuring responses.    |
+ *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_source_ctrl:
@@ -97,6 +99,7 @@ module hci_core_source
   parameter int unsigned ADDR_MIS_DEPTH        = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES   = 1,
   parameter int unsigned PASSTHROUGH_FIFO      = 0,
+  parameter bit unsigned TCDM_R_READY_SUPPORT = 1,
   parameter  int unsigned ELEMENT_WIDTH        = 8,  // e.g., 8 bits per element
   parameter  int unsigned ELEMENTS_PER_BANK    = 4,  // number of elements in one memory bank
   localparam int unsigned BANK_DATA_WIDTH      = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
@@ -213,8 +216,28 @@ module hci_core_source
     assign stream_data_aligned[DATA_WIDTH-1:0] = stream_data_misaligned[DATA_WIDTH-1:0];
   end
 
-  assign tcdm.r_ready = stream.ready;
-  assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready : '0;
+  if (TCDM_R_READY_SUPPORT) begin : gen_r_ready_backpressure
+    assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready : '0;
+    assign tcdm.r_ready = stream.ready;
+  end
+  else begin : gen_self_limit
+    logic outstanding_d, outstanding_q;
+    assign outstanding_d  = (tcdm.req & tcdm.gnt)          ? 1'b1 :
+                            (stream.valid & stream.ready) ? 1'b0 :
+                            outstanding_q;
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+      if(~rst_ni)
+        outstanding_q <= 1'b0;
+      else if(clear_i)
+        outstanding_q <= 1'b0;
+      else if(enable_i)
+        outstanding_q <= outstanding_d;
+    end
+    assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & stream.ready &
+                          (~outstanding_q | (stream.valid & stream.ready)) : '0;
+    assign tcdm.r_ready = 1'b1;
+  end
   if(ADDR_OFFSET == 1)
     assign tcdm.add     = (cs != STREAMER_IDLE) ? addr_pop.data[31:0] : '0;
   else 
