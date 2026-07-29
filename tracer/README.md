@@ -22,6 +22,24 @@ cargo test                     # unit + integration tests
 Dependencies are `serde`, `serde_json`, `clap` and `owo-colors`; `--offline`
 works if the crates are already in the local registry.
 
+The crate is edition 2021 and builds with **Rust 1.81 or newer**, which is what
+`rust-version` in `Cargo.toml` declares. Two things keep it that way, and both
+matter if you touch the dependencies:
+
+* `clap` is capped below 4.6 (`~4.5`). clap 4.6 and its `clap_lex` are written in
+  edition 2024 and need Rust 1.85, which fails on an older toolchain with
+  `feature `edition2024` is required`.
+* `resolver = "3"` makes Cargo pick dependency versions compatible with the
+  declared `rust-version` rather than the newest ones. It needs Cargo 1.84+.
+
+`Cargo.lock` is committed, so a plain `cargo build` uses a known-good set
+regardless. If you bump a dependency, re-check with an old toolchain:
+
+```sh
+rustup toolchain install 1.81 --profile minimal
+cargo +1.81 test
+```
+
 ## Usage
 
 ```
