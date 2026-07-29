@@ -11,6 +11,7 @@ hci:
   files: [
      rtl/common/hci_package.sv,
      rtl/common/hci_interfaces.sv,
+     rtl/common/hci_transaction_tracer.sv,
      rtl/interco/hci_log_interconnect.sv,
      rtl/interco/hci_log_interconnect_l2.sv,
      rtl/interco/hci_new_log_interconnect.sv,

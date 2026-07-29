@@ -22,6 +22,7 @@ sources:
       # Level 1
       - rtl/common/hci_interfaces.sv
       # Level 2
+      - rtl/common/hci_transaction_tracer.sv
       - rtl/core/hci_core_assign.sv
       - rtl/core/hci_core_cmd_queue.sv
       - rtl/core/hci_core_fifo.sv

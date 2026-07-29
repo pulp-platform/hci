@@ -1,0 +1,70 @@
+{
+  "schema": "hci_transaction_response-v1",
+  "interface": {
+    "DW": 32,
+    "AW": 32,
+    "BW": 8,
+    "UW": 0,
+    "IW": 8,
+    "EW": 0
+  },
+  "path": "tb.i_tracer_a",
+  "transactions": [
+    {
+      "seq": 0,
+      "cycle": 11,
+      "r_data": "0xdead0000",
+      "r_opc": 0,
+      "r_id": "0x00"
+    },
+    {
+      "seq": 1,
+      "cycle": 13,
+      "r_data": "0xdead1111",
+      "r_opc": 0,
+      "r_id": "0x01"
+    },
+    {
+      "seq": 2,
+      "cycle": 15,
+      "r_data": "0xdead2222",
+      "r_opc": 0,
+      "r_id": "0x02"
+    },
+    {
+      "seq": 3,
+      "cycle": 17,
+      "r_data": "0xdead3333",
+      "r_opc": 0,
+      "r_id": "0x03"
+    },
+    {
+      "seq": 4,
+      "cycle": 19,
+      "r_data": "0xdead4444",
+      "r_opc": 0,
+      "r_id": "0x04"
+    },
+    {
+      "seq": 5,
+      "cycle": 21,
+      "r_data": "0xdead5555",
+      "r_opc": 0,
+      "r_id": "0x05"
+    },
+    {
+      "seq": 6,
+      "cycle": 23,
+      "r_data": "0xdead6666",
+      "r_opc": 0,
+      "r_id": "0x06"
+    },
+    {
+      "seq": 7,
+      "cycle": 25,
+      "r_data": "0xdead7777",
+      "r_opc": 0,
+      "r_id": "0x07"
+    }
+  ]
+}
