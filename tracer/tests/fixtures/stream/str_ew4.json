@@ -1,0 +1,59 @@
+{
+  "schema": "hwpe_stream_transaction-v1",
+  "interface": {
+    "DATA_WIDTH": 32,
+    "ELEMENT_WIDTH": 4,
+    "STRB_WIDTH": 8
+  },
+  "path": "tb.i_stream_ew4",
+  "transactions": [
+    {
+      "seq": 0,
+      "cycle": 20,
+      "data": "0xdead0000",
+      "strb": "0xff"
+    },
+    {
+      "seq": 1,
+      "cycle": 23,
+      "data": "0xdead1111",
+      "strb": "0xff"
+    },
+    {
+      "seq": 2,
+      "cycle": 26,
+      "data": "0xdead2222",
+      "strb": "0xff"
+    },
+    {
+      "seq": 3,
+      "cycle": 29,
+      "data": "0xdead3333",
+      "strb": "0xff"
+    },
+    {
+      "seq": 4,
+      "cycle": 32,
+      "data": "0xdead4444",
+      "strb": "0xff"
+    },
+    {
+      "seq": 5,
+      "cycle": 35,
+      "data": "0xdead5555",
+      "strb": "0xff"
+    },
+    {
+      "seq": 6,
+      "cycle": 38,
+      "data": "0xdead6666",
+      "strb": "0xff"
+    },
+    {
+      "seq": 7,
+      "cycle": 41,
+      "data": "0xdead7777",
+      "strb": "0xff"
+    }
+  ]
+}

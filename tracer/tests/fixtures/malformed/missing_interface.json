@@ -1,0 +1,78 @@
+{
+  "schema": "hci_transaction_request-v1",
+  "path": "tb.i_tracer_a",
+  "transactions": [
+    {
+      "seq": 0,
+      "cycle": 10,
+      "add": "0x1c010000",
+      "wen": 0,
+      "data": "0xdead0000",
+      "be": "0xf",
+      "id": "0x00"
+    },
+    {
+      "seq": 1,
+      "cycle": 12,
+      "add": "0x1c010004",
+      "wen": 0,
+      "data": "0xdead1111",
+      "be": "0xf",
+      "id": "0x01"
+    },
+    {
+      "seq": 2,
+      "cycle": 14,
+      "add": "0x1c010008",
+      "wen": 0,
+      "data": "0xdead2222",
+      "be": "0xf",
+      "id": "0x02"
+    },
+    {
+      "seq": 3,
+      "cycle": 16,
+      "add": "0x1c01000c",
+      "wen": 0,
+      "data": "0xdead3333",
+      "be": "0xf",
+      "id": "0x03"
+    },
+    {
+      "seq": 4,
+      "cycle": 18,
+      "add": "0x1c010010",
+      "wen": 0,
+      "data": "0xdead4444",
+      "be": "0xf",
+      "id": "0x04"
+    },
+    {
+      "seq": 5,
+      "cycle": 20,
+      "add": "0x1c010014",
+      "wen": 0,
+      "data": "0xdead5555",
+      "be": "0xf",
+      "id": "0x05"
+    },
+    {
+      "seq": 6,
+      "cycle": 22,
+      "add": "0x1c010018",
+      "wen": 0,
+      "data": "0xdead6666",
+      "be": "0xf",
+      "id": "0x06"
+    },
+    {
+      "seq": 7,
+      "cycle": 24,
+      "add": "0x1c01001c",
+      "wen": 0,
+      "data": "0xdead7777",
+      "be": "0xf",
+      "id": "0x07"
+    }
+  ]
+}

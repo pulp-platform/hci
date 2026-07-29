@@ -1,0 +1,28 @@
+== HCI request =================================================================
+  A  tb.i_tracer_a   DW=32 AW=32 BW=8 IW=8   8 transactions
+  B  tb.i_tracer_b   DW=32 AW=32 BW=8 IW=8   8 transactions
+  keys      : add, wen, be, data&be
+  ignored   : cycle, seq, user, id, ecc
+
+  =  #0002 A cycle=14 | B cycle=41   add 0x1c01_0008   wen 0 (STORE)   be 0xf   data 0xdead_2222
+  =  #0003 A cycle=16 | B cycle=43   add 0x1c01_000c   wen 0 (STORE)   be 0xf   data 0xdead_3333
+  x  #0004  value mismatch
+       A seq=4 cycle=18        B seq=4 cycle=45
+       add      0x1c01_0010                 0x1c01_0010
+       wen      0 (STORE)                   0 (STORE)
+       be       0xf                         0xf
+       data&be  0xdead_4444                 0xdead_4044
+                        ^                           ^
+  =  #0005 A cycle=20 | B cycle=47   add 0x1c01_0014   wen 0 (STORE)   be 0xf   data 0xdead_5555
+  =  #0006 A cycle=22 | B cycle=49   add 0x1c01_0018   wen 0 (STORE)   be 0xf   data 0xdead_6666
+
+  +-------------+-----------+
+  | total A / B |       8/8 |
+  +-------------+-----------+
+  | matched     |         7 |
+  | mismatched  |         1 |
+  | only in A   |         0 |
+  | only in B   |         0 |
+  +-------------+-----------+
+  RESULT  HCI request                       : DIFFERENT  (1 mismatched, 0 unmatched)
+

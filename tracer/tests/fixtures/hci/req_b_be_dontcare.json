@@ -1,0 +1,50 @@
+{
+  "schema": "hci_transaction_request-v1",
+  "interface": {
+    "DW": 32,
+    "AW": 32,
+    "BW": 8,
+    "UW": 0,
+    "IW": 8,
+    "EW": 0
+  },
+  "path": "tb.i_tracer_b",
+  "transactions": [
+    {
+      "seq": 0,
+      "cycle": 90,
+      "add": "0x1c010000",
+      "wen": 0,
+      "data": "0x00000000",
+      "be": "0x3",
+      "id": "0x00"
+    },
+    {
+      "seq": 1,
+      "cycle": 91,
+      "add": "0x1c010004",
+      "wen": 0,
+      "data": "0x00001111",
+      "be": "0x3",
+      "id": "0x01"
+    },
+    {
+      "seq": 2,
+      "cycle": 92,
+      "add": "0x1c010008",
+      "wen": 0,
+      "data": "0x00002222",
+      "be": "0x3",
+      "id": "0x02"
+    },
+    {
+      "seq": 3,
+      "cycle": 93,
+      "add": "0x1c01000c",
+      "wen": 0,
+      "data": "0x00003333",
+      "be": "0x3",
+      "id": "0x03"
+    }
+  ]
+}
