@@ -16,6 +16,7 @@ hci:
     - rtl/common/hci_package.sv
     # Level 1
     - rtl/common/hci_interfaces.sv
+    - rtl/common/hci_transaction_tracer.sv
     - rtl/core/hci_core_assign.sv
     - rtl/core/hci_core_fifo.sv
     - rtl/core/hci_core_mux_dynamic.sv

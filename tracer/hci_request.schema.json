@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/pulp-platform/hci/tracer/hci_request.schema.json",
+  "title": "HCI-Core request transaction log",
+  "description": "Log of the accepted requests (req & gnt) observed on an hci_core_intf interface by the hci_transaction_tracer module.",
+  "type": "object",
+  "required": ["schema", "interface", "transactions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "description": "Schema tag, used to detect that the right kind of log was passed to a tool.",
+      "const": "hci_transaction_request-v1"
+    },
+    "interface": { "$ref": "#/$defs/interface" },
+    "path": {
+      "description": "Hierarchical path of the tracer instance that produced this log.",
+      "type": "string"
+    },
+    "transactions": {
+      "description": "Requests in the order in which they were accepted.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/request" }
+    }
+  },
+  "$defs": {
+    "hex": {
+      "description": "Unsigned value, hexadecimal. A '0x' prefix, '_' separators and upper case are all accepted; 'x' and 'z' nibbles denote bits that were unknown in the simulator.",
+      "type": "string",
+      "pattern": "^(0[xX])?[0-9a-fA-FxXzZ_]+$"
+    },
+    "interface": {
+      "description": "Design-time parameters of the traced HCI-Core interface.",
+      "type": "object",
+      "required": ["DW", "AW", "BW"],
+      "additionalProperties": false,
+      "properties": {
+        "DW":  { "description": "Data width, in bits.", "type": "integer", "minimum": 1 },
+        "AW":  { "description": "Address width, in bits.", "type": "integer", "minimum": 1 },
+        "BW":  { "description": "Number of data bits covered by one byte-enable bit (8 by default).", "type": "integer", "minimum": 1 },
+        "UW":  { "description": "User side-channel width, in bits; 0 means the side channel is unused and is not logged.", "type": "integer", "minimum": 0 },
+        "IW":  { "description": "ID side-channel width, in bits; 0 means the side channel is unused and is not logged.", "type": "integer", "minimum": 0 },
+        "EW":  { "description": "Data ECC side-channel width, in bits; 0 means the side channel is unused and is not logged.", "type": "integer", "minimum": 0 },
+        "EHW": { "description": "Handshake ECC width, in bits. Not logged per transaction; recorded for completeness.", "type": "integer", "minimum": 0 }
+      }
+    },
+    "request": {
+      "description": "One accepted HCI-Core request.",
+      "type": "object",
+      "required": ["seq", "cycle", "add", "wen", "data", "be"],
+      "additionalProperties": true,
+      "properties": {
+        "seq": {
+          "description": "Index of this request in the log, from 0.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "cycle": {
+          "description": "Clock cycle of the req & gnt handshake, counted from the release of rst_ni. Metadata for waveform cross-reference only: it is never compared.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "add": {
+          "description": "Request address, AW bits.",
+          "$ref": "#/$defs/hex"
+        },
+        "wen": {
+          "description": "HCI write-enable polarity: 1 for a LOAD (read), 0 for a STORE (write). Note that 'write enable asserted' therefore means wen == 0, and that data/be are only meaningful in that case.",
+          "type": "integer",
+          "enum": [0, 1]
+        },
+        "data": {
+          "description": "Write data, DW bits. Meaningful only for a STORE (wen == 0).",
+          "$ref": "#/$defs/hex"
+        },
+        "be": {
+          "description": "Byte enable, DW/BW bits; bit i qualifies data bits [BW*(i+1)-1 : BW*i].",
+          "$ref": "#/$defs/hex"
+        },
+        "user": {
+          "description": "User side channel, UW bits. Present only when UW > 0.",
+          "$ref": "#/$defs/hex"
+        },
+        "id": {
+          "description": "ID side channel, IW bits. Present only when IW > 0.",
+          "$ref": "#/$defs/hex"
+        },
+        "ecc": {
+          "description": "Request data ECC side channel, EW bits. Present only when EW > 0.",
+          "$ref": "#/$defs/hex"
+        }
+      }
+    }
+  }
+}

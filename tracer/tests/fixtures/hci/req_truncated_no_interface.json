@@ -1,0 +1,3 @@
+{
+  "schema": "hci_transaction_request-v1",
+  "interface": { "DW": 32, "AW"
