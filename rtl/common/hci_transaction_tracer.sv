@@ -45,7 +45,12 @@
  *   the comparison, so their absence cannot misalign a diff;
  * - `WW` and `OW` have no counterpart in the schema and are therefore not
  *   reported; `boffs` is recorded as an extra, purely informational field,
- *   which the schema permits and `hci-tracer` ignores.
+ *   which the schema permits and `hci-tracer` ignores;
+ * - the `r_opc` and `r_user` response side channels are frequently left
+ *   entirely undriven by v1.1 producers, and hence sample as `x`. Since an `x`
+ *   in `r_opc` would not even be valid JSON, both are logged as zero whenever
+ *   they carry unknown bits; neither takes part in the comparison performed by
+ *   `hci-tracer` by default, so nothing can be hidden by the substitution.
  *
  * Each log is a single well-formed JSON document: the header and the opening of
  * the `transactions` array are emitted by an `initial` block, one object per
@@ -146,7 +151,10 @@ module hci_transaction_tracer
         seq_req, cycle_q, tcdm.add, tcdm.wen);
       record = {record, $sformatf(", \"data\": \"0x%h\", \"be\": \"0x%h\"", tcdm.data, tcdm.be)};
       if(UW > 0) begin
-        record = {record, $sformatf(", \"user\": \"0x%h\"", tcdm.user)};
+        // As on the response side, an undriven `user` is logged as zero rather
+        // than as `x` nibbles; it too is left out of the default comparison.
+        record = {record, $sformatf(", \"user\": \"0x%h\"",
+          $isunknown(tcdm.user) ? '0 : tcdm.user)};
       end
       // `boffs` is specific to this version of the interface: it is recorded
       // for information only, and ignored by `hci-tracer`.
@@ -163,10 +171,19 @@ module hci_transaction_tracer
   always @(posedge clk_i)
   begin
     if(rst_ni & enable_i & tcdm.r_valid & tcdm.lrdy & (fd_rsp != 0)) begin
+      // `r_opc` and `r_user` are commonly left undriven on a v1.1 interface and
+      // then sample as x. `%0d` renders that as a bare, unquoted `x`, which is
+      // not valid JSON, and `%h` renders it as `x` nibbles, which would be read
+      // back as unknown bits. Substituting zero for any unknown value avoids
+      // both; `hci-tracer` keys on neither field unless explicitly asked to, so
+      // the substitution cannot hide a mismatch. `r_data`, by contrast, is
+      // always logged as sampled: `x` nibbles are legal there and are meant to
+      // be seen.
       record = $sformatf("{\"seq\": %0d, \"cycle\": %0d, \"r_data\": \"0x%h\", \"r_opc\": %0d",
-        seq_rsp, cycle_q, tcdm.r_data, tcdm.r_opc);
+        seq_rsp, cycle_q, tcdm.r_data, $isunknown(tcdm.r_opc) ? 1'b0 : tcdm.r_opc);
       if(UW > 0) begin
-        record = {record, $sformatf(", \"r_user\": \"0x%h\"", tcdm.r_user)};
+        record = {record, $sformatf(", \"r_user\": \"0x%h\"",
+          $isunknown(tcdm.r_user) ? '0 : tcdm.r_user)};
       end
       $fwrite(fd_rsp, "%s\n    %s}", sep_rsp, record);
       sep_rsp = ",";
