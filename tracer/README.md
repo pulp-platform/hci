@@ -22,6 +22,24 @@ cargo test                     # unit + integration tests
 Dependencies are `serde`, `serde_json`, `clap` and `owo-colors`; `--offline`
 works if the crates are already in the local registry.
 
+The crate is edition 2021 and builds with **Rust 1.81 or newer**, which is what
+`rust-version` in `Cargo.toml` declares. Two things keep it that way, and both
+matter if you touch the dependencies:
+
+* `clap` is capped below 4.6 (`~4.5`). clap 4.6 and its `clap_lex` are written in
+  edition 2024 and need Rust 1.85, which fails on an older toolchain with
+  `feature `edition2024` is required`.
+* `resolver = "3"` makes Cargo pick dependency versions compatible with the
+  declared `rust-version` rather than the newest ones. It needs Cargo 1.84+.
+
+`Cargo.lock` is committed, so a plain `cargo build` uses a known-good set
+regardless. If you bump a dependency, re-check with an old toolchain:
+
+```sh
+rustup toolchain install 1.81 --profile minimal
+cargo +1.81 test
+```
+
 ## Usage
 
 ```
@@ -53,6 +71,13 @@ note saying how many.
 
 Never compared: `cycle` and `seq`. Off by default: `user`/`r_user`, `id`/`r_id`,
 `ecc`/`r_ecc` — switch them on with `--check-user`, `--check-id`, `--check-ecc`.
+
+Older HCI-Core interfaces have fewer side channels than current ones: a log whose
+header declares `IW = 0` or `EW = 0` carries no `id` or `ecc` fields at all. Those
+are left out of the comparison, so a trace taken on an old interface diffs cleanly
+against one taken on a new interface. Asking for a side channel that a log does not
+carry is refused outright rather than compared against a stub value, which would
+report a difference for every transaction.
 
 Byte enables are canonicalized to a bit-level mask before being compared, so
 `be = 0xf` with `BW = 8` is *equal* to `strb = 0xff` with `ELEMENT_WIDTH = 4` on a

@@ -22,7 +22,7 @@
 use std::path::Path;
 
 use crate::error::{Error, Result};
-use crate::model::{Beat, LoadedLog, LogKind, Payload};
+use crate::model::{Beat, Iface, LoadedLog, LogKind, Payload};
 use crate::value::Value;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -564,6 +564,45 @@ pub fn describe(beat: &Beat) -> String {
     }
 }
 
+fn side_channel_width(iface: &Iface, name: &str) -> u32 {
+    match iface {
+        Iface::Hci { uw, iw, ew, .. } => match name {
+            "user" => *uw,
+            "id" => *iw,
+            _ => *ew,
+        },
+        Iface::Stream { .. } => 0,
+    }
+}
+
+/// Refuse to compare a side channel that one of the logs does not carry.
+///
+/// Older HCI-Core interfaces have no `id` or `ecc` signals at all, so their logs
+/// declare `IW = 0` / `EW = 0` and leave those fields out. Comparing them anyway
+/// would silently treat the absent side as zero and report a difference for
+/// every transaction -- a misalignment that says nothing about the design.
+pub fn check_side_channels(a: &LoadedLog, b: &LoadedLog, ctx: &CmpCtx) -> Result<()> {
+    for (on, name, flag) in [
+        (ctx.spec.user, "user", "--check-user"),
+        (ctx.spec.id, "id", "--check-id"),
+        (ctx.spec.ecc, "ecc", "--check-ecc"),
+    ] {
+        if !on {
+            continue;
+        }
+        for (tag, log) in [("A", a), ("B", b)] {
+            if side_channel_width(&log.iface, name) == 0 {
+                return Err(Error::Usage(format!(
+                    "{flag} was given, but {tag} ({}) declares no `{name}` side channel: \
+                     comparing it would report a difference for every transaction",
+                    log.file.display()
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// `--x-policy=error`: refuse to go on if any *enabled* byte carries x/z.
 pub fn check_unknowns(log: &LoadedLog, side: Side, ctx: &CmpCtx) -> Result<()> {
     if ctx.opts.x != XPolicy::Error {
@@ -700,6 +739,27 @@ mod tests {
         assert!(!beats_equal(&a, &b, &ctx(CompareOptions::default())));
         let lenient = ctx(CompareOptions { x: XPolicy::Match, ..Default::default() });
         assert!(beats_equal(&a, &b, &lenient));
+    }
+
+    #[test]
+    fn refuses_to_compare_a_side_channel_that_is_not_there() {
+        // An old HCI-Core interface has no `id` signal at all, so its log
+        // declares IW = 0; comparing `id` anyway would flag every transaction.
+        let no_id = req_log(vec![req_beat(0, 1, "0x0", "0x1", "0xf")]);
+        let c = CmpCtx::new(
+            Mode::HciReq,
+            &no_id,
+            &no_id,
+            32,
+            CompareOptions { check_id: true, ..Default::default() },
+        );
+        let err = check_side_channels(&no_id, &no_id, &c).unwrap_err();
+        assert!(err.to_string().contains("--check-id"), "{err}");
+
+        // With the side channel present, it is compared as asked.
+        let mut with_id = req_log(vec![req_beat(0, 1, "0x0", "0x1", "0xf")]);
+        with_id.iface = Iface::Hci { dw: 32, aw: 32, bw: 8, uw: 0, iw: 8, ew: 0, ehw: 0 };
+        assert!(check_side_channels(&with_id, &with_id, &c).is_ok());
     }
 
     #[test]
