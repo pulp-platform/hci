@@ -67,6 +67,14 @@
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *TCDM_R_READY_SUPPORT*| 1           | If 0, the TCDM ignores `r_ready`; the source self-limits to one outstanding load instead of backpressuring responses.    |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *STRIDE_LAST_1H*      | 4'b0000     | Bit N: give dimension N a second stride, used at the last index of another one (see **hwpe_stream_addressgen_v4**).      |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *LEN_LAST_1H*         | 4'b0000     | Bit N: give dimension N a second length, used at the last index of an outer one (short trailing tile).                   |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *ALTERNATE_1H*        | 4'b0000     | Bit N: let dimension N sweep up and down instead of always up.                                                           |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *ALT_SKIP_1H*         | 4'b0000     | Bit N: let dimension N skip the shared element at a sweep turnaround.                                                    |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_source_ctrl:
@@ -115,7 +123,10 @@ module hci_core_source
   localparam int unsigned BANK_DATA_WIDTH     = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
   localparam int unsigned ADDR_OFFSET         = ELEMENTS_PER_BANK == 1 ? 1 : $clog2(ELEMENTS_PER_BANK),
   parameter bit [3:0] DIM_ENABLE_1H           = 4'b0011, // Number of dimensions enabled in the address generator
-  parameter int unsigned PARTIAL_TILING       = 0, // 1 Enable/0 Disable hwpe_stream_addressgen_v4 _last logic for partial tiling
+  parameter bit [3:0] STRIDE_LAST_1H          = 4'b0000, // Dimensions that get a second stride (partial tiling)
+  parameter bit [3:0] LEN_LAST_1H             = 4'b0000, // Dimensions that get a second length (partial tiling)
+  parameter bit [3:0] ALTERNATE_1H            = 4'b0000, // Dimensions that can sweep up and down
+  parameter bit [3:0] ALT_SKIP_1H             = 4'b0000, // Of those, the ones that can skip the shared element
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
@@ -159,7 +170,10 @@ module hci_core_source
   // generate addresses
   hwpe_stream_addressgen_v4 #(
     .DIM_ENABLE_1H  ( DIM_ENABLE_1H  ),
-    .PARTIAL_TILING ( PARTIAL_TILING )
+    .STRIDE_LAST_1H ( STRIDE_LAST_1H ),
+    .LEN_LAST_1H    ( LEN_LAST_1H    ),
+    .ALTERNATE_1H   ( ALTERNATE_1H   ),
+    .ALT_SKIP_1H    ( ALT_SKIP_1H    )
   ) i_addressgen (
     .clk_i       ( clk_i                    ),
     .rst_ni      ( rst_ni                   ),
