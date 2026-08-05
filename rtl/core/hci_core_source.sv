@@ -43,21 +43,29 @@
  * .. _hci_core_source_params:
  * .. table:: **hci_core_source** design-time parameters.
  *
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | **Name**            | **Default** | **Description**                                                                                                          |
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | *LATCH_FIFO*        | 0           | If 1, use latches instead of flip-flops (requires special constraints in synthesis).                                     |
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | *TRANS_CNT*         | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.     |
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | *ADDR_MIS_DEPTH*    | 8           | Depth of the misaligned address FIFO. This **must** be equal to the max-latency between the HCI-Core `gnt` and `r_valid`.|
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | *MISALIGNED_ACCESS* | 1           | If set to 0, the source will not support non-word-aligned HCI-Core accesses.                                             |
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | *PASSTHROUGH_FIFO*  | 0           | If set to 1, the address FIFO will be capable of fall-through operation (i.e., skipping the FIFO latency entirely).      |
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
- *   | *TCDM_R_READY_SUPPORT* | 1        | If 0, the TCDM ignores `r_ready`; the source self-limits to one outstanding load instead of backpressuring responses.    |
- *   +---------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | **Name**               | **Default** | **Description**                                                                                                          |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *LATCH_FIFO*           | 0           | If 1, use latches instead of flip-flops (requires special constraints in synthesis).                                     |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *TRANS_CNT*            | 16          | Number of bits supported in the transaction counter of the address generator, which will overflow at 2^ `TRANS_CNT`.     |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *ADDR_MIS_DEPTH*       | 8           | Depth of the misaligned address FIFO. This **must** be equal to the max-latency between the HCI-Core `gnt` and `r_valid`.|
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *MISALIGNED_ACCESS*    | 1           | If set to 0, the source will not support non-word-aligned HCI-Core accesses.                                             |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *PASSTHROUGH_FIFO*     | 0           | If set to 1, the address FIFO will be capable of fall-through operation (i.e., skipping the FIFO latency entirely).      |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *TCDM_R_READY_SUPPORT* | 1           | If 0, the TCDM ignores `r_ready`; the source self-limits to one outstanding load instead of backpressuring responses.    |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *STRIDE_LAST_1H*       | 4'b0000     | Bit N: give dimension N a second stride, used at the last index of another one (see **hwpe_stream_addressgen_v4**).      |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *LEN_LAST_1H*          | 4'b0000     | Bit N: give dimension N a second length, used at the last index of an outer one (short trailing tile).                   |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *ALTERNATE_1H*         | 4'b0000     | Bit N: let dimension N sweep up and down instead of always up.                                                           |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *ALT_SKIP_1H*          | 4'b0000     | Bit N: let dimension N skip the shared element at a sweep turnaround.                                                    |
+ *   +------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_source_ctrl:
@@ -99,13 +107,16 @@ module hci_core_source
   parameter int unsigned ADDR_MIS_DEPTH        = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES   = 1,
   parameter int unsigned PASSTHROUGH_FIFO      = 0,
-  parameter bit unsigned TCDM_R_READY_SUPPORT = 1,
+  parameter bit unsigned TCDM_R_READY_SUPPORT  = 1,
   parameter  int unsigned ELEMENT_WIDTH        = 8,  // e.g., 8 bits per element
   parameter  int unsigned ELEMENTS_PER_BANK    = 4,  // number of elements in one memory bank
   localparam int unsigned BANK_DATA_WIDTH      = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
   localparam  int unsigned ADDR_OFFSET         = ELEMENTS_PER_BANK == 1 ? 1 : $clog2(ELEMENTS_PER_BANK),
   parameter bit [3:0] DIM_ENABLE_1H            = 4'b011, // Number of dimensions enabled in the address generator
-  parameter int unsigned PARTIAL_TILING        = 0, // 1 Enable/0 Disable hwpe_stream_addressgen_v4 _last logic for partial tiling
+  parameter bit [3:0] STRIDE_LAST_1H           = 4'b0000, // Dimensions that get a second stride (partial tiling)
+  parameter bit [3:0] LEN_LAST_1H              = 4'b0000, // Dimensions that get a second length (partial tiling)
+  parameter bit [3:0] ALTERNATE_1H             = 4'b0000, // Dimensions that can sweep up and down
+  parameter bit [3:0] ALT_SKIP_1H              = 4'b0000, // Of those, the ones that can skip the shared element
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 )
 (
@@ -149,7 +160,10 @@ module hci_core_source
   // generate addresses
   hwpe_stream_addressgen_v4 #(
     .DIM_ENABLE_1H  ( DIM_ENABLE_1H  ),
-    .PARTIAL_TILING ( PARTIAL_TILING )
+    .STRIDE_LAST_1H ( STRIDE_LAST_1H ),
+    .LEN_LAST_1H    ( LEN_LAST_1H    ),
+    .ALTERNATE_1H   ( ALTERNATE_1H   ),
+    .ALT_SKIP_1H    ( ALT_SKIP_1H    )
   ) i_addressgen (
     .clk_i       ( clk_i                    ),
     .rst_ni      ( rst_ni                   ),
