@@ -34,7 +34,6 @@ sources:
       - rtl/common/hci_interfaces.sv
       - rtl/ecc/hci_ecc_manager_reg_top.sv
       # Level 2
-      - rtl/common/hci_transaction_tracer.sv
       - rtl/core/hci_core_assign.sv
       - rtl/core/hci_core_assign_expand.sv
       - rtl/core/hci_core_cut.sv
@@ -70,6 +69,10 @@ sources:
       - rtl/ecc/hci_ecc_interconnect.sv
       - rtl/ecc/hci_ecc_sink.sv
       - rtl/hci_interconnect.sv
+
+      - target: not(synthesis)
+        files:
+          - rtl/common/hci_transaction_tracer.sv
 
       - target: hci_verif
         include_dirs:
