@@ -56,15 +56,16 @@ module hci_core_cut
   localparam int unsigned RSPW = DW + UW + IW + 1 + EW;
 
 
-  typedef struct packed {
-    logic [AW-1:0]      add;
-    logic               wen;
-    logic [DW-1:0]      data;
-    logic [DW/BW-1:0]   be;
-    logic [UW-1:0]      user;
-    logic [IW-1:0]      id;
-    logic [EW-1:0]      ecc;
-  } req_payload_t;
+  // --- disabled with the registered request channel, see below ---------------
+  // typedef struct packed {
+  //   logic [AW-1:0]      add;
+  //   logic               wen;
+  //   logic [DW-1:0]      data;
+  //   logic [DW/BW-1:0]   be;
+  //   logic [UW-1:0]      user;
+  //   logic [IW-1:0]      id;
+  //   logic [EW-1:0]      ecc;
+  // } req_payload_t;
 
   typedef struct packed {
     logic [DW-1:0]      r_data;
@@ -73,44 +74,68 @@ module hci_core_cut
     logic [EW-1:0]      r_ecc;
   } rsp_payload_t;
 
-  req_payload_t req_payload_in, req_payload_out;
+  // ---------------------------------------------------------------------------
+  // REQUEST CHANNEL: cut removed, straight combinational feed-through.
+  //
+  // The cut is kept on the response channel only (target -> initiator), i.e. on
+  // the SRAM rdata -> crossbar mux -> demux -> core path. The request channel is
+  // left combinational, halving the round-trip cost of the cut from +2 to +1
+  // cycle.
+  //
+  // NOTE: this leaves the gnt path combinational again -- core -> demux ->
+  // address decode -> arbitration over all initiators -> gnt -> back to the core
+  // within the same cycle. Re-enable the block below if STA shows that path is
+  // the critical one.
+  // ---------------------------------------------------------------------------
 
-  assign req_payload_in = '{
-    add:  in.add,
-    wen:  in.wen,
-    data: in.data,
-    be:   in.be,
-    user: in.user,
-    id:   in.id,
-    ecc:  in.ecc
-  };
+  assign out.req  = in.req;
+  assign in.gnt   = out.gnt;
+  assign out.add  = in.add;
+  assign out.wen  = in.wen;
+  assign out.data = in.data;
+  assign out.be   = in.be;
+  assign out.user = in.user;
+  assign out.id   = in.id;
+  assign out.ecc  = in.ecc;
 
-
-
-  spill_register #(
-    .T      ( req_payload_t ), // create a similar struct to be passed to the spill register
-    .Bypass ( BypassReq    )
-  ) i_reg_a (
-    .clk_i,
-    .rst_ni,
-    .valid_i ( in.req ),
-    .ready_o ( in.gnt ),
-    .data_i  ( req_payload_in   ),
-    .valid_o ( out.req ),
-    .ready_i ( out.gnt ),
-    .data_o  ( req_payload_out   )
-  );
-
-  always_comb
-  begin : out_assign
-    out.add  = req_payload_out.add;
-    out.wen  = req_payload_out.wen;
-    out.data = req_payload_out.data;
-    out.be   = req_payload_out.be;
-    out.user = req_payload_out.user;
-    out.id   = req_payload_out.id;
-    out.ecc  = req_payload_out.ecc;
-  end
+  // --- disabled: registered request channel ----------------------------------
+  // req_payload_t req_payload_in, req_payload_out;
+  //
+  // assign req_payload_in = '{
+  //   add:  in.add,
+  //   wen:  in.wen,
+  //   data: in.data,
+  //   be:   in.be,
+  //   user: in.user,
+  //   id:   in.id,
+  //   ecc:  in.ecc
+  // };
+  //
+  // spill_register #(
+  //   .T      ( req_payload_t ), // create a similar struct to be passed to the spill register
+  //   .Bypass ( BypassReq    )
+  // ) i_reg_a (
+  //   .clk_i,
+  //   .rst_ni,
+  //   .valid_i ( in.req ),
+  //   .ready_o ( in.gnt ),
+  //   .data_i  ( req_payload_in   ),
+  //   .valid_o ( out.req ),
+  //   .ready_i ( out.gnt ),
+  //   .data_o  ( req_payload_out   )
+  // );
+  //
+  // always_comb
+  // begin : out_assign
+  //   out.add  = req_payload_out.add;
+  //   out.wen  = req_payload_out.wen;
+  //   out.data = req_payload_out.data;
+  //   out.be   = req_payload_out.be;
+  //   out.user = req_payload_out.user;
+  //   out.id   = req_payload_out.id;
+  //   out.ecc  = req_payload_out.ecc;
+  // end
+  // ---------------------------------------------------------------------------
 
   rsp_payload_t rsp_payload_in, rsp_payload_out;
 
