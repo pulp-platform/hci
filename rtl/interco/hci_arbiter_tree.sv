@@ -52,12 +52,12 @@ module hci_arbiter_tree
   hci_core_intf.target    in    			   [0:NB_REQUESTS*NB_CHAN-1],
   hci_core_intf.initiator out                  [0:NB_CHAN-1]
 );
-  
+
   // number of levels in the arbitration tree
   localparam int unsigned NB_LEVELS = NB_REQUESTS > 1 ? $clog2(NB_REQUESTS) : 1;
   // maximum total number of arbiters in a single level
-  localparam int unsigned MAX_ARBITERS_PER_LEVEL = (NB_REQUESTS + 1)/2;  
-  
+  localparam int unsigned MAX_ARBITERS_PER_LEVEL = (NB_REQUESTS + 1)/2;
+
   localparam int unsigned DW = `HCI_SIZE_GET_DW(out);
   localparam int unsigned AW = `HCI_SIZE_GET_AW(out);
   localparam int unsigned BW = `HCI_SIZE_GET_BW(out);
@@ -75,39 +75,24 @@ module hci_arbiter_tree
    EW:  `HCI_SIZE_GET_EW(out),
    EHW: `HCI_SIZE_GET_EHW(out)
   };
-  
-  hci_core_intf #(
-    .DW  ( `HCI_SIZE_PARAM(arb_out).DW  ),
-    .AW  ( `HCI_SIZE_PARAM(arb_out).AW  ),
-    .BW  ( `HCI_SIZE_PARAM(arb_out).BW  ),
-    .UW  ( `HCI_SIZE_PARAM(arb_out).UW  ),
-    .IW  ( `HCI_SIZE_PARAM(arb_out).IW  ),
-    .EW  ( `HCI_SIZE_PARAM(arb_out).EW  ),
-    .EHW ( `HCI_SIZE_PARAM(arb_out).EHW )
-`ifndef SYNTHESIS
-    ,
-    .WAIVE_RQ3_ASSERT ( WAIVE_RQ3_ASSERT ), // arb_out is an internal arbitration signal, not a protocol-compliant port
-    .WAIVE_RQ4_ASSERT ( WAIVE_RQ4_ASSERT )
-`endif
-  ) arb_out [0:NB_LEVELS*MAX_ARBITERS_PER_LEVEL*NB_CHAN-1] (
-    .clk ( clk_i )
-  );
-  
-  generate		
+
+  `HCI_INTF_ARRAY(arb_out, clk_i, 0:NB_LEVELS*MAX_ARBITERS_PER_LEVEL*NB_CHAN-1);
+
+  generate
     for(genvar lvl=0; lvl<NB_LEVELS; lvl++) begin : arbiter_tree_levels
       localparam int unsigned quo = NB_REQUESTS / (1 << lvl);
       localparam int unsigned rem = (NB_REQUESTS % (1 << lvl)) ? 1 : 0;
       localparam int unsigned nb_arbiters = (quo + rem) / 2;
-      
+
       for(genvar ii=0; ii< quo+rem; ii += 2) begin : arbiter_single_level
-        // At the 0th level the primary inputs are used. in other levels intermediate input are used 
+        // At the 0th level the primary inputs are used. in other levels intermediate input are used
         if(lvl==0) begin : level_0
         // only arbiters are needed for atleast 2 requests together otherwise the remaining
         // requests could be bypassed as shown in the else statement
           localparam in_high_index = ii*NB_CHAN;
           localparam in_low_index  = in_high_index + NB_CHAN;
           localparam out_index  	 = lvl*MAX_ARBITERS_PER_LEVEL*NB_CHAN + (ii>>1)*NB_CHAN;
-          if(ii < 2*nb_arbiters) begin : arbiter_path 
+          if(ii < 2*nb_arbiters) begin : arbiter_path
             hci_arbiter #(
               .NB_CHAN ( NB_CHAN )
             ) i_arbiter (
@@ -127,11 +112,11 @@ module hci_arbiter_tree
               );
             end : assign_bankwise
           end : bypass
-        end else begin : level_greater_than_0                
+        end else begin : level_greater_than_0
           localparam in_high_index = (lvl-1)*MAX_ARBITERS_PER_LEVEL*NB_CHAN + ii*NB_CHAN;
           localparam in_low_index  = in_high_index + NB_CHAN;
           localparam out_index  	 = lvl*MAX_ARBITERS_PER_LEVEL*NB_CHAN + (ii>>1)*NB_CHAN;
-            
+
             if(ii < 2*nb_arbiters) begin : arbiter_path
               hci_arbiter #(
                 .NB_CHAN ( NB_CHAN )
@@ -151,16 +136,16 @@ module hci_arbiter_tree
                   .tcdm_initiator ( arb_out[out_index + jj]    )
                 );
               end : assign_bankwise
-            end : bypass 
+            end : bypass
         end : level_greater_than_0
       end : arbiter_single_level
     end : arbiter_tree_levels
-    
+
     for(genvar jj=0; jj<NB_CHAN; jj++) begin: assign_output_bankwise
       hci_core_assign i_arbiter_output (
         .tcdm_target    ( arb_out[(NB_LEVELS-1)*MAX_ARBITERS_PER_LEVEL*NB_CHAN + jj] ),
         .tcdm_initiator ( out[jj]                                                    )
-      ); 
+      );
     end
   endgenerate
 
