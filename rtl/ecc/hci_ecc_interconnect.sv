@@ -348,14 +348,8 @@ module hci_ecc_interconnect
 
       localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_enc)     = `HCI_SIZE_PARAM(all_except_hwpe_mem_enc);
       localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_pre_mux) = `HCI_SIZE_PARAM(hwpe_mem);
-      localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_pre_mux_dummy) = `HCI_SIZE_PARAM(hwpe_mem);
       `HCI_INTF_ARRAY(hwpe_mem_pre_mux, clk_i, 0:N_HWPE*N_MEM-1);
-      `HCI_INTF_ARRAY(hwpe_mem_pre_mux_dummy, clk_i, 0:N_HWPE*N_MEM-1);
       `HCI_INTF_ARRAY(hwpe_mem_enc, clk_i, 0:N_MEM-1);
-
-      localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_dummy) = `HCI_SIZE_PARAM(hwpe_mem);
-      `HCI_INTF_ARRAY(hwpe_mem_dummy, clk_i, 0:N_MEM-1);
-
 
       for(genvar ii=0; ii<N_HWPE; ii++) begin : gen_hwpe_branches
         `HCI_INTF(hwpe_dec, clk_i);
@@ -381,11 +375,11 @@ module hci_ecc_interconnect
           .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe_dec) ),
           .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
         ) i_ecc_router (
-          .clk_i   ( clk_i                             ),
-          .rst_ni  ( rst_ni                            ),
-          .clear_i ( clear_i                           ),
-          .in      ( hwpe_dec                          ),
-          .out     ( hwpe_mem_pre_mux[ii*N_MEM+:N_MEM] )
+          .clk_i   ( clk_i                                     ),
+          .rst_ni  ( rst_ni                                    ),
+          .clear_i ( clear_i                                   ),
+          .in      ( hwpe_dec                                  ),
+          .out     ( hwpe_mem_pre_mux[ii*N_MEM:(ii+1)*N_MEM-1] )
         );
       end
 
