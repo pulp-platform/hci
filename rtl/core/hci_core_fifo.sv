@@ -96,6 +96,7 @@ module hci_core_fifo
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm_initiator);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm_initiator);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_initiator);
+  localparam int unsigned FD  = `HCI_SIZE_GET_FD(tcdm_initiator);
 
   flags_fifo_t flags_incoming, flags_outgoing;
 
@@ -313,10 +314,49 @@ module hci_core_fifo
   // FIXME: if incoming_fifo_not_full makes a 1->0 transition in the cycle after a non-granted request (req=1, gnt=0),
   //        tcdm_initiator.req will go down, causing a RQ-4 protocol violation.
   //        This should be harmless, but should still be fixed in a future commit.
-  // Lower the request if
-  //  1) the incoming FIFO is already full
-  //  2) the incoming FIFO is almost full, a valid incoming response is arriving, and the incoming FIFO consumer side is not ready to receive the response
-  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full & ~(incoming_fifo_almost_full & tcdm_initiator.r_valid & ~tcdm_target.r_ready);
+
+  logic req_disable;
+
+  if (FD == 0) begin
+      // Lower the request if
+      //  1) the incoming FIFO is already full
+      //  2) the incoming FIFO is almost full, a valid incoming response is arriving, and the incoming FIFO consumer side is not ready to receive the response
+    assign req_disable = (incoming_fifo_almost_full & tcdm_initiator.r_valid & ~tcdm_target.r_ready);
+  end else begin
+    localparam int unsigned OP_CNT_W = $clog2(FIFO_DEPTH + 1);
+
+    logic [OP_CNT_W-1:0] op_cnt_d, op_cnt_q;
+
+    logic req_handshake, rsp_handshake;
+
+    // Track the number of operations in flight
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+      if(~rst_ni)
+        op_cnt_q <= '0;
+      else if(clear_i)
+        op_cnt_q <= '0;
+      else if(req_handshake | rsp_handshake)
+          op_cnt_q <= op_cnt_d;
+    end
+
+    assign req_handshake = tcdm_initiator.req & tcdm_initiator.gnt;
+    assign rsp_handshake = stream_incoming_pop.valid & stream_incoming_pop.ready;
+
+    always_comb
+    begin : op_cnt_assignment
+      unique case ({req_handshake, rsp_handshake})
+        2'b01:   op_cnt_d = op_cnt_q - 1;
+        2'b10:   op_cnt_d = op_cnt_q + 1;
+        default: op_cnt_d = op_cnt_q;
+      endcase
+    end
+
+    // Disable requests if the FIFO is full and is not being popped
+    assign req_disable = op_cnt_q == FIFO_DEPTH && ~tcdm_target.r_ready;
+  end
+
+  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full & ~req_disable;
   assign tcdm_initiator.r_ready = incoming_fifo_not_full;
   assign stream_outgoing_pop.ready = tcdm_initiator.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0
 
@@ -348,7 +388,7 @@ module hci_core_fifo
     assign tcdm_initiator.ereq     = '0;
     assign tcdm_target.egnt        = '1; // assign all gnt's to 1
     assign tcdm_target.r_evalid    = '0;
-    assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1
   end
 
 /*
