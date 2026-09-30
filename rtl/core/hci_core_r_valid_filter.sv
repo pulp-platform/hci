@@ -16,9 +16,6 @@
 /**
  * This block filters the `r_valid` field of the TCDM response: when `enable_i`
  * is 1, only responses with `r_valid=1` in case of a read transaction.
- * The block is currently **only** working at the zero-latency boundary
- * between core and memory (it expects that the latency between `gnt` and `r_valid`
- * is exactly one cycle).
  *
  */
 
@@ -40,6 +37,7 @@ module hci_core_r_valid_filter
 );
 
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
+  localparam int unsigned FD  = `HCI_SIZE_GET_FD(tcdm_target);
 
   logic wen_q;
 
@@ -60,17 +58,38 @@ module hci_core_r_valid_filter
   assign tcdm_target.r_ecc      = tcdm_initiator.r_ecc;
   assign tcdm_target.r_valid    = enable_i ? tcdm_initiator.r_valid & wen_q : tcdm_initiator.r_valid;
 
-  always_ff @(posedge clk_i or negedge rst_ni)
-  begin
-    if(~rst_ni) begin
-      wen_q <= '0;
+  if (FD == 0) begin
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+      if(~rst_ni) begin
+        wen_q <= '0;
+      end
+      else if (clear_i) begin
+        wen_q <= '0;
+      end
+      else if(enable_i & tcdm_target.req) begin
+        wen_q <= tcdm_target.wen;
+      end
     end
-    else if (clear_i) begin
-      wen_q <= '0;
-    end
-    else if(enable_i & tcdm_target.req) begin
-      wen_q <= tcdm_target.wen;
-    end
+  end else begin
+    logic fifo_empty;
+
+    fifo_v3 #(
+      .FALL_THROUGH(1'b0),
+      .DATA_WIDTH(1),
+      .DEPTH(FD + 3)
+    ) i_wen_fifo (
+      .clk_i,
+      .rst_ni,
+      .flush_i(clear_i),
+      .testmode_i(1'b0),
+      .full_o(),
+      .empty_o(fifo_empty),
+      .data_i(tcdm_target.wen),
+      .push_i(enable_i & tcdm_target.req & tcdm_target.gnt),
+      .data_o(wen_q),
+      .pop_i((~wen_q | tcdm_initiator.r_valid) & tcdm_target.r_ready & ~fifo_empty)
+    );
   end
 
 /*
@@ -86,9 +105,9 @@ module hci_core_r_valid_filter
     assign tcdm_initiator.ereq     = '0;
     assign tcdm_target.egnt        = '1; // assign all gnt's to 1
     assign tcdm_target.r_evalid    = '0;
-    assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1
   end
-  
+
 /*
  * Interface size asserts
  */
@@ -109,7 +128,7 @@ module hci_core_r_valid_filter
     ew : assert(tcdm_target.EW == tcdm_initiator.EW);
   initial
     ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
 `endif
 `endif

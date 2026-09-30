@@ -11,7 +11,6 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
- *
  */
 
 /**
@@ -22,7 +21,7 @@
 
 `include "hci_helpers.svh"
 
-module hci_core_r_id_filter 
+module hci_core_r_id_filter
   import hwpe_stream_package::*;
   import hci_package::*;
 #(
@@ -40,7 +39,6 @@ module hci_core_r_id_filter
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm_target);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
   localparam int unsigned FD  = `HCI_SIZE_GET_FD(tcdm_target);
-  localparam bit MULTICYCLE_SUPPORT = (FD > 1);
 
   logic [IW-1:0] target_r_id;
 
@@ -52,7 +50,7 @@ module hci_core_r_id_filter
   assign tcdm_initiator.user    = tcdm_target.user;
   assign tcdm_initiator.id      = '0;
   assign tcdm_initiator.ecc     = tcdm_target.ecc;
-  
+
   assign tcdm_target.r_data     = tcdm_initiator.r_data;
   assign tcdm_target.r_user     = tcdm_initiator.r_user;
   assign tcdm_target.r_id       = target_r_id;
@@ -61,15 +59,32 @@ module hci_core_r_id_filter
   assign tcdm_target.r_valid    = tcdm_initiator.r_valid;
 
 
-  if (MULTICYCLE_SUPPORT) begin
-    logic fifo_full, fifo_empty;
-    assign tcdm_target.gnt = tcdm_initiator.gnt & !(fifo_full);
-    assign tcdm_initiator.req = tcdm_target.req & !(fifo_full);
+  if (FD != 0) begin
+    logic fifo_full, fifo_empty, wen_q;
+    assign tcdm_target.gnt = tcdm_initiator.gnt;
+    assign tcdm_initiator.req = tcdm_target.req;
 
-   fifo_v3 #(
-    .FALL_THROUGH(1'b0),
-    .DATA_WIDTH(IW),
-    .DEPTH(FD)
+    fifo_v3 #(
+      .FALL_THROUGH(1'b0),
+      .DATA_WIDTH(1),
+      .DEPTH(FD + 3)
+    ) i_wen_fifo (
+      .clk_i,
+      .rst_ni,
+      .flush_i(clear_i),
+      .testmode_i(1'b0),
+      .full_o(),
+      .empty_o(),
+      .data_i(tcdm_target.wen),
+      .push_i(tcdm_target.req & tcdm_target.gnt),
+      .data_o(wen_q),
+      .pop_i((~wen_q | tcdm_initiator.r_valid) & tcdm_target.r_ready & ~fifo_empty)
+    );
+
+    fifo_v3 #(
+      .FALL_THROUGH(1'b0),
+      .DATA_WIDTH(IW),
+      .DEPTH(FD + 3)
     ) i_r_id_fifo (
       .clk_i,
       .rst_ni,
@@ -80,7 +95,7 @@ module hci_core_r_id_filter
       .data_i(tcdm_target.id),
       .push_i(tcdm_target.req & tcdm_target.gnt),
       .data_o(target_r_id),
-      .pop_i(tcdm_initiator.r_valid & tcdm_target.r_ready)
+      .pop_i((~wen_q | tcdm_initiator.r_valid) & tcdm_target.r_ready & ~fifo_empty)
     );
   end else begin
     logic [IW-1:0] id_q;
@@ -115,7 +130,7 @@ module hci_core_r_id_filter
       assign tcdm_initiator.ereq     = '0;
       assign tcdm_target.egnt        = '1; // assign all gnt's to 1
       assign tcdm_target.r_evalid    = '0;
-      assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1 
+      assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1
     end
 
 /*
@@ -129,8 +144,8 @@ module hci_core_r_id_filter
 `ifndef SYNTHESIS
 `ifndef VERILATOR
 `ifndef VCS
-// Only check single-cycle timing when FD = 1 (no multicycle support)
-if (!MULTICYCLE_SUPPORT) begin : single_cycle_asserts
+// Only check single-cycle timing when FD = 0 (no multicycle support)
+if (FD == 0) begin : single_cycle_asserts
   // gnt=1 & wen=1 => the following cycle r_valid=1
   property p_gnt_wen_high_then_r_valid_high_next_cycle;
     @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
@@ -170,7 +185,7 @@ end : single_cycle_asserts
     ew : assert(tcdm_target.EW == tcdm_initiator.EW);
   initial
     ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
 `endif
 `endif
