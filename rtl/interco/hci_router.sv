@@ -1,4 +1,4 @@
-/* 
+/*
  * hci_router.sv
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
@@ -28,7 +28,7 @@
  * -- since word interleaving is assumed, the same address is generally propagated
  * to all targeted `out` channels.
  * However, if `index > NB_OUT_CHAN-DWH/32`, then the set of selected targets
- * "wraps around": the first `NB_OUT_CHAN-DWH/32-index` `out` channels are 
+ * "wraps around": the first `NB_OUT_CHAN-DWH/32-index` `out` channels are
  * activated, propagating as address the offset+4.
  * See https://ieeexplore.ieee.org/document/9903915 Sec. II-A (open-access) for details
  * (the router is called a *shallow* router).
@@ -97,7 +97,8 @@ module hci_router
     UW:  UWH,
     IW:  DEFAULT_IW,
     EW:  EWH,
-    EHW: EHW
+    EHW: EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF(postfifo, clk_i);
 
@@ -111,7 +112,8 @@ module hci_router
     UW:  0,
     IW:  0,
     EW:  7*USE_ECC,
-    EHW: EHW
+    EHW: EHW,
+    FD:  DEFAULT_FD
   };
   hci_core_intf #(
     .DW  ( `HCI_SIZE_PARAM(virt_in).DW  ),
@@ -120,7 +122,8 @@ module hci_router
     .UW  ( `HCI_SIZE_PARAM(virt_in).UW  ),
     .IW  ( `HCI_SIZE_PARAM(virt_in).IW  ),
     .EW  ( `HCI_SIZE_PARAM(virt_in).EW  ),
-    .EHW ( `HCI_SIZE_PARAM(virt_in).EHW )
+    .EHW ( `HCI_SIZE_PARAM(virt_in).EHW ),
+    .FD  ( `HCI_SIZE_PARAM(virt_in).FD  )
 `ifndef SYNTHESIS
     ,
     .WAIVE_RQ3_ASSERT ( 1'b1 ), // virt_in is grant-less by construction
@@ -172,7 +175,7 @@ module hci_router
 
     // unimplemented operation code = 0
     assign postfifo.r_opc = '0;
-    
+
     assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:2];
 
     for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : virt_in_bind
@@ -195,7 +198,7 @@ module hci_router
         else
           virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR], 2'b0}; //bank level address
       end : bank_level_address_generation
-      
+
       assign virt_in[ii].r_ready = postfifo.r_ready;
 
       // ecc and r_ecc are each EW=7 bits wide
@@ -222,8 +225,8 @@ module hci_router
         virt_in_0_handshake_q <= virt_in_0_handshake_d;
       end
     end
-    assign virt_in_0_handshake_d = virt_in[0].req & virt_in[0].gnt;  
-    
+    assign virt_in_0_handshake_d = virt_in[0].req & virt_in[0].gnt;
+
     // only propagate GNT for those initiators that have asserted REQ
     assign postfifo.gnt     = virt_in_0_handshake_d;
     // filter R_VALID with registered GNT
@@ -269,7 +272,7 @@ module hci_router
     .clk_i   ( clk_i         ),
     .rst_ni  ( rst_ni        ),
     .clear_i ( clear_i       ),
-    .order_i ( bank_offset_s ), 
+    .order_i ( bank_offset_s ),
     .in      ( virt_in       ),
     .out     ( virt_out      )
   );
@@ -304,7 +307,7 @@ module hci_router
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(out),      out[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(virt_in),  virt_in[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(virt_out), virt_out[0]);
-  
+
 `endif
 `endif
 `endif;

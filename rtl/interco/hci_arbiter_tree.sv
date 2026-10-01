@@ -71,7 +71,8 @@ module hci_arbiter_tree
    UW:  `HCI_SIZE_GET_UW(out),
    IW:  `HCI_SIZE_GET_IW(out),
    EW:  `HCI_SIZE_GET_EW(out),
-   EHW: `HCI_SIZE_GET_EHW(out)
+   EHW: `HCI_SIZE_GET_EHW(out),
+   FD:  `HCI_SIZE_GET_FD(out)
   };
 
   `HCI_INTF_ARRAY(arb_out, clk_i, 0:NB_LEVELS*MAX_ARBITERS_PER_LEVEL*NB_CHAN-1);
