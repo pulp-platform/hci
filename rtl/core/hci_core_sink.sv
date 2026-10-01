@@ -182,12 +182,12 @@ module hci_core_sink
 
   logic [ELEMENT_INDEX_WIDTH-1:0] bank_offset;
 
-  assign bank_offset = addr_pop.data[ELEMENT_INDEX_WIDTH-1:0]; 
+  assign bank_offset = addr_pop.data[ELEMENT_INDEX_WIDTH-1:0];
 
   generate
     if (MISALIGNED_ACCESSES == 1) begin: misaligned_access_gen
       for (genvar offs = 0; offs < ELEMENTS_PER_BANK; offs++) begin : aligned_stream_gen
-        if (offs > 0) begin 
+        if (offs > 0) begin
           assign stream_data_aligned_array[offs][offs*ELEMENT_WIDTH-1:0] = '0;
           assign stream_strb_aligned_array[offs][offs-1:0] = '0;
         end
@@ -196,7 +196,7 @@ module hci_core_sink
         localparam int unsigned DATA_OFFSET_LSB = DATA_OFFSET_MSB - (DATA_WIDTH - BANK_DATA_WIDTH);
         localparam int unsigned STRB_OFFSET_MSB = DATA_OFFSET_MSB / ELEMENT_WIDTH;
         localparam int unsigned STRB_OFFSET_LSB = DATA_OFFSET_LSB / ELEMENT_WIDTH;
-        
+
         assign stream_data_aligned_array[offs][DATA_WIDTH-1:DATA_OFFSET_MSB] = '0;
         assign stream_data_aligned_array[offs][DATA_OFFSET_MSB-1:DATA_OFFSET_LSB] = stream_data_misaligned[DATA_WIDTH-BANK_DATA_WIDTH-1:0];
 
@@ -205,13 +205,13 @@ module hci_core_sink
       end
         assign stream_data_aligned = stream_data_aligned_array[bank_offset];
         assign stream_strb_aligned = stream_strb_aligned_array[bank_offset];
-    end else begin 
+    end else begin
       assign stream_data_aligned[DATA_WIDTH-1:0]   = stream_data_misaligned[DATA_WIDTH-1:0];
       assign stream_strb_aligned[DATA_WIDTH/ELEMENT_WIDTH-1:0] = stream_strb_misaligned[DATA_WIDTH/ELEMENT_WIDTH-1:0];
-    end 
+    end
   endgenerate
 
-      
+
 
   assign stream_data_misaligned = stream.data;
   assign stream_strb_misaligned = stream.strb;
@@ -345,7 +345,7 @@ module hci_core_sink
   end
   else begin : no_ecc_handshake_gen
     assign tcdm_target.ereq     = '0;
-    assign tcdm_target.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm_target.r_eready = '1; // assign all gnt's to 1
   end
 
 /*
@@ -362,7 +362,7 @@ module hci_core_sink
     initial
       dw :  assert(stream.DATA_WIDTH+BANK_DATA_WIDTH == tcdm.DW);
   end
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm);
 `endif
 `endif

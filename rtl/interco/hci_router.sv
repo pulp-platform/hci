@@ -1,4 +1,4 @@
-/* 
+/*
  * hci_router.sv
  * Francesco Conti <f.conti@unibo.it>
  * Tobias Riedener <tobiasri@student.ethz.ch>
@@ -110,7 +110,8 @@ module hci_router
     UW:  UWH,
     IW:  DEFAULT_IW,
     EW:  EWH,
-    EHW: EHW
+    EHW: EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF(postfifo, clk_i);
 
@@ -124,7 +125,8 @@ module hci_router
     UW:  0,
     IW:  0,
     EW:  EW_BANK*USE_ECC,
-    EHW: EHW
+    EHW: EHW,
+    FD:  DEFAULT_FD
   };
   hci_core_intf #(
     .DW  ( `HCI_SIZE_PARAM(virt_in).DW  ),
@@ -133,7 +135,8 @@ module hci_router
     .UW  ( `HCI_SIZE_PARAM(virt_in).UW  ),
     .IW  ( `HCI_SIZE_PARAM(virt_in).IW  ),
     .EW  ( `HCI_SIZE_PARAM(virt_in).EW  ),
-    .EHW ( `HCI_SIZE_PARAM(virt_in).EHW )
+    .EHW ( `HCI_SIZE_PARAM(virt_in).EHW ),
+    .FD  ( `HCI_SIZE_PARAM(virt_in).FD  )
 `ifndef SYNTHESIS
     ,
     .WAIVE_RQ3_ASSERT ( 1'b1 ), // virt_in is grant-less by construction
@@ -185,7 +188,7 @@ module hci_router
 
     // unimplemented operation code = 0
     assign postfifo.r_opc = '0;
-    
+
     assign bank_offset_s = postfifo.add[LSB_COMMON_ADDR-1:ELEM_ADDR_OFFSET];
 
     for(genvar ii=0; ii<NB_IN_CHAN; ii++) begin : virt_in_bind
@@ -203,21 +206,21 @@ module hci_router
       // by the highest set of bits in postfifo[0].add, plus the bank-level offset
       always_comb
       begin : bank_level_address_generation
-        if(bank_offset_s + ii >= NB_OUT_CHAN) begin 
-          if(ELEM_ADDR_OFFSET == 0) begin 
+        if(bank_offset_s + ii >= NB_OUT_CHAN) begin
+          if(ELEM_ADDR_OFFSET == 0) begin
             virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR] + 1}; //bank level address
           end else begin
             virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR] + 1, {ELEM_ADDR_OFFSET{1'b0}}}; //bank level address
-          end 
-        end else begin 
-          if(ELEM_ADDR_OFFSET == 0) begin 
+          end
+        end else begin
+          if(ELEM_ADDR_OFFSET == 0) begin
             virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR]}; //bank level address
           end else begin
             virt_in[ii].add = {postfifo.add[AWC-1:LSB_COMMON_ADDR], {ELEM_ADDR_OFFSET{1'b0}}}; //bank level address
-          end 
-        end 
+          end
+        end
       end : bank_level_address_generation
-      
+
       assign virt_in[ii].r_ready = postfifo.r_ready;
 
       // ecc and r_ecc are each EW_BANK = $clog2(BANK_WORD_WIDTH)+2 bits wide
@@ -244,8 +247,8 @@ module hci_router
         virt_in_0_handshake_q <= virt_in_0_handshake_d;
       end
     end
-    assign virt_in_0_handshake_d = virt_in[0].req & virt_in[0].gnt;  
-    
+    assign virt_in_0_handshake_d = virt_in[0].req & virt_in[0].gnt;
+
     // only propagate GNT for those initiators that have asserted REQ
     assign postfifo.gnt     = virt_in_0_handshake_d;
     // filter R_VALID with registered GNT
@@ -304,7 +307,7 @@ module hci_router
     .clk_i   ( clk_i         ),
     .rst_ni  ( rst_ni        ),
     .clear_i ( clear_i       ),
-    .order_i ( bank_offset_s ), 
+    .order_i ( bank_offset_s ),
     .in      ( virt_in       ),
     .out     ( virt_out      )
   );
@@ -339,7 +342,7 @@ module hci_router
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(out),      out[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(virt_in),  virt_in[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(virt_out), virt_out[0]);
-  
+
 `endif
 `endif
 `endif;
