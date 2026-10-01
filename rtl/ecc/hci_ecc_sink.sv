@@ -81,7 +81,8 @@ module hci_ecc_sink
     UW:  UW,
     IW:  IW,
     EW:  EW,
-    EHW: EHW
+    EHW: EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF(virt_tcdm, clk_i);
 

@@ -357,7 +357,8 @@ module hci_ecc_interconnect
         UW:  UWH,
         IW:  DEFAULT_IW,
         EW:  EW_DW*N_CHUNK,
-        EHW: DEFAULT_EHW
+        EHW: DEFAULT_EHW,
+        FD:  FDH
       };
 
       localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_enc)     = `HCI_SIZE_PARAM(all_except_hwpe_mem_enc);
