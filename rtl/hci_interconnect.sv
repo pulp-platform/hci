@@ -17,7 +17,7 @@
 
 /**
  * Convenience top-level for the PULP heterogeneous cluster interconnect. It
- * wraps both a logarithmic interconnect (LIC) and an (optional) HCI router meant 
+ * wraps both a logarithmic interconnect (LIC) and an (optional) HCI router meant
  * to realize a LIC and a HWPE branch of the interconnect, respectively.
  * The two branches are (optionally) arbitrated via a HCI arbiter.
  *
@@ -42,7 +42,7 @@
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  *   | *IW*                | `N_HWPE+N_CORE+N_DMA+N_EXT` | ID Width.                                                                        |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
- *   | *EXPFIFO*           | 0                           | Depth of HCI router FIFO.                                                        |
+ *   | *FD*                | 0                           | Depth of HCI router FIFO.                                                        |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  *   | *SEL_LIC*           | 0                           | Kind of LIC to instantiate (0=regular L1, 1=L2).                                 |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
@@ -96,6 +96,7 @@ module hci_interconnect
   localparam int unsigned BWH = `HCI_SIZE_GET_BW(hwpe);
   localparam int unsigned UWH = `HCI_SIZE_GET_UW(hwpe);
   localparam int unsigned IWH = `HCI_SIZE_GET_IW(hwpe);
+  localparam int unsigned FDH = `HCI_SIZE_GET_FD(hwpe);
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(all_except_hwpe) = '{
     DW:  DEFAULT_DW,
@@ -104,7 +105,8 @@ module hci_interconnect
     UW:  UW_LIC,
     IW:  DEFAULT_IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   hci_core_intf #(
     .DW  ( DEFAULT_DW  ),
@@ -132,7 +134,8 @@ module hci_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(all_except_hwpe_mem, clk_i, 0:N_MEM-1);
 
@@ -143,7 +146,8 @@ module hci_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   hci_core_intf #(
     .DW  ( `HCI_SIZE_PARAM(hwpe_mem_muxed).DW  ),
@@ -169,7 +173,8 @@ module hci_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(hwpe_mem, clk_i, 0:N_HWPE*N_MEM-1);
 
@@ -182,7 +187,8 @@ module hci_interconnect
     .UW(UWH),
     .IW(IWH),
     .EW(DEFAULT_EW),
-    .EHW(DEFAULT_EHW)
+    .EHW(DEFAULT_EHW),
+    .FD(FDH)
   ) hwpe_to_router (
     .clk(clk_i)
   );
@@ -254,9 +260,9 @@ module hci_interconnect
     if(N_HWPE > 0) begin: hwpe_branch_gen
 
       for(genvar ii=0; ii<N_HWPE; ii++) begin : hwpe_req2mem
-    
+
         hci_router #(
-          .FIFO_DEPTH           ( EXPFIFO                   ),
+          .FIFO_DEPTH           ( FDH                       ),
           .NB_OUT_CHAN          ( N_MEM                     ),
           .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID[ii]  ),
           .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe)     ),
@@ -268,7 +274,7 @@ module hci_interconnect
           .in      ( hwpe[ii]                         ),
           .out     ( hwpe_mem[ii*N_MEM:(ii+1)*N_MEM-1])
         );
-    
+
       end : hwpe_req2mem
 
       // Set arbitration tree to be perfectly fair. It must not
@@ -354,14 +360,14 @@ module hci_interconnect
               .in     ( ext             [ii] ),
               .out    ( all_except_hwpe [N_CORE+ii] )
           );
-      end 
+      end
       else begin : no_hci_cut
       hci_core_assign i_ext_assign (
         .tcdm_target    ( ext             [ii]        ),
         .tcdm_initiator ( all_except_hwpe [N_CORE+ii] )
       );
       end
-    end : ext_binding 
+    end : ext_binding
     for(genvar ii=0; ii<N_DMA; ii++) begin: dma_binding
       if (CUT_EXT) begin : hci_cut
           hci_core_cut #(
@@ -372,7 +378,7 @@ module hci_interconnect
               .in     ( dma             [ii] ),
               .out    ( all_except_hwpe [N_CORE+N_EXT+ii] )
           );
-      end 
+      end
       else begin : no_hci_cut
         hci_core_assign i_dma_assign (
           .tcdm_target    ( dma             [ii]              ),
@@ -391,7 +397,7 @@ module hci_interconnect
   for (genvar i=0; i<N_HWPE; i++) begin : check_hwpe_size_asserts
     `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(hwpe), hwpe[i]);
   end
-  
+
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(cores), cores[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(mems) , mems[0] );
 

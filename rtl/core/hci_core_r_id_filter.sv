@@ -11,24 +11,27 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
- *
  */
 
 /**
  * This block filters the id field of the TCDM request, and forwards it to
  * the r_id field of the TCDM response.
  *
+ *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | **Name**            | **Default** | **Description**                                                                                                        |
+ *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *MAX_IN_FLIGHT_TXN* | 2*FD + 1    | Maximum number of transactions that can be issued before the first response is received.                               |
+ *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  */
 
 `include "hci_helpers.svh"
 
-module hci_core_r_id_filter 
+module hci_core_r_id_filter
   import hwpe_stream_package::*;
   import hci_package::*;
 #(
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
-  parameter int unsigned N_OUTSTANDING = 2,
-  parameter bit MULTICYCLE_SUPPORT = 1'b0
+  parameter int unsigned MAX_IN_FLIGHT_OPS = 2*`HCI_SIZE_GET_FD(tcdm_target) + 1
 )
 (
   input  logic clk_i,
@@ -41,6 +44,7 @@ module hci_core_r_id_filter
 
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm_target);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm_target);
+  localparam int unsigned FD  = `HCI_SIZE_GET_FD(tcdm_target);
 
   logic [IW-1:0] target_r_id;
 
@@ -52,7 +56,7 @@ module hci_core_r_id_filter
   assign tcdm_initiator.user    = tcdm_target.user;
   assign tcdm_initiator.id      = '0;
   assign tcdm_initiator.ecc     = tcdm_target.ecc;
-  
+
   assign tcdm_target.r_data     = tcdm_initiator.r_data;
   assign tcdm_target.r_user     = tcdm_initiator.r_user;
   assign tcdm_target.r_id       = target_r_id;
@@ -61,15 +65,32 @@ module hci_core_r_id_filter
   assign tcdm_target.r_valid    = tcdm_initiator.r_valid;
 
 
-  if (MULTICYCLE_SUPPORT) begin
-    logic fifo_full, fifo_empty;
-    assign tcdm_target.gnt = tcdm_initiator.gnt & !(fifo_full);
-    assign tcdm_initiator.req = tcdm_target.req & !(fifo_full);
+  if (FD != 0) begin
+    logic fifo_full, fifo_empty, wen_q;
+    assign tcdm_target.gnt = tcdm_initiator.gnt;
+    assign tcdm_initiator.req = tcdm_target.req;
 
-   fifo_v3 #(
-    .FALL_THROUGH(1'b0),
-    .DATA_WIDTH(IW),
-    .DEPTH(N_OUTSTANDING)
+    fifo_v3 #(
+      .FALL_THROUGH(1'b0),
+      .DATA_WIDTH(1),
+      .DEPTH(MAX_IN_FLIGHT_OPS)
+    ) i_wen_fifo (
+      .clk_i,
+      .rst_ni,
+      .flush_i(clear_i),
+      .testmode_i(1'b0),
+      .full_o(),
+      .empty_o(),
+      .data_i(tcdm_target.wen),
+      .push_i(tcdm_target.req & tcdm_target.gnt),
+      .data_o(wen_q),
+      .pop_i((~wen_q | tcdm_initiator.r_valid) & tcdm_target.r_ready & ~fifo_empty)
+    );
+
+    fifo_v3 #(
+      .FALL_THROUGH(1'b0),
+      .DATA_WIDTH(IW),
+      .DEPTH(MAX_IN_FLIGHT_OPS)
     ) i_r_id_fifo (
       .clk_i,
       .rst_ni,
@@ -80,7 +101,7 @@ module hci_core_r_id_filter
       .data_i(tcdm_target.id),
       .push_i(tcdm_target.req & tcdm_target.gnt),
       .data_o(target_r_id),
-      .pop_i(tcdm_initiator.r_valid & tcdm_target.r_ready)
+      .pop_i((~wen_q | tcdm_initiator.r_valid) & tcdm_target.r_ready & ~fifo_empty)
     );
   end else begin
     logic [IW-1:0] id_q;
@@ -115,7 +136,7 @@ module hci_core_r_id_filter
       assign tcdm_initiator.ereq     = '0;
       assign tcdm_target.egnt        = '1; // assign all gnt's to 1
       assign tcdm_target.r_evalid    = '0;
-      assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1 
+      assign tcdm_initiator.r_eready = '1; // assign all gnt's to 1
     end
 
 /*
@@ -129,6 +150,8 @@ module hci_core_r_id_filter
 `ifndef SYNTHESIS
 `ifndef VERILATOR
 `ifndef VCS
+// Only check single-cycle timing when FD = 0 (no multicycle support)
+if (FD == 0) begin : single_cycle_asserts
   // gnt=1 & wen=1 => the following cycle r_valid=1
   property p_gnt_wen_high_then_r_valid_high_next_cycle;
     @(posedge clk_i) (tcdm_initiator.gnt && tcdm_initiator.wen) |-> ##1 tcdm_initiator.r_valid;
@@ -144,6 +167,7 @@ module hci_core_r_id_filter
 
   assert_gnt_low_then_r_valid_low_next_cycle: assert property (p_gnt_low_then_r_valid_low_next_cycle)
     else $warning("`r_valid` did not follow `gnt` by 1 cycle in a read: are you sure the `r_id` filter is at the 1-cycle latency boundary?");
+end : single_cycle_asserts
 `endif
 `endif
 `endif
@@ -167,7 +191,7 @@ module hci_core_r_id_filter
     ew : assert(tcdm_target.EW == tcdm_initiator.EW);
   initial
     ehw : assert(tcdm_target.EHW == tcdm_initiator.EHW);
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm_target);
 `endif
 `endif

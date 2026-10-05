@@ -80,6 +80,7 @@ module hci_ecc_source
   parameter int unsigned ADDR_MIS_DEPTH = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES = 1,
   parameter int unsigned PASSTHROUGH_FIFO = 0,
+  parameter int unsigned UPSTREAM_FIFO_DEPTH = 0,
   parameter int unsigned RESP_FIFO_DEPTH = 0,
   parameter int unsigned CHUNK_SIZE  = 32,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
@@ -119,7 +120,8 @@ module hci_ecc_source
     UW:  UW,
     IW:  IW,
     EW:  EW,
-    EHW: EHW
+    EHW: EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF(virt_tcdm, clk_i);
 
@@ -141,6 +143,7 @@ module hci_ecc_source
     .ADDR_MIS_DEPTH      ( ADDR_MIS_DEPTH ),
     .MISALIGNED_ACCESSES ( MISALIGNED_ACCESSES ),
     .PASSTHROUGH_FIFO    ( PASSTHROUGH_FIFO ),
+    .UPSTREAM_FIFO_DEPTH ( UPSTREAM_FIFO_DEPTH ),
     .RESP_FIFO_DEPTH     ( RESP_FIFO_DEPTH ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(virt_tcdm) )
   ) i_hci_core_source (

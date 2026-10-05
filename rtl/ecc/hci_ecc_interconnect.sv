@@ -49,11 +49,9 @@
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  *   | *IW*                | `N_HWPE+N_CORE+N_DMA+N_EXT` | ID Width.                                                                        |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
- *   | *EXPFIFO*           | 0                           | Depth of HCI router FIFO.                                                        |
+ *   | *FD*                | 0                           | Depth of HCI router FIFO.                                                        |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  *   | *SEL_LIC*           | 0                           | Kind of LIC to instantiate (0=regular L1, 1=L2).                                 |
- *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
- *   | *CHUNK_SIZE*        | 32                          | Width in bits of each chunk of data to protect individually.                     |
  *   +---------------------+-----------------------------+----------------------------------------------------------------------------------+
  */
 
@@ -70,7 +68,6 @@ module hci_ecc_interconnect
   parameter int unsigned N_MEM   = 16                       , // Number of Memory banks
   parameter int unsigned TS_BIT  = 21                       , // TEST_SET_BIT (for Log Interconnect)
   parameter int unsigned IW      = N_HWPE+N_CORE+N_DMA+N_EXT, // ID Width
-  parameter int unsigned EXPFIFO = 0                        , // FIFO Depth for HWPE Interconnect
   parameter int unsigned SEL_LIC = 0                        , // Log interconnect type selector
   parameter int unsigned CUT_CORES = 0                      , // Insert a cut in cores interconnect
   parameter int unsigned CUT_IDMA  = 0                      , // Insert a cut in Idma interconnect
@@ -90,11 +87,11 @@ module hci_ecc_interconnect
   input logic                   clear_i             ,
   input hci_interconnect_ctrl_t ctrl_i              ,
   XBAR_PERIPH_BUS.Slave         periph_hci_ecc      ,
-  hci_core_intf.target           cores   [0:N_CORE-1],
-  hci_core_intf.target           dma     [0:N_DMA-1] ,
-  hci_core_intf.target           ext     [0:N_EXT-1] ,
-  hci_core_intf.initiator        mems    [0:N_MEM-1] ,
-  hci_core_intf.target           hwpe    [0:N_HWPE-1]
+  hci_core_intf.target          cores   [0:N_CORE-1],
+  hci_core_intf.target          dma     [0:N_DMA-1] ,
+  hci_core_intf.target          ext     [0:N_EXT-1] ,
+  hci_core_intf.initiator       mems    [0:N_MEM-1] ,
+  hci_core_intf.target          hwpe    [0:N_HWPE-1]
 );
 
   localparam int unsigned AWC = `HCI_SIZE_GET_AW(cores);
@@ -108,6 +105,7 @@ module hci_ecc_interconnect
   localparam int unsigned BWH = `HCI_SIZE_GET_BW(hwpe);
   localparam int unsigned UWH = `HCI_SIZE_GET_UW(hwpe);
   localparam int unsigned EWH = `HCI_SIZE_GET_EW(hwpe);
+  localparam int unsigned FDH = `HCI_SIZE_GET_FD(hwpe);
   localparam int unsigned N_CHUNK = DWH / CHUNK_SIZE;
   localparam int unsigned EW_DW = $clog2(CHUNK_SIZE)+2;
 
@@ -118,7 +116,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  DEFAULT_IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   hci_core_intf #(
     .DW  ( DEFAULT_DW  ),
@@ -127,7 +126,8 @@ module hci_ecc_interconnect
     .UW  ( UW_LIC      ),
     .IW  ( DEFAULT_IW  ),
     .EW  ( DEFAULT_EW  ),
-    .EHW ( DEFAULT_EHW )
+    .EHW ( DEFAULT_EHW ),
+    .FD  ( DEFAULT_FD  )
 `ifndef SYNTHESIS
     ,
     .WAIVE_RQ3_ASSERT  ( WAIVE_RQ3_ASSERT  ),
@@ -146,7 +146,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(all_except_hwpe_mem, clk_i, 0:N_MEM-1);
 
@@ -157,7 +158,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  DEFAULT_EW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(all_except_hwpe_mem_assign, clk_i, 0:N_MEM-1);
 
@@ -168,7 +170,8 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  EWM,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(all_except_hwpe_mem_enc, clk_i, 0:N_MEM-1);
 
@@ -179,18 +182,19 @@ module hci_ecc_interconnect
     UW:  UW_LIC,
     IW:  IW,
     EW:  EW_DW,
-    EHW: DEFAULT_EHW
+    EHW: DEFAULT_EHW,
+    FD:  DEFAULT_FD
   };
   `HCI_INTF_ARRAY(hwpe_mem, clk_i, 0:N_MEM-1);
 
-  logic [N_MEM-1:0]       data_single_err, data_multi_err;
-  logic                   meta_single_err, meta_multi_err;
-  logic [1:0][N_MEM-1:0]  rmeta_single_err, rmeta_multi_err;
-  logic [N_MEM:0]         meta_corr_total_error, meta_uncorr_total_error;
+  logic [N_MEM-1:0]        data_single_err, data_multi_err;
+  logic [N_HWPE-1:0]       meta_single_err, meta_multi_err;
+  logic [1:0][N_MEM-1:0]   rmeta_single_err, rmeta_multi_err;
+  logic [N_MEM+N_HWPE-1:0] meta_corr_total_error, meta_uncorr_total_error;
 
   logic [N_MEM-1:0]       valid_read_d, valid_read_q;
   logic [1:0][N_MEM-1:0]  arb_valid_handshake;
-  logic                   hwpe_valid_handshake;
+  logic [N_HWPE-1:0]      hwpe_valid_handshake;
 
   for (genvar i=0; i < N_MEM; i++) begin : gen_valid
 
@@ -207,7 +211,9 @@ module hci_ecc_interconnect
     end
   end
 
-  assign hwpe_valid_handshake = hwpe[0].req && hwpe[0].gnt;
+  for (genvar ii = 0; ii < N_HWPE; ii++) begin : assign_valid_handshake
+    assign hwpe_valid_handshake[ii] = hwpe[ii].req & hwpe[ii].gnt;
+  end
 
   hci_ecc_req_t hci_ecc_req;
   hci_ecc_rsp_t hci_ecc_rsp;
@@ -225,11 +231,11 @@ module hci_ecc_interconnect
     .req_i     ( periph_hci_ecc.req     ),
     .add_i     ( periph_hci_ecc.add     ),
     .wen_i     ( periph_hci_ecc.wen     ),
-    .wdata_i   ( periph_hci_ecc.wdata    ),
+    .wdata_i   ( periph_hci_ecc.wdata   ),
     .be_i      ( periph_hci_ecc.be      ),
     .id_i      ( periph_hci_ecc.id      ),
     .gnt_o     ( periph_hci_ecc.gnt     ),
-    .r_rdata_o ( periph_hci_ecc.r_rdata  ),
+    .r_rdata_o ( periph_hci_ecc.r_rdata ),
     .r_opc_o   ( periph_hci_ecc.r_opc   ),
     .r_id_o    ( periph_hci_ecc.r_id    ),
     .r_valid_o ( periph_hci_ecc.r_valid ),
@@ -239,7 +245,7 @@ module hci_ecc_interconnect
 
   hci_ecc_manager #(
     .PAR_DATA                 ( N_MEM                          ),
-    .PAR_META                 ( N_MEM + 1                      )
+    .PAR_META                 ( N_MEM + N_HWPE                 )
   ) i_hci_ecc_manager (
     .clk_i                    ( clk_i                          ),
     .rst_ni                   ( rst_ni                         ),
@@ -256,8 +262,8 @@ module hci_ecc_interconnect
     assign meta_uncorr_total_error[i] = (rmeta_multi_err[0][i] & arb_valid_handshake[0][i])  | (rmeta_multi_err[1][i] & arb_valid_handshake[1][i]);
   end
 
-  assign meta_corr_total_error[N_MEM]   = meta_single_err & hwpe_valid_handshake;
-  assign meta_uncorr_total_error[N_MEM] = meta_multi_err  & hwpe_valid_handshake;
+  assign meta_corr_total_error[N_MEM+:N_HWPE]   = meta_single_err & hwpe_valid_handshake;
+  assign meta_uncorr_total_error[N_MEM+:N_HWPE] = meta_multi_err  & hwpe_valid_handshake;
 
   generate
 
@@ -351,39 +357,58 @@ module hci_ecc_interconnect
         UW:  UWH,
         IW:  DEFAULT_IW,
         EW:  EW_DW*N_CHUNK,
-        EHW: DEFAULT_EHW
+        EHW: DEFAULT_EHW,
+        FD:  FDH
       };
-      `HCI_INTF(hwpe_dec, clk_i);
 
-      localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_enc) = `HCI_SIZE_PARAM(all_except_hwpe_mem_enc);
+      localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_enc)     = `HCI_SIZE_PARAM(all_except_hwpe_mem_enc);
+      localparam hci_size_parameter_t `HCI_SIZE_PARAM(hwpe_mem_pre_mux) = `HCI_SIZE_PARAM(hwpe_mem);
+      `HCI_INTF_ARRAY(hwpe_mem_pre_mux, clk_i, 0:N_HWPE*N_MEM-1);
       `HCI_INTF_ARRAY(hwpe_mem_enc, clk_i, 0:N_MEM-1);
 
-      hci_ecc_dec #(
-        .CHUNK_SIZE ( CHUNK_SIZE ),
-        .ENABLE_DATA ( 0          ),
-        .`HCI_SIZE_PARAM(tcdm_target) ( `HCI_SIZE_PARAM(hwpe) )
-      ) i_ecc_dec_meta (
-        .data_single_err_o (  ),
-        .data_multi_err_o  (  ),
-        .meta_single_err_o ( meta_single_err ),
-        .meta_multi_err_o  ( meta_multi_err  ),
-        .tcdm_target       ( hwpe[0]         ),
-        .tcdm_initiator    ( hwpe_dec        )
-      );
+      for(genvar ii=0; ii<N_HWPE; ii++) begin : gen_hwpe_branches
+        `HCI_INTF(hwpe_dec, clk_i);
 
-      hci_router #(
-        .FIFO_DEPTH           ( EXPFIFO                   ),
-        .NB_OUT_CHAN          ( N_MEM                     ),
-        .USE_ECC              ( 1                         ),
-        .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID[0]  ),
-        .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe_dec) ),
+        hci_ecc_dec #(
+          .CHUNK_SIZE                   ( CHUNK_SIZE            ),
+          .ENABLE_DATA                  ( 0                     ),
+          .`HCI_SIZE_PARAM(tcdm_target) ( `HCI_SIZE_PARAM(hwpe) )
+        ) i_ecc_dec_meta (
+          .data_single_err_o (  ),
+          .data_multi_err_o  (  ),
+          .meta_single_err_o ( meta_single_err[ii] ),
+          .meta_multi_err_o  ( meta_multi_err[ii]  ),
+          .tcdm_target       ( hwpe[ii]            ),
+          .tcdm_initiator    ( hwpe_dec            )
+        );
+
+        hci_router #(
+          .FIFO_DEPTH           ( FDH                       ),
+          .NB_OUT_CHAN          ( N_MEM                     ),
+          .USE_ECC              ( 1                         ),
+          .FILTER_WRITE_R_VALID ( FILTER_WRITE_R_VALID[ii]  ),
+          .`HCI_SIZE_PARAM(in)  ( `HCI_SIZE_PARAM(hwpe_dec) ),
+          .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
+        ) i_ecc_router (
+          .clk_i   ( clk_i                                     ),
+          .rst_ni  ( rst_ni                                    ),
+          .clear_i ( clear_i                                   ),
+          .in      ( hwpe_dec                                  ),
+          .out     ( hwpe_mem_pre_mux[ii*N_MEM:(ii+1)*N_MEM-1] )
+        );
+      end
+
+      hci_arbiter_tree #(
+        .NB_REQUESTS          ( N_HWPE                    ),
+        .NB_CHAN              ( N_MEM                     ),
         .`HCI_SIZE_PARAM(out) ( `HCI_SIZE_PARAM(hwpe_mem) )
-      ) i_ecc_router (
-        .clk_i   ( clk_i    ),
-        .rst_ni  ( rst_ni   ),
-        .clear_i ( clear_i  ),
-        .in      ( hwpe_dec ),
-        .out     ( hwpe_mem )
+      ) i_wide_port_arbiter_tree (
+        .clk_i   ( clk_i            ),
+        .rst_ni  ( rst_ni           ),
+        .clear_i ( clear_i          ),
+        .ctrl_i  ( ctrl_i           ),
+        .in      ( hwpe_mem_pre_mux ),
+        .out     ( hwpe_mem         )
       );
 
       for (genvar i=0; i < N_MEM; i++) begin : after_router_enc
@@ -495,9 +520,6 @@ module hci_ecc_interconnect
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(cores), cores[0]);
   `HCI_SIZE_CHECK_ASSERTS_EXPLICIT_PARAM(`HCI_SIZE_PARAM(mems), mems[0]);
 
-  initial begin : no_multi_hwpe_check
-    assert(N_HWPE <= 1) else $fatal("Multiple HWPEs are not supported in the ECC HCI.");
-  end
   initial begin : reg_struct_check
     assert (AWC == 32)    else $fatal("AWC value not supported for default reg_{req,resp} struct");
     assert (DW_LIC == 32) else $fatal("DW_LIC value not supported for default reg_{req,resp} struct");

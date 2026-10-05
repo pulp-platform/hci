@@ -58,8 +58,10 @@ module hci_transaction_tracer
   import hci_package::*;
 #(
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
+`ifndef SYNTHESIS
   parameter string REQ_LOG_FILE = "hci_trace_req.json",
   parameter string RSP_LOG_FILE = "hci_trace_rsp.json"
+`endif
 )
 (
   input logic           clk_i,
