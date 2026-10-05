@@ -25,7 +25,7 @@
  * out a predefined pattern from an **hwpe_stream_addressgen_v4** to perform
  * a burst of loads via a HCI-Core interface, producing a HWPE-Stream
  * data stream from the HCI-Core `r_data` field.
- * By default, the HCI-Core streamer supports delayed accesses using a HCI-Core 
+ * By default, the HCI-Core streamer supports delayed accesses using a HCI-Core
  * interface.
  *
  * Misaligned accesses are supported by widening the HCI-Core data width by one
@@ -56,6 +56,8 @@
  *   | *MISALIGNED_ACCESSES* | 1           | If set to 0, the source will not support non-bank-word-aligned HCI-Core accesses.                                        |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *PASSTHROUGH_FIFO*    | 0           | If set to 1, the address FIFO will be capable of fall-through operation (i.e., skipping the FIFO latency entirely).      |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *UPSTREAM_FIFO_DEPTH* | 0           | Depth of the upstream FIFO (if any) controlling the `ready` signal of the `stream` port.                                 |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *RESP_FIFO_DEPTH*     | 0           | If > 0, responses are buffered through a HWPE-Stream FIFO of this depth before reaching the output stream.               |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
@@ -106,6 +108,7 @@ module hci_core_source
   parameter int unsigned ADDR_MIS_DEPTH       = 8, // Beware: this must be >= the maximum latency between TCDM gnt and TCDM r_valid!!!
   parameter int unsigned MISALIGNED_ACCESSES  = 1,
   parameter int unsigned PASSTHROUGH_FIFO     = 0,
+  parameter int unsigned UPSTREAM_FIFO_DEPTH  = 0,
   parameter int unsigned RESP_FIFO_DEPTH      = 0,
   parameter int unsigned ELEMENT_WIDTH        = 8,  // e.g., 8 bits per element
   parameter int unsigned ELEMENTS_PER_BANK    = 4,  // number of elements in one memory bank
@@ -131,6 +134,7 @@ module hci_core_source
 
   localparam int unsigned DATA_WIDTH = `HCI_SIZE_GET_DW(tcdm);
   localparam int unsigned EHW        = `HCI_SIZE_GET_EHW(tcdm);
+  localparam int unsigned FD         = `HCI_SIZE_GET_FD(tcdm);
   localparam int unsigned STREAM_MISALIGNED_DW = DATA_WIDTH - BANK_DATA_WIDTH;
 
   hci_streamer_state_t cs, ns;
@@ -257,6 +261,36 @@ module hci_core_source
   end
 
   // Response FIFO
+  logic enable_reqs;
+
+  if (UPSTREAM_FIFO_DEPTH == 0) begin
+    assign enable_reqs = stream.ready;
+  end else begin
+    logic [$clog2(UPSTREAM_FIFO_DEPTH+1)-1:0] op_cnt_q;
+    logic req_handshake, rsp_handshake;
+
+    assign req_handshake = tcdm.req & tcdm.gnt;
+    assign rsp_handshake = tcdm.r_valid & tcdm.r_ready;
+
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+      if(~rst_ni)
+        op_cnt_q <= '0;
+      else if(clear_i)
+        op_cnt_q <= '0;
+      else if(enable_i) begin
+        case ({rsp_handshake,req_handshake})
+          2'b01:   op_cnt_q <= op_cnt_q + 1;
+          2'b10:   op_cnt_q <= op_cnt_q - 1;
+          default: op_cnt_q <= op_cnt_q;
+        endcase
+      end
+    end
+
+    // Only make new requests if the upstream FIFO will be able to accept them
+    assign enable_reqs = op_cnt_q != UPSTREAM_FIFO_DEPTH;
+  end
+
   hwpe_stream_intf_stream #(
     .DATA_WIDTH ( DATA_WIDTH )
   ) resp_push (
@@ -268,21 +302,21 @@ module hci_core_source
     .clk ( clk_i )
   );
 
-  assign tcdm.req        = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
+  assign tcdm.req        = (cs != STREAMER_IDLE) ? addr_pop.valid & enable_reqs : '0;
   if(ADDR_OFFSET == 1)
-    assign tcdm.add        = (cs != STREAMER_IDLE) ? addr_pop.data[31:0] : '0;
+    assign tcdm.add      = (cs != STREAMER_IDLE) ? addr_pop.data[31:0] : '0;
   else
-    assign tcdm.add        = (cs != STREAMER_IDLE) ? {addr_pop.data[31:ADDR_OFFSET],{ADDR_OFFSET{1'b0}}} : '0;
+    assign tcdm.add      = (cs != STREAMER_IDLE) ? {addr_pop.data[31:ADDR_OFFSET],{ADDR_OFFSET{1'b0}}} : '0;
   assign tcdm.wen        = 1'b1;
   assign tcdm.be         = {ELEMENTS_PER_BANK{1'b0}};
   assign tcdm.data       = '0;
   assign tcdm.user       = '0;
   assign tcdm.id         = '0;
   assign tcdm.ecc        = '0;
-  assign addr_pop.ready  = (cs != STREAMER_IDLE) ? tcdm.gnt : 1'b0;
-  assign resp_push.data  = stream_data_aligned;
   assign resp_push.strb  = '1;
-  assign resp_push.valid = enable_i & (tcdm.r_valid | stream_valid_q);
+  assign resp_push.data  = stream_data_aligned;
+  assign resp_push.valid = enable_i & (tcdm.r_valid | stream_valid_q); // is this strictly necessary to keep the HWPE-Stream protocol? or can be avoided with a FIFO q?
+  assign addr_pop.ready  = (cs != STREAMER_IDLE) ? addr_pop.valid & enable_reqs & tcdm.gnt : 1'b0;
   assign tcdm.r_ready    = resp_push.ready;
 
   generate
@@ -409,7 +443,7 @@ module hci_core_source
   end
   else begin : no_ecc_handshake_gen
     assign tcdm.ereq     = '0;
-    assign tcdm.r_eready = '1; // assign all gnt's to 1 
+    assign tcdm.r_eready = '1; // assign all gnt's to 1
   end
 
 /*
@@ -426,7 +460,7 @@ module hci_core_source
     initial
       dw :  assert(stream.DATA_WIDTH <= tcdm.DW);
   end
-  
+
   `HCI_SIZE_CHECK_ASSERTS(tcdm);
 `endif
 `endif

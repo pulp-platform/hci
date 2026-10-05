@@ -17,6 +17,11 @@
  * This block filters the id field of the TCDM request, and forwards it to
  * the r_id field of the TCDM response.
  *
+ *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | **Name**            | **Default** | **Description**                                                                                                        |
+ *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
+ *   | *MAX_IN_FLIGHT_TXN* | 2*FD + 1    | Maximum number of transactions that can be issued before the first response is received.                               |
+ *   +---------------------+-------------+------------------------------------------------------------------------------------------------------------------------+
  */
 
 `include "hci_helpers.svh"
@@ -25,7 +30,8 @@ module hci_core_r_id_filter
   import hwpe_stream_package::*;
   import hci_package::*;
 #(
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_target) = '0,
+  parameter int unsigned MAX_IN_FLIGHT_OPS = 2*`HCI_SIZE_GET_FD(tcdm_target) + 1
 )
 (
   input  logic clk_i,
@@ -67,7 +73,7 @@ module hci_core_r_id_filter
     fifo_v3 #(
       .FALL_THROUGH(1'b0),
       .DATA_WIDTH(1),
-      .DEPTH(FD + 3)
+      .DEPTH(MAX_IN_FLIGHT_OPS)
     ) i_wen_fifo (
       .clk_i,
       .rst_ni,
@@ -84,7 +90,7 @@ module hci_core_r_id_filter
     fifo_v3 #(
       .FALL_THROUGH(1'b0),
       .DATA_WIDTH(IW),
-      .DEPTH(FD + 3)
+      .DEPTH(MAX_IN_FLIGHT_OPS)
     ) i_r_id_fifo (
       .clk_i,
       .rst_ni,

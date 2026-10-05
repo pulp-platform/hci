@@ -71,6 +71,7 @@ module hci_core_mux_dynamic
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(in);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(in);
   localparam int unsigned EHW = `HCI_SIZE_GET_EHW(in);
+  localparam int unsigned FD  = `HCI_SIZE_GET_FD(in);
 
   // based on MUX2Req.sv from LIC
   logic [NB_IN_CHAN-1:0]                     in_req;
@@ -116,6 +117,7 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                             winner_d;
   logic [NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                             winner_q;
   logic [NB_OUT_CHAN-1:0]                                                                 out_req_q;
+  logic [NB_OUT_CHAN-1:0]                                                                 r_valid_en;
 
   logic s_rr_counter_reg_en;
   assign s_rr_counter_reg_en = (|out_req) & (|out_gnt) & (|(in_req & ~in_gnt));
@@ -209,26 +211,72 @@ module hci_core_mux_dynamic
         out_wen  [i] = in_wen  [winner_d[i]*NB_OUT_CHAN+i];
         out_data [i] = in_data [winner_d[i]*NB_OUT_CHAN+i];
         out_be   [i] = in_be   [winner_d[i]*NB_OUT_CHAN+i];
-        out_lrdy [i] = in_lrdy [winner_d[i]*NB_OUT_CHAN+i];
+        out_lrdy [i] = in_lrdy [winner_q[i]*NB_OUT_CHAN+i];
         out_user [i] = in_user [winner_d[i]*NB_OUT_CHAN+i];
         out_id   [i] = in_id   [winner_d[i]*NB_OUT_CHAN+i];
         out_ecc  [i] = in_ecc  [winner_d[i]*NB_OUT_CHAN+i];
       end
 
-      always_ff @(posedge clk_i or negedge rst_ni)
-      begin : wta_resp_reg
-        if(rst_ni == 1'b0) begin
-          winner_q  [i] <= '0;
-          out_req_q [i] <= 1'b0;
+      if (FD != 0) begin
+        logic fifo_empty, wen_q;
+
+        /*
+         * Since the r_valid signal could be filtered by a downstream hci_r_valid_fitler,
+         * here we also keep track of it.
+         */
+        fifo_v3 #(
+          .FALL_THROUGH(1'b0),
+          .DATA_WIDTH(1),
+          .DEPTH(FD + 3)
+        ) i_wen_fifo (
+          .clk_i,
+          .rst_ni,
+          .flush_i(clear_i),
+          .testmode_i(1'b0),
+          .full_o(),
+          .empty_o(),
+          .data_i(out_wen[i]),
+          .push_i(in_req[winner_d[i]] & in_gnt[winner_d[i]]),
+          .data_o(wen_q),
+          .pop_i((~wen_q | out_r_valid[i]) & in_lrdy[winner_q[i]] & ~fifo_empty)
+        );
+
+        fifo_v3 #(
+          .FALL_THROUGH(1'b0),
+          .DATA_WIDTH($clog2(NB_IN_CHAN/NB_OUT_CHAN)),
+          .DEPTH(FD + 3)
+        ) i_winner_fifo (
+          .clk_i,
+          .rst_ni,
+          .flush_i(clear_i),
+          .testmode_i(1'b0),
+          .full_o(),
+          .empty_o(fifo_empty),
+          .data_i(winner_d[i]),
+          .push_i(in_req[winner_d[i]] & in_gnt[winner_d[i]]),
+          .data_o(winner_q[i]),
+          .pop_i((~wen_q | out_r_valid[i]) & in_lrdy[winner_q[i]] & ~fifo_empty)
+        );
+
+        assign r_valid_en[i] = ~fifo_empty;
+      end else begin
+        always_ff @(posedge clk_i or negedge rst_ni)
+        begin : wta_resp_reg
+          if(rst_ni == 1'b0) begin
+            winner_q  [i] <= '0;
+            out_req_q [i] <= 1'b0;
+          end
+          else if(clear_i == 1'b1) begin
+            winner_q  [i] <= '0;
+            out_req_q [i] <= 1'b0;
+          end
+          else begin
+            winner_q  [i] <= winner_d [i];
+            out_req_q [i] <= out_req  [i];
+          end
         end
-        else if(clear_i == 1'b1) begin
-          winner_q  [i] <= '0;
-          out_req_q [i] <= 1'b0;
-        end
-        else begin
-          winner_q  [i] <= winner_d [i];
-          out_req_q [i] <= out_req  [i];
-        end
+
+        assign r_valid_en[i] = out_req_q[i];
       end
 
     end // out_chan_binding
@@ -246,7 +294,7 @@ module hci_core_mux_dynamic
           in_r_ecc   [j*NB_OUT_CHAN+i] = '0;
         end
         in_r_data  [winner_q[i]*NB_OUT_CHAN+i] = out_r_data[i];
-        in_r_valid [winner_q[i]*NB_OUT_CHAN+i] = out_r_valid[i] & out_req_q[i];
+        in_r_valid [winner_q[i]*NB_OUT_CHAN+i] = out_r_valid[i] & r_valid_en[i];
         in_gnt     [winner_d[i]*NB_OUT_CHAN+i] = out_gnt[i];
         in_r_user  [winner_q[i]*NB_OUT_CHAN+i] = out_r_user[i];
         in_r_id    [winner_q[i]*NB_OUT_CHAN+i] = out_r_id[i];
