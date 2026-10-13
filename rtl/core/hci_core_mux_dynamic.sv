@@ -116,6 +116,8 @@ module hci_core_mux_dynamic
   logic [NB_OUT_CHAN-1:0][NB_IN_CHAN/NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0] rr_priority;
   logic [NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                             winner_d;
   logic [NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                             winner_q;
+  logic [NB_OUT_CHAN-1:0][$clog2(NB_IN_CHAN/NB_OUT_CHAN)-1:0]                             winner_hold_q;
+  logic [NB_OUT_CHAN-1:0]                                                                 out_pend_q;
   logic [NB_OUT_CHAN-1:0]                                                                 out_req_q;
   logic [NB_OUT_CHAN-1:0]                                                                 r_valid_en;
 
@@ -202,6 +204,25 @@ module hci_core_mux_dynamic
         for(int jj=0; jj<NB_IN_CHAN/NB_OUT_CHAN; jj++) begin
           if (in_req[rr_priority[i][jj]*NB_OUT_CHAN+i] == 1'b1)
             winner_d[i] = (rr_priority[i][jj] < NB_IN_CHAN) ? rr_priority[i][jj] : rr_priority[i][jj] + 1;
+        end
+        // keep the winner until gnt
+        if (out_pend_q[i] == 1'b1)
+          winner_d[i] = winner_hold_q[i];
+      end
+
+      always_ff @(posedge clk_i or negedge rst_ni)
+      begin : wta_hold_reg
+        if(rst_ni == 1'b0) begin
+          winner_hold_q[i] <= '0;
+          out_pend_q   [i] <= 1'b0;
+        end
+        else if(clear_i == 1'b1) begin
+          winner_hold_q[i] <= '0;
+          out_pend_q   [i] <= 1'b0;
+        end
+        else begin
+          winner_hold_q[i] <= winner_d[i];
+          out_pend_q   [i] <= out_req[i] & ~out_gnt[i];
         end
       end
 
