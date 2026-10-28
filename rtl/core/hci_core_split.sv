@@ -274,7 +274,7 @@ module hci_core_split
  */
   if(EHW > 0) begin : ecc_handshake_gen
     assign tcdm_target.egnt     = '{default: {tcdm_target.gnt}};
-    assign tcdm_target.r_evalid = '{default: {tcdm_target.r_evalid}};
+    assign tcdm_target.r_evalid = '{default: {tcdm_target.r_valid}};
     for(genvar ii=0; ii<NB_OUT_CHAN; ii++) begin : out_chan_gen
       assign tcdm_initiator_ereq     [ii] = '{default: {tcdm_initiator_req[ii]}};
       assign tcdm_initiator_r_eready [ii] = '{default: {tcdm_initiator_r_ready[ii]}};
