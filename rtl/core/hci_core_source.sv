@@ -67,6 +67,8 @@
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *TCDM_R_READY_SUPPORT*| 1           | If 0, the TCDM ignores `r_ready`; the source self-limits to one outstanding load instead of backpressuring responses.    |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
+ *   | *MULTICYCLE_SUPPORT*  | 0           | If 1 with `TCDM_R_READY_SUPPORT`=0, loads in flight are limited to the `RESP_FIFO_DEPTH`+1 response slots, any latency.  |
+ *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *STRIDE_LAST_1H*      | 4'b0000     | Bit N: give dimension N a second stride, used at the last index of another one (see **hwpe_stream_addressgen_v4**).      |
  *   +-----------------------+-------------+--------------------------------------------------------------------------------------------------------------------------+
  *   | *LEN_LAST_1H*         | 4'b0000     | Bit N: give dimension N a second length, used at the last index of an outer one (short trailing tile).                   |
@@ -118,6 +120,7 @@ module hci_core_source
   parameter int unsigned PASSTHROUGH_FIFO     = 0,
   parameter int unsigned RESP_FIFO_DEPTH      = 0,
   parameter bit unsigned TCDM_R_READY_SUPPORT = 1,
+  parameter bit unsigned MULTICYCLE_SUPPORT   = 0,
   parameter int unsigned ELEMENT_WIDTH        = 8,  // e.g., 8 bits per element
   parameter int unsigned ELEMENTS_PER_BANK    = 4,  // number of elements in one memory bank
   localparam int unsigned BANK_DATA_WIDTH     = ELEMENT_WIDTH * ELEMENTS_PER_BANK,
@@ -290,6 +293,22 @@ module hci_core_source
   if (TCDM_R_READY_SUPPORT) begin : gen_r_ready_backpressure
     assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid : '0;
     assign tcdm.r_ready = resp_push.ready;
+  end
+  else if (MULTICYCLE_SUPPORT) begin : gen_credit_limit
+    localparam int unsigned CREDITS = RESP_FIFO_DEPTH + 1;
+    logic [$clog2(CREDITS+1)-1:0] credit_d, credit_q;
+    assign credit_d = credit_q + (tcdm.req & tcdm.gnt) - (stream.valid & stream.ready);
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+      if(~rst_ni)
+        credit_q <= '0;
+      else if(clear_i)
+        credit_q <= '0;
+      else if(enable_i)
+        credit_q <= credit_d;
+    end
+    assign tcdm.req     = (cs != STREAMER_IDLE) ? addr_pop.valid & (credit_q < CREDITS) : '0;
+    assign tcdm.r_ready = 1'b1;
   end
   else begin : gen_self_limit
     logic outstanding_d, outstanding_q;
