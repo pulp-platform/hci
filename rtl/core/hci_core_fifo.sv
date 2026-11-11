@@ -49,6 +49,8 @@
  *   +------------------------+--------------+--------------------------------------------------------------------------------------+
  *   | *LATCH_FIFO*           | 0            | If 1, use latches instead of flip-flops (requires special constraints in synthesis). |
  *   +------------------------+--------------+--------------------------------------------------------------------------------------+
+ *   | *REQ_ON_ALMOST_FULL*   | 0            | If 1, only a full incoming FIFO lowers `req`: no path from `r_valid` to `req`.       |
+ *   +------------------------+--------------+--------------------------------------------------------------------------------------+
  *
  * .. tabularcolumns:: |l|l|J|
  * .. _hci_core_fifo_flags:
@@ -76,6 +78,7 @@ module hci_core_fifo
 #(
   parameter int unsigned FIFO_DEPTH = 8,
   parameter int unsigned LATCH_FIFO = 0,
+  parameter bit unsigned REQ_ON_ALMOST_FULL = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm_initiator) = '0
 )
 (
@@ -316,7 +319,8 @@ module hci_core_fifo
   // Lower the request if
   //  1) the incoming FIFO is already full
   //  2) the incoming FIFO is almost full, a valid incoming response is arriving, and the incoming FIFO consumer side is not ready to receive the response
-  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full & ~(incoming_fifo_almost_full & tcdm_initiator.r_valid & ~tcdm_target.r_ready);
+  //     With REQ_ON_ALMOST_FULL, the response to a request granted in this case waits in tcdm_initiator_r_data_q.
+  assign tcdm_initiator.req = stream_outgoing_pop.valid & incoming_fifo_not_full & (REQ_ON_ALMOST_FULL | ~(incoming_fifo_almost_full & tcdm_initiator.r_valid & ~tcdm_target.r_ready));
   assign tcdm_initiator.r_ready = incoming_fifo_not_full;
   assign stream_outgoing_pop.ready = tcdm_initiator.gnt; // if incoming_fifo_not_full=0, gnt is already 0, because req=0
 
