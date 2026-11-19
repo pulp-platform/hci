@@ -107,7 +107,7 @@ module hci_arbiter
       priority_cnt_q <= 0;
     else if (any_conflict)
     begin
-      if(priority_cnt_q == ctrl_i.priority_cnt_denominator-1)
+      if(priority_cnt_q >= ctrl_i.priority_cnt_denominator-1)
         priority_cnt_q <= 0;
       else
         priority_cnt_q <= priority_cnt_q + 1;
